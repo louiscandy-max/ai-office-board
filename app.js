@@ -1,24 +1,18 @@
-// AI 辦公樓看板：前端只讀取加密資料檔 data.enc.json，於瀏覽器端以通關密語解密。
-// 性別依據：助理 profile 描述（PA、CPO、FP&A、IA 女性）；Admin／Kobe 依 Air default SOUL.md「女性」；
-// CoS、CLO、CTO、Fly 無來源載明 → 中性形象（無髮型、無裙裝或領帶）。
+// AI 辦公樓看板：前端只讀取加密資料檔，於瀏覽器端以通關密語解密。
+// 性別（Louis 2026-11-15 指定）：只有 CTO 與 Louis 為男性，其餘助理（PA、CoS、CLO、CPO、FP&A、IA、Admin、Kobe、Fly）皆為女性。
+// Louis 不再以站立人物呈現，改為中央「主位」太極核心，顯示最後來訊時間。
 const FLOORS = [
-  { id: 'louis', g: 'm', name: 'Louis（總經理）', color: 0x3d5a8c },
-  { id: 'pa', g: 'f',  name: 'Sr. PA Ai（私人資深特助）', color: 0x4285F4 },
-  { id: 'cos', g: 'n', name: 'CoS Ai（幕僚長）', color: 0x76B900 },
-  { id: 'clo', g: 'n', name: 'CLO Ai（法務）', color: 0x5aa86a },
-  { id: 'cto', g: 'n', name: 'CTO Ai（技術長）', color: 0x76B900 },
-  { id: 'cpo', g: 'f', name: 'CPO Ai（採購長）', color: 0x3d5c2a },
-  { id: 'fpa', g: 'f', name: 'Sr. FP&A Analyst Ai（財務規劃）', color: 0xc5e86a },
-  { id: 'ia', g: 'f',  name: 'Sr. IA Ai（投資分析師）', color: 0xEA4335 },
-  { id: 'admin', g: 'f', name: 'Admin（特殊小組・Air 執行維運）', color: 0x34A853 },
-  { id: 'kobe', g: 'f', name: 'Ai Kobe（特殊小組・個人事務）', color: 0xEA4335 },
-  { id: 'fly', g: 'n', name: 'Ai Fly（特殊小組・碳酸鋰預測）', color: 0xFBBC05 },
-];
-const OFFICES = [
-  { id: 'personal', name: '個人幕僚辦公室', zone: '個人幕僚區', members: ['pa', 'ia'], x: -3.9, z: 2.05, w: 6.6, d: 4.6, color: 0x4285F4, side: 'google' },
-  { id: 'special',  name: '特殊小組辦公室', zone: '特殊小組區', members: ['admin', 'kobe', 'fly'], x: -3.9, z: -4.55, w: 6.6, d: 6.6, color: 0xFBBC05, side: 'google' },
-  { id: 'staff',    name: '公司幕僚辦公室', zone: '公司幕僚區', members: ['cos'], x: 3.9, z: 2.05, w: 6.6, d: 4.6, color: 0x76B900, side: 'nvidia' },
-  { id: 'pro',      name: '公司專業辦公室', zone: '公司專業區', members: ['clo', 'cto', 'cpo', 'fpa'], x: 3.9, z: -4.55, w: 6.6, d: 6.6, color: 0x1f2a18, accent: 0x76B900, side: 'nvidia' },
+  { id: 'louis', g: 'm', name: 'Louis（總經理）', color: 0xb8995a },
+  { id: 'pa', g: 'f',  name: 'Sr. PA Ai（私人資深特助）', color: 0x5f9e8a },
+  { id: 'cos', g: 'f', name: 'CoS Ai（幕僚長）', color: 0xb8995a },
+  { id: 'clo', g: 'f', name: 'CLO Ai（法務）', color: 0x6b7f99 },
+  { id: 'cto', g: 'm', name: 'CTO Ai（技術長）', color: 0x3f6f8f },
+  { id: 'cpo', g: 'f', name: 'CPO Ai（採購長）', color: 0x8a6a4a },
+  { id: 'fpa', g: 'f', name: 'Sr. FP&A Analyst Ai（財務規劃）', color: 0x9a8a3a },
+  { id: 'ia', g: 'f',  name: 'Sr. IA Ai（投資分析師）', color: 0xb5443a },
+  { id: 'admin', g: 'f', name: 'Admin（特殊小組・Air 執行維運）', color: 0x4f7f6a },
+  { id: 'kobe', g: 'f', name: 'Ai Kobe（特殊小組・個人事務）', color: 0xa0524a },
+  { id: 'fly', g: 'f', name: 'Ai Fly（特殊小組・碳酸鋰預測）', color: 0xc9a13a },
 ];
 const NO_DATA = '暫無數據';
 const STATUS_TEXT = { done: '已完成', in_progress: '進行中', pending: '待處理' };
@@ -197,17 +191,17 @@ function usageHtml() {
   if (!people) return emptyLine;
   const rows = [];
   const h = usage.hermes;
-  rows.push(`<h3>Air 特殊小組（Hermes，真實 token）</h3>`);
+  rows.push(`<h3>Air 特殊小組（真實詞元數）</h3>`);
   if (h && Array.isArray(h.profiles) && h.profiles.length) {
     for (const p of h.profiles) {
       const today = p.today && typeof p.today.total === 'number'
         ? `今日 ${fmtTok(p.today.total)}${has(p.today.since) && p.today.partial ? `（自 ${esc(shortTime(p.today.since))} 起）` : ''}` : `今日 ${NO_DATA}`;
       rows.push(`<div class="u-row"><span class="u-name">${esc(p.label || p.id)}</span><span class="u-val">累計 ${fmtTok(p.total)}｜${today}</span><span class="u-sub">輸入 ${fmtTok(p.input)}／輸出 ${fmtTok(p.output)}／快取讀取 ${fmtTok(p.cache_read)}</span></div>`);
     }
-    rows.push(`<p class="src">來源：Air Hermes state.db 會話用量（唯讀），擷取 ${esc(shortTime(h.captured_at))}（台北時間）。累計＝輸入＋輸出（不含快取讀取）。</p>`);
+    rows.push(`<p class="src">來源：Air 端會話用量資料庫（唯讀），擷取 ${esc(shortTime(h.captured_at))}（台北時間）。累計＝輸入＋輸出（不含快取讀取）。</p>`);
   } else rows.push(emptyLine);
   const g = usage.grok;
-  rows.push(`<h3>Grok Bot 助理（週額度占比，非 token）</h3>`);
+  rows.push(`<h3>雲端助理（週額度占比，非詞元）</h3>`);
   if (g && g.shares) {
     rows.push(`<p class="u-head">本週額度已用 ${fmtPct(g.weekly_used_percent)}｜重設 ${esc(shortTime(g.week_reset))}｜擷取 ${esc(shortTime(g.captured_at))}</p>`);
     const lt1 = new Set(Array.isArray(g.lt1) ? g.lt1 : []);
@@ -301,7 +295,7 @@ function alertList() {
   }
   const none = FLOORS.filter((f) => f.id !== 'louis' && !person(f.id)).map(shortName);
   if (none.length) out.push({ level: 'amber', text: `尚無資料：${none.join('、')}` });
-  if (usage.grok && typeof usage.grok.weekly_used_percent === 'number' && usage.grok.weekly_used_percent >= 80) out.push({ level: 'red', text: `Grok Bot 本週額度已用 ${Math.round(usage.grok.weekly_used_percent)}%` });
+  if (usage.grok && typeof usage.grok.weekly_used_percent === 'number' && usage.grok.weekly_used_percent >= 80) out.push({ level: 'red', text: `助理本週額度已用 ${Math.round(usage.grok.weekly_used_percent)}%` });
   return out;
 }
 
@@ -448,772 +442,742 @@ $('#to-all').addEventListener('click', () => { if (building && building.focusAll
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && pass) poll(false); });
 setInterval(() => { if (pass && people) render(); }, 60000);
 
-// ---------- 三維開放式辦公區（同一層，四個鄰里） ----------
-const LAYOUT = {
-  louis: { x: 0, z: 6.0, k: 1.08, gm: true, rot: Math.PI },
-  pa:  { x: -3.3, z: 1.6, lead: true },
-  admin: { x: -6.0, z: -4.2, k: 0.9 }, kobe: { x: -3.85, z: -4.2, k: 0.9 }, fly: { x: -1.7, z: -4.2, k: 0.9 },
-  ia: { x: -6.45, z: 1.6, k: 0.85 },
-  cos: { x: 3.3, z: 1.6, lead: true },
-  clo: { x: 2.55, z: -3.3 }, cto: { x: 5.15, z: -3.3 },
-  cpo: { x: 2.55, z: -6.3 }, fpa: { x: 5.15, z: -6.3 },
+// ---------- 三維太極辦公層（同一層、圓形對稱） ----------
+// 左半為陽（個人側），右半為陰（公司側）；中央為 Louis 主位（太極核心），後方為全員即時看板牆。
+const CZ = 0.2;          // 圓心 z
+const RING_R = 5.7;      // 工位所在圓半徑
+const PLAT_R = 7.6;      // 圓形平台半徑
+const SEAT_DEG = { ia: -28, pa: -62, admin: -98, kobe: -131, fly: -163, clo: 28, cos: 62, cto: 98, cpo: 131, fpa: 163 };
+const TAG = {
+  louis: ['Louis', '總經理'], pa: ['PA', '私人特助'], cos: ['CoS', '幕僚長'], clo: ['CLO', '法務'], cto: ['CTO', '技術長'],
+  cpo: ['CPO', '採購長'], fpa: ['FP&A', '財務規劃'], ia: ['IA', '投資分析'], admin: ['Admin', '執行維運'], kobe: ['Kobe', '個人事務'], fly: ['Fly', '碳酸鋰預測'],
 };
+const PERSONAL = new Set(['pa', 'ia', 'admin', 'kobe', 'fly']);
+const INK = 0x2f2d2a, PAPER = 0xf1ede4, GOLD = 0xb8995a, JADE = 0x5f9e8a, CINNABAR = 0xb5443a;
+const BOARD = { x: 0, y: 2.95, z: -9.25, w: 7.6, h: 4.75 };
+const DS = 1.22; // 工位與人物放大倍率
 
 async function initBuilding() {
   const el = $('#building');
   try {
     const THREE = await import('three');
     const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xd4e8fb);
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+    scene.background = new THREE.Color(0xe9e5dc);
+    scene.fog = new THREE.Fog(0xe9e5dc, 34, 70);
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.enablePan = false;
-    controls.minDistance = 3; controls.maxDistance = 48;
-    controls.maxPolarAngle = Math.PI * 0.48;
-    controls.autoRotate = false; controls.autoRotateSpeed = 0.55;
-    scene.add(new THREE.HemisphereLight(0xfff6e8, 0x4a3a28, 1.15));
-    const sun = new THREE.DirectionalLight(0xfff5e0, 1.15); sun.position.set(6, 16, 10); scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xddeeff, 0.35); fill.position.set(-8, 8, -4); scene.add(fill);
+    controls.minDistance = 3; controls.maxDistance = 46;
+    controls.maxPolarAngle = Math.PI * 0.5; // 允許水平視角，看板模式才能正對不變形
+    controls.autoRotateSpeed = 0.4;
+    scene.add(new THREE.HemisphereLight(0xfffdf6, 0x8a8478, 1.25));
+    const sun = new THREE.DirectionalLight(0xfff8ec, 1.1); sun.position.set(5, 16, 12); scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xe6eef0, 0.45); fill.position.set(-9, 8, -6); scene.add(fill);
 
-    const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
+    const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
     const box = (w, h, d, mat, x, y, z, parent) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); parent.add(m); return m; };
-    const FONT = '"PingFang TC","Noto Sans CJK TC","Noto Sans TC","Microsoft JhengHei",sans-serif';
+    const cyl = (rt, rb, h, mat, x, y, z, parent, seg = 24) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat); m.position.set(x, y, z); parent.add(m); return m; };
+    const SANS = '"PingFang TC","Noto Sans CJK TC","Noto Sans TC","Microsoft JhengHei",sans-serif';
+    const SERIF = '"Songti TC","Noto Serif CJK TC","Noto Serif TC","PMingLiU",serif';
     const hex = (n) => '#' + n.toString(16).padStart(6, '0');
-    function fitText(c, text, max, size, weight) {
+    const canvasTex = (cv) => { const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+    function fitText(c, text, max, size, weight, font = SANS) {
       let s = size;
-      do { c.font = `${weight} ${s}px ${FONT}`; s -= 2; } while (c.measureText(text).width > max && s > 18);
+      do { c.font = `${weight} ${s}px ${font}`; s -= 2; } while (c.measureText(text).width > max && s > 14);
     }
-    function floorText(text, x, z, w, color) {
-      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
-      const c = cv.getContext('2d'); c.fillStyle = color; c.textAlign = 'center'; c.textBaseline = 'middle';
-      fitText(c, text, 500, 96, 'bold'); c.fillText(text, 256, 64);
-      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w / 4), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
-      m.rotation.x = -Math.PI / 2; m.position.set(x, 0.04, z); scene.add(m);
-    }
-    function labelSprite(text, w, h, fg, bg, stroke) {
-      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256;
-      const c = cv.getContext('2d');
-      c.fillStyle = bg; c.beginPath(); c.roundRect(8, 8, 1008, 240, 28); c.fill();
-      if (stroke) { c.strokeStyle = stroke; c.lineWidth = 12; c.stroke(); }
-      c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
-      fitText(c, text, 960, 110, 'bold'); c.fillText(text, 512, 132);
-      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-      spr.scale.set(w, h, 1); spr.renderOrder = 12;
-      return spr;
-    }
+    const P = (deg, r = RING_R) => { const a = deg * Math.PI / 180; return { x: r * Math.sin(a), z: CZ + r * Math.cos(a) }; };
 
-    // 木質樓板與中央走道
-    const FW = 18, FD = 18.4, Z0 = -1.6;
-    {
-      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
-      const c = cv.getContext('2d');
-      for (let i = 0; i < 8; i++) {
-        c.fillStyle = i % 2 ? '#c4a06a' : '#d2b07a';
-        c.fillRect(0, i * 32, 256, 32);
-        c.strokeStyle = 'rgba(90,50,20,.22)'; c.beginPath(); c.moveTo(0, i * 32); c.lineTo(256, i * 32); c.stroke();
-      }
-      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(10, 10);
-      const floor = new THREE.Mesh(new THREE.BoxGeometry(FW, 0.2, FD), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.78 }));
-      floor.position.set(0, -0.1, Z0); scene.add(floor);
+    // 太極圖（canvas）：左白右黑，上方白魚頭、下方黑魚頭
+    function drawTaiji(c, cx, cy, r, light, dark) {
+      c.fillStyle = light; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill();
+      c.fillStyle = dark; c.beginPath(); c.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2); c.closePath(); c.fill();
+      c.fillStyle = light; c.beginPath(); c.arc(cx, cy - r / 2, r / 2, 0, Math.PI * 2); c.fill();
+      c.fillStyle = dark; c.beginPath(); c.arc(cx, cy + r / 2, r / 2, 0, Math.PI * 2); c.fill();
+      c.fillStyle = dark; c.beginPath(); c.arc(cx, cy - r / 2, r / 7, 0, Math.PI * 2); c.fill();
+      c.fillStyle = light; c.beginPath(); c.arc(cx, cy + r / 2, r / 7, 0, Math.PI * 2); c.fill();
     }
-    box(1.35, 0.03, 16.6, M(0xe6d3b0), 0, 0.02, Z0 - 0.2, scene);
-    for (const z of [-8.5, -6.5, -4.5, -2.5, -0.5, 1.5, 3.5, 5.2]) box(0.14, 0.035, 0.7, M(0xf5d76e), 0, 0.04, z, scene);
-    floorText('走道', 0, -9.4, 1.1, 'rgba(120,80,30,.8)');
-
-    const beam = M(0xddd6c8, { roughness: 0.5 });
-
-    const potMat = M(0xc46a3a, { roughness: 0.7 });
-    const leafMat = M(0x3d9a54, { roughness: 0.72 });
-    const stemMat = M(0x5a8a3a);
-    const potGeo = new THREE.CylinderGeometry(0.18, 0.14, 0.2, 8);
-    const leafGeo = new THREE.SphereGeometry(1, 9, 7);
-    const plants = [];
-    function addPlant(x, z, s = 1) {
-      const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(s);
-      const pot = new THREE.Mesh(potGeo, potMat); pot.position.y = 0.12; g.add(pot);
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 6), stemMat); stem.position.y = 0.42; g.add(stem);
-      for (const [lx, ly, lz, r] of [[0, 0.75, 0, 0.22], [0.12, 0.7, 0.08, 0.16], [-0.1, 0.68, -0.08, 0.15]]) {
-        const leaf = new THREE.Mesh(leafGeo, leafMat);
-        leaf.position.set(lx, ly, lz); leaf.scale.set(r, r * 0.85, r); g.add(leaf);
-      }
-      scene.add(g);
-      plants.push({ g, phase: Math.random() * Math.PI * 2, amp: 0.02 + Math.random() * 0.02 });
-    }
-    function addPendant(x, z, shade) {
-      box(0.45, 0.06, 0.08, beam, x, 3.92, z, scene);
-      box(0.018, 1.35, 0.018, M(0x667), x, 3.2, z, scene);
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.22, 10, 1, true), M(shade, { roughness: 0.35, metalness: 0.2, emissive: shade, emissiveIntensity: 0.22 }));
-      cone.position.set(x, 2.52, z); cone.rotation.x = Math.PI; scene.add(cone);
-      const glow = new THREE.Mesh(new THREE.CircleGeometry(0.2, 12), new THREE.MeshBasicMaterial({ color: 0xfff3c8, transparent: true, opacity: 0.9, side: THREE.DoubleSide }));
-      glow.position.set(x, 2.42, z); glow.rotation.x = Math.PI / 2; scene.add(glow);
-    }
-    function addShelf(x, z, rot, w = 1.8) {
-      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
-      const wood = M(0x8a6239);
-      box(w, 0.06, 0.32, wood, 0, 0.18, 0, g);
-      box(w, 0.06, 0.32, wood, 0, 0.48, 0, g);
-      box(w, 0.06, 0.32, wood, 0, 0.78, 0, g);
-      box(0.06, 0.78, 0.32, wood, -w / 2 + 0.03, 0.45, 0, g);
-      box(0.06, 0.78, 0.32, wood, w / 2 - 0.03, 0.45, 0, g);
-      const hues = [0x4285F4, 0xEA4335, 0xFBBC05, 0x34A853, 0x76B900, 0x1a1a1a];
-      for (let i = 0; i < 6; i++) box(0.1, 0.2, 0.16, M(hues[i % hues.length]), -w / 2 + 0.25 + i * 0.26, 0.62, 0, g);
-    }
-    function addWhiteboard(x, z, rot) {
-      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
-      box(1.5, 1.15, 0.05, M(0x2a2a2a), 0, 1.15, 0, g);
-      box(1.4, 1.05, 0.04, M(0xf7f7f4), 0, 1.15, 0.03, g);
-      box(0.06, 1.1, 0.06, M(0x8a6239), -0.55, 0.55, 0, g);
-      box(0.06, 1.1, 0.06, M(0x8a6239), 0.55, 0.55, 0, g);
-      box(0.22, 0.16, 0.02, M(0x4285F4), -0.4, 1.35, 0.06, g);
-      box(0.2, 0.16, 0.02, M(0xEA4335), -0.12, 1.32, 0.06, g);
-      box(0.2, 0.16, 0.02, M(0xFBBC05), 0.16, 1.36, 0.06, g);
-    }
-
-    const officeFloors = [];
-
-    function addNeighborhood(zn) {
-      const left = zn.x < 0;
-      const x0 = zn.x - zn.w / 2, x1 = zn.x + zn.w / 2;
-      const z0 = zn.z - zn.d / 2, z1 = zn.z + zn.d / 2;
-      const trim = zn.accent || zn.color;
-      box(zn.w - 0.05, 0.02, zn.d - 0.05, M(trim, { roughness: 0.85 }), zn.x, 0.015, zn.z, scene);
-      const baseOp = zn.side === 'nvidia' && !zn.accent ? 0.5 : 0.36;
-      const carpet = box(zn.w - 0.22, 0.025, zn.d - 0.22, M(zn.color, { transparent: true, opacity: baseOp, roughness: 0.9, emissive: trim, emissiveIntensity: 0.04 }), zn.x, 0.03, zn.z, scene);
-      officeFloors.push({ id: zn.id, mat: carpet.material, baseOp });
-      // 區名銘牌平放在靠近走道的地毯上
-      const labelX = left ? x1 - 1.2 : x0 + 1.2;
-      {
-        const cv = document.createElement('canvas'); cv.width = 768; cv.height = 192;
-        const c = cv.getContext('2d');
-        c.fillStyle = zn.side === 'nvidia' ? '#141a10' : '#f7f4ee';
-        c.beginPath(); c.roundRect(10, 16, 748, 160, 24); c.fill();
-        c.strokeStyle = hex(zn.accent || zn.color); c.lineWidth = 8; c.stroke();
-        c.fillStyle = zn.side === 'nvidia' ? '#b6f35a' : '#1a3a7a';
-        c.textAlign = 'center'; c.textBaseline = 'middle';
-        fitText(c, zn.zone, 700, 96, 'bold'); c.fillText(zn.zone, 384, 98);
-        const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-        const m = new THREE.Mesh(new THREE.PlaneGeometry(2.15, 0.54), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
-        m.rotation.x = -Math.PI / 2; m.position.set(labelX, 0.055, zn.z); scene.add(m);
-      }
-
-      // 角落植栽
-      addPlant(x0 + 0.35, z0 + 0.35, 0.95);
-      addPlant(x1 - 0.35, z0 + 0.35, 0.9);
-      addPlant(x0 + 0.35, z1 - 0.35, 1.0);
-      if (zn.members.length < 4) addPlant(x1 - 0.35, z1 - 0.35, 0.85);
-
-      // 吊燈
-      const shades = zn.side === 'google' ? [0x4285F4, 0xEA4335, 0xFBBC05, 0x34A853] : [0x1a1a1a, 0x76B900, 0x2a2a2a];
-      addPendant(zn.x - 1.5, zn.z + 0.4, shades[0]);
-      addPendant(zn.x + 1.5, zn.z + 0.4, shades[1]);
-      if (zn.d > 5) addPendant(zn.x, zn.z - 1.6, shades[2]);
-
-      // 矮櫃與白板（當軟隔間，不是牆）
-      if (zn.z > 0) addShelf(left ? x0 + 0.25 : x1 - 0.25, zn.z, left ? Math.PI / 2 : -Math.PI / 2, 1.7);
-      else addWhiteboard(zn.x + (left ? -2.4 : 2.4), z0 + 0.55, 0);
-
-    }
-    OFFICES.forEach(addNeighborhood);
-
-    // 總經理室：開放辦公區裡的小型玻璃角落辦公室
-    const office = new THREE.Group(); office.position.set(0, 0, 5.55); scene.add(office);
-    const glass = M(0xaed8ff, { transparent: true, opacity: 0.22, roughness: 0.05, metalness: 0.1, depthWrite: false });
-    box(4.2, 1.55, 0.05, glass, 0, 0.78, -1.05, office);
-    box(0.05, 1.55, 2.1, glass, -2.1, 0.78, 0, office);
-    box(0.05, 1.55, 2.1, glass, 2.1, 0.78, 0, office);
-    box(1.5, 1.55, 0.05, glass, -1.35, 0.78, 1.05, office);
-    box(1.5, 1.55, 0.05, glass, 1.35, 0.78, 1.05, office);
-    const gmFrame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(4.2, 1.55, 2.1)), new THREE.LineBasicMaterial({ color: 0xcfe3ff, transparent: true, opacity: 0.55 }));
-    gmFrame.position.y = 0.78; office.add(gmFrame);
-    box(4.1, 0.03, 2.0, M(0x2e3d5c), 0, 0.02, 0, office);
-    box(1.8, 0.08, 0.8, M(0x8a6a4a), 0, 0.75, -0.2, office);
-    box(0.6, 0.8, 0.6, M(0x34405a), 0, 0.4, 0.45, office);
-    {
-      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 120;
-      const c = cv.getContext('2d'); c.fillStyle = 'rgba(245,215,110,.95)'; c.beginPath(); c.roundRect(4, 4, 504, 112, 24); c.fill();
-      c.fillStyle = '#1a1406'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, '總經理室（Louis）', 480, 60, 'bold'); c.fillText('總經理室（Louis）', 256, 62);
-      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-      spr.scale.set(2.6, 0.61, 1); spr.position.set(0, 2.15, 0); spr.renderOrder = 10; office.add(spr);
-    }
-    addPlant(-2.5, 6.5, 1.05); addPlant(2.5, 6.5, 1.0);
-
-    // 走道末端：咖啡吧與休憩區
-    box(3.4, 0.9, 0.7, M(0x6b4a2a), 0, 0.45, -8.7, scene);
-    box(3.5, 0.07, 0.8, M(0xe8d5b5), 0, 0.94, -8.7, scene);
-    box(0.5, 0.55, 0.36, M(0x222), -1.05, 1.28, -8.7, scene);
-    box(0.22, 0.14, 0.16, M(0x76B900), -1.05, 1.6, -8.7, scene);
-    box(0.12, 0.14, 0.12, M(0xf2f2f2), -0.5, 1.05, -8.55, scene);
-    box(0.12, 0.14, 0.12, M(0x4285F4), -0.28, 1.05, -8.55, scene);
-    for (const sx of [-0.9, 0.05, 1.0]) {
-      const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.08, 10), M(0x333));
-      stool.position.set(sx, 0.55, -8.05); scene.add(stool);
-      box(0.07, 0.5, 0.07, M(0x555), sx, 0.25, -8.05, scene);
-    }
-    const cafeSign = labelSprite('咖啡吧', 1.7, 0.42, '#1a1406', '#f3ead8', '#76B900');
-    cafeSign.position.set(0, 1.95, -8.7); scene.add(cafeSign);
-    addPlant(-2.0, -8.9, 0.95); addPlant(2.0, -8.9, 0.9);
-
-    // 沙發、豆袋、小茶几
-    function sofa(x, z, rot, color) {
-      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
-      box(1.55, 0.34, 0.68, M(color, { roughness: 0.85 }), 0, 0.28, 0, g);
-      box(1.55, 0.52, 0.18, M(color, { roughness: 0.85 }), 0, 0.58, -0.26, g);
-      box(0.12, 0.38, 0.68, M(color), -0.72, 0.42, 0, g);
-      box(0.12, 0.38, 0.68, M(color), 0.72, 0.42, 0, g);
-    }
-    sofa(-3.3, -8.5, 0.3, 0x4285F4);
-    sofa(3.3, -8.5, -0.3, 0x1a1a1a);
-    const beanGeo = new THREE.SphereGeometry(1, 10, 8);
-    function beanbag(x, z, color) {
-      const m = new THREE.Mesh(beanGeo, M(color, { roughness: 0.92 }));
-      m.scale.set(0.42, 0.26, 0.42); m.position.set(x, 0.2, z); scene.add(m);
-    }
-    beanbag(-2.35, -7.7, 0xEA4335);
-    beanbag(-3.7, -7.55, 0xFBBC05);
-    beanbag(2.45, -7.7, 0x76B900);
-    beanbag(3.65, -7.5, 0x34A853);
-    box(0.85, 0.07, 0.55, M(0xdecaa0), -3.15, 0.32, -7.7, scene);
-    // 彩色圓球雕塑（校園感）
-    const orbGeo = new THREE.SphereGeometry(0.28, 12, 10);
-    [[-0.35, 0.28, -7.55, 0x4285F4], [0.05, 0.28, -7.35, 0xEA4335], [0.28, 0.28, -7.7, 0xFBBC05], [-0.05, 0.52, -7.55, 0x34A853]].forEach(([x, y, z, col]) => {
-      const o = new THREE.Mesh(orbGeo, M(col, { roughness: 0.35, metalness: 0.15 })); o.position.set(x, y, z); scene.add(o);
-    });
-
-    // 兩側圓形會議艙
-    function pod(x, z, rot, color) {
-      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
-      const wall = new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.12, 1.5, 16, 1, true, 0.45, Math.PI * 1.55), M(color, { side: THREE.DoubleSide, roughness: 0.12, metalness: 0.25, transparent: true, opacity: 0.28, depthWrite: false }));
-      wall.position.y = 0.75; g.add(wall);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.13, 0.03, 6, 24), M(color, { roughness: 0.4, metalness: 0.3 }));
-      rim.rotation.x = Math.PI / 2; rim.position.y = 1.5; g.add(rim);
-      const roof = new THREE.Mesh(new THREE.CircleGeometry(1.14, 16), M(color, { roughness: 0.18, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
-      roof.rotation.x = -Math.PI / 2; roof.position.y = 1.52; g.add(roof);
-      box(1.05, 0.26, 0.42, M(0xeeeae4), 0, 0.26, -0.2, g);
-      const tbl = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 12), M(0xe8d5b5)); tbl.position.set(0, 0.52, 0.15); g.add(tbl);
-    }
-    pod(-8.15, -1.0, Math.PI / 2, 0x4285F4);
-    // 原右側會議艙改裝：大型看板會議室（大螢幕顯示全員任務、進度、警示、累計用量）
-    const BIG = { x: 7.85, z: -0.95, rot: -0.45 };
-    const bigCv = document.createElement('canvas'); bigCv.width = 2048; bigCv.height = 1280;
-    const bigTex = new THREE.CanvasTexture(bigCv); bigTex.colorSpace = THREE.SRGBColorSpace; bigTex.anisotropy = 4;
-    {
-      const g = new THREE.Group(); g.position.set(BIG.x, 0, BIG.z); g.rotation.y = BIG.rot; scene.add(g);
-      box(2.9, 0.03, 2.3, M(0x2b3240, { roughness: 0.9 }), 0, 0.03, 0.15, g);
-      box(2.9, 2.5, 0.12, M(0x3a4252, { roughness: 0.5 }), 0, 1.25, -1.0, g);
-      box(2.62, 1.66, 0.06, M(0x111111, { roughness: 0.3, metalness: 0.4 }), 0, 1.42, -0.92, g);
-      const scr = new THREE.Mesh(new THREE.PlaneGeometry(2.52, 1.575), new THREE.MeshBasicMaterial({ map: bigTex, toneMapped: false }));
-      scr.position.set(0, 1.42, -0.885); g.add(scr);
-      scr.userData.type = 'board'; g.userData.screen = scr; BIG.screen = scr;
-      box(1.7, 0.06, 0.6, M(0xe8d5b5), 0, 0.62, 0.35, g);
-      for (const x of [-0.6, 0, 0.6]) { box(0.06, 0.58, 0.06, M(0x555f73), x * 1.2, 0.3, 0.35, g); }
-      for (const x of [-0.55, 0, 0.55]) { box(0.36, 0.06, 0.36, M(0x34405a), x, 0.42, 0.95, g); box(0.36, 0.4, 0.06, M(0x34405a), x, 0.65, 1.12, g); }
-      const sign = labelSprite('大型看板會議室', 1.9, 0.42, '#f3ead8', '#1a1a1a', '#76B900'); sign.position.set(0, 2.85, -0.9); g.add(sign);
-    }
-    function drawBigBoard() {
-      const c = bigCv.getContext('2d'), W = 2048, H = 1280;
-      c.fillStyle = '#0b1220'; c.fillRect(0, 0, W, H);
-      c.fillStyle = '#ffffff'; c.textBaseline = 'middle'; c.textAlign = 'left';
-      c.font = `bold 64px ${FONT}`; c.fillText('全員即時看板', 48, 64);
-      c.font = `36px ${FONT}`; c.fillStyle = '#8fa1bf'; c.textAlign = 'right';
-      c.fillText(lastCheck ? `每 30 秒檢查・上次 ${fmtTaipei(lastCheck.toISOString())}（台北）` : '尚未解鎖', W - 48, 64);
-      c.textAlign = 'left';
-      const ids = FLOORS.map((f) => f.id).filter((id) => id !== 'louis');
-      const rowH = 84, y0 = 130, colW = 1290;
-      ids.forEach((id, i) => {
-        const f = FLOORS.find((x) => x.id === id), p = person(id), y = y0 + i * rowH;
-        const fr = freshness(p), working = isWorking(p);
-        c.fillStyle = i % 2 ? '#101a2c' : '#131f35'; c.fillRect(32, y, colW, rowH - 8);
-        c.fillStyle = hex(f.color); c.fillRect(32, y, 12, rowH - 8);
-        c.fillStyle = '#ffffff'; c.font = `bold 38px ${FONT}`; { let nm = shortName(f).replace(' Analyst', ''); while (c.measureText(nm).width > 255 && nm.length > 2) nm = nm.slice(0, -1); c.fillText(nm, 60, y + 38); }
-        const d = arr(p, 'doing');
-        const txt = d.length ? d.map((x) => x.text).join('；') : (p ? '休息中' : '無資料');
-        c.fillStyle = working ? '#e6edf7' : '#6f7f99'; c.font = `34px ${FONT}`;
-        let t = txt; while (c.measureText(t).width > 470 && t.length > 2) t = t.slice(0, -2) + '…';
-        c.fillText(t, 330, y + 38);
-        if (working) {
-          const pr = progressOf(p).value;
-          drawBar(c, 830, y + 22, 220, 32, pr, fr === 'old' ? '#6f7f99' : null);
-          c.fillStyle = '#ffffff'; c.font = `bold 34px ${FONT}`; c.fillText(pr == null ? '—' : pr + '%', 1062, y + 38);
-        }
-        c.fillStyle = fr === 'fresh' ? '#5ee08f' : fr === 'warm' ? '#f5b544' : '#6f7f99'; c.font = `28px ${FONT}`;
-        c.textAlign = 'right'; c.fillText(p ? `${fmtTaipei(p._ts, false) || NO_DATA}${p._src === 'data' ? ' 底稿' : ''}` : '—', colW + 20, y + 38); c.textAlign = 'left';
-      });
-      const x2 = colW + 70, w2 = W - x2 - 40;
-      c.fillStyle = '#9fb4d6'; c.font = `bold 40px ${FONT}`; c.fillText('警示', x2, 150);
-      const al = alertList().slice(0, 5);
-      c.font = `30px ${FONT}`;
-      let yy = 205;
-      if (!al.length) { c.fillStyle = '#6f7f99'; c.fillText('目前沒有警示', x2, yy); yy += 50; }
-      for (const a of al) {
-        c.fillStyle = a.level === 'red' ? '#ff6b6b' : '#f5b544'; c.fillRect(x2, yy - 22, 8, 44);
-        c.fillStyle = '#e6edf7'; let t = a.text; while (c.measureText(t).width > w2 - 30 && t.length > 2) t = t.slice(0, -2) + '…';
-        c.fillText(t, x2 + 22, yy); yy += 58;
-      }
-      yy = Math.max(yy + 20, 560);
-      c.fillStyle = '#9fb4d6'; c.font = `bold 40px ${FONT}`; c.fillText('累計用量', x2, yy); yy += 58;
-      c.font = `30px ${FONT}`;
-      const h = usage.hermes;
-      if (h && Array.isArray(h.profiles)) for (const pf of h.profiles) {
-        c.fillStyle = '#cfd8e6'; c.fillText(String(pf.label || pf.id).replace(/（.*?）/, ''), x2, yy);
-        c.textAlign = 'right'; c.fillStyle = '#ffffff'; c.fillText(`${fmtTok(pf.total)} token`, x2 + w2, yy); c.textAlign = 'left'; yy += 46;
-      } else { c.fillStyle = '#6f7f99'; c.fillText(`Hermes：${NO_DATA}`, x2, yy); yy += 46; }
-      const g = usage.grok;
-      if (g && g.shares) {
-        c.fillStyle = '#cfd8e6'; c.fillText('Grok Bot 本週額度已用', x2, yy);
-        c.textAlign = 'right'; c.fillStyle = '#ffffff'; c.fillText(typeof g.weekly_used_percent === 'number' ? `${Math.round(g.weekly_used_percent * 10) / 10}%` : NO_DATA, x2 + w2, yy); c.textAlign = 'left'; yy += 50;
-        const top = Object.entries(g.shares).filter(([, v]) => typeof v === 'number').sort((a, b) => b[1] - a[1]).slice(0, 4);
-        for (const [id, v] of top) {
-          const f = FLOORS.find((x) => x.id === id);
-          c.fillStyle = '#8fa1bf'; c.fillText(f ? shortName(f) : id, x2, yy);
-          drawBar(c, x2 + 230, yy - 14, w2 - 360, 28, v);
-          c.fillStyle = '#ffffff'; c.textAlign = 'right'; c.fillText(v < 1 ? '<1%' : `${Math.round(v)}%`, x2 + w2, yy); c.textAlign = 'left'; yy += 44;
-        }
-      } else { c.fillStyle = '#6f7f99'; c.fillText(`Grok Bot：${NO_DATA}`, x2, yy); }
-      c.fillStyle = '#6f7f99'; c.font = `24px ${FONT}`; c.fillText('Hermes 為真實 token；Grok Bot 為週額度占比（非 token）', x2, H - 40);
-      bigTex.needsUpdate = true;
-    }
-    function makePodSeats(tx, tz, doorAtan) {
-      const n = 5, r = 0.55, seats = [];
+    function inkWash(c, W, H, n, alpha) {
       for (let i = 0; i < n; i++) {
-        const a = doorAtan + Math.PI + (i - (n - 1) / 2) * 0.52;
-        const x = tx + Math.sin(a) * r;
-        const z = tz + Math.cos(a) * r;
-        seats.push({ type: 'meet', x, z, yaw: Math.atan2(tx - x, tz - z) });
+        const x = Math.random() * W, y = Math.random() * H, r = 40 + Math.random() * W * 0.18;
+        const g = c.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, `rgba(60,58,54,${alpha})`); g.addColorStop(1, 'rgba(60,58,54,0)');
+        c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
       }
-      return seats;
     }
-    function makePodLabel(fg, bg, stroke) {
-      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 320;
-      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const flat = (mesh, y) => { mesh.rotation.x = -Math.PI / 2; mesh.position.y = y; return mesh; };
+
+    // 外圍石板地
+    {
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 512;
+      const c = cv.getContext('2d');
+      c.fillStyle = '#dedad0'; c.fillRect(0, 0, 512, 512);
+      inkWash(c, 512, 512, 18, 0.05);
+      c.strokeStyle = 'rgba(80,74,64,.16)'; c.lineWidth = 2;
+      for (let i = 0; i <= 4; i++) { c.beginPath(); c.moveTo(0, i * 128); c.lineTo(512, i * 128); c.stroke(); c.beginPath(); c.moveTo(i * 128, 0); c.lineTo(i * 128, 512); c.stroke(); }
+      const tex = canvasTex(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(5.5, 5.5);
+      const fl = new THREE.Mesh(new THREE.BoxGeometry(23, 0.3, 21.4), M(0xffffff, { map: tex, roughness: 0.9 }));
+      fl.position.set(0, -0.15, -0.2); scene.add(fl);
+      box(23.2, 0.12, 21.6, M(0x4a443c), 0, -0.3, -0.2, scene);
+    }
+    // 圓形太極平台
+    {
+      const S = 2048, cv = document.createElement('canvas'); cv.width = cv.height = S;
+      const c = cv.getContext('2d');
+      drawTaiji(c, S / 2, S / 2, S / 2 - 4, '#f2eee5', '#383531');
+      inkWash(c, S, S, 46, 0.045);
+      // 細金圈
+      c.strokeStyle = 'rgba(184,153,90,.9)'; c.lineWidth = 10;
+      c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 12, 0, Math.PI * 2); c.stroke();
+      c.lineWidth = 4; c.strokeStyle = 'rgba(184,153,90,.55)';
+      c.beginPath(); c.arc(S / 2, S / 2, (S / 2) * (RING_R - 0.95) / PLAT_R, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.arc(S / 2, S / 2, (S / 2) * (RING_R + 0.95) / PLAT_R, 0, Math.PI * 2); c.stroke();
+      // 八卦（環繞主位）
+      const TRI = [[1, 1, 1], [0, 1, 1], [1, 0, 1], [0, 0, 1], [1, 1, 0], [0, 1, 0], [1, 0, 0], [0, 0, 0]];
+      const rr = (S / 2) * 2.55 / PLAT_R;
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4;
+        c.save(); c.translate(S / 2 + Math.sin(a) * rr, S / 2 - Math.cos(a) * rr); c.rotate(a);
+        c.fillStyle = 'rgba(184,153,90,.95)';
+        TRI[i].forEach((yang, k) => {
+          const y = -34 + k * 30;
+          if (yang) c.fillRect(-58, y, 116, 16); else { c.fillRect(-58, y, 50, 16); c.fillRect(8, y, 50, 16); }
+        });
+        c.restore();
+      }
+      const tex = canvasTex(cv);
+      const plat = cyl(PLAT_R, PLAT_R + 0.08, 0.14, [M(0x6b6255), M(0xffffff, { map: tex, roughness: 0.82 }), M(0x6b6255)], 0, 0.07, CZ, scene, 96);
+      plat.material = [M(0x7a7062, { roughness: 0.8 }), M(0xffffff, { map: tex, roughness: 0.82 }), M(0x7a7062)];
+    }
+    const TOP = 0.14; // 平台頂面高度
+
+    // 竹林（四周點綴）
+    const bamboos = [];
+    const stalkMat = M(0x6f9a5a, { roughness: 0.55 }), nodeMat = M(0x4f7a40), leafMat = M(0x5d8c4a, { roughness: 0.8, side: THREE.DoubleSide });
+    function addBamboo(x, z, n = 5, h = 3.2) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+      cyl(0.42, 0.48, 0.32, M(0x3a3632), 0, 0.16, 0, g, 20);
+      cyl(0.4, 0.4, 0.02, M(0xcfc8b8), 0, 0.33, 0, g, 20);
+      for (let i = 0; i < n; i++) {
+        const a = i * 2.4, r = 0.12 + (i % 3) * 0.09, hh = h * (0.75 + ((i * 37) % 10) / 40);
+        const s = new THREE.Group(); s.position.set(Math.cos(a) * r, 0.33, Math.sin(a) * r); s.rotation.z = (Math.cos(a) * 0.07); s.rotation.x = Math.sin(a) * 0.07; g.add(s);
+        cyl(0.035, 0.04, hh, stalkMat, 0, hh / 2, 0, s, 8);
+        for (let y = 0.45; y < hh; y += 0.45) cyl(0.045, 0.045, 0.03, nodeMat, 0, y, 0, s, 8);
+        for (let k = 0; k < 5; k++) {
+          const lf = new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.34), leafMat);
+          lf.position.set(Math.cos(k * 1.3) * 0.12, hh - 0.3 - k * 0.18, Math.sin(k * 1.3) * 0.12);
+          lf.rotation.set(0.9, k * 1.3, 0.6); s.add(lf);
+        }
+      }
+      bamboos.push({ g, ph: Math.random() * 6 });
+    }
+    // 石燈（圓燈）
+    function addLantern(x, z) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+      cyl(0.16, 0.2, 0.1, M(0x8a8478), 0, 0.05, 0, g, 12);
+      cyl(0.05, 0.06, 0.55, M(0x8a8478), 0, 0.37, 0, g, 10);
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.2, 18, 14), M(0xfff6e2, { emissive: 0xffe9bf, emissiveIntensity: 0.55, roughness: 0.4 }));
+      ball.position.y = 0.84; g.add(ball);
+      cyl(0.22, 0.12, 0.06, M(0x3a3632), 0, 1.06, 0, g, 12);
+    }
+
+    // ---------- 全員即時看板牆（正面平放，不傾斜） ----------
+    const bigCv = document.createElement('canvas'); bigCv.width = 2048; bigCv.height = 1280;
+    const bigTex = canvasTex(bigCv);
+    {
+      const wz = BOARD.z - 0.14;
+      box(11.6, 0.3, 0.9, M(0x3a3632), 0, 0.15, wz, scene);
+      box(11.2, 6.1, 0.22, M(0x22201d, { roughness: 0.85 }), 0, 3.35, wz, scene);
+      box(11.4, 0.1, 0.3, M(GOLD, { metalness: 0.6, roughness: 0.35 }), 0, 6.45, wz, scene);
+      box(11.4, 0.06, 0.28, M(GOLD, { metalness: 0.6, roughness: 0.35 }), 0, 0.32, wz + 0.02, scene);
+      // 螢幕金框與畫面
+      box(BOARD.w + 0.22, BOARD.h + 0.22, 0.08, M(GOLD, { metalness: 0.55, roughness: 0.35 }), BOARD.x, BOARD.y, BOARD.z - 0.02, scene);
+      box(BOARD.w + 0.08, BOARD.h + 0.08, 0.09, M(0x0d0d0c), BOARD.x, BOARD.y, BOARD.z - 0.01, scene);
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(BOARD.w, BOARD.h), new THREE.MeshBasicMaterial({ map: bigTex, toneMapped: false }));
+      screen.position.set(BOARD.x, BOARD.y, BOARD.z + 0.04); scene.add(screen);
+      // 兩側對聯
+      for (const [x, text] of [[-4.75, '道法自然'], [4.75, '厚德載物']]) {
+        const cv = document.createElement('canvas'); cv.width = 256; cv.height = 1024;
+        const c = cv.getContext('2d');
+        c.fillStyle = '#efe8d8'; c.fillRect(0, 0, 256, 1024);
+        inkWash(c, 256, 1024, 8, 0.05);
+        c.strokeStyle = '#b8995a'; c.lineWidth = 8; c.strokeRect(14, 14, 228, 996);
+        c.fillStyle = '#26231f'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `bold 150px ${SERIF}`;
+        [...text].forEach((ch, i) => c.fillText(ch, 128, 150 + i * 240));
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 3.6), new THREE.MeshStandardMaterial({ map: canvasTex(cv), roughness: 0.9 }));
+        m.position.set(x, 3.15, wz + 0.12); scene.add(m);
+      }
+      addBamboo(-6.4, wz + 0.55, 6, 3.6); addBamboo(6.4, wz + 0.55, 6, 3.6);
+    }
+
+    // ---------- 中央主位：太極核心（Louis） ----------
+    const core = new THREE.Group(); core.position.set(0, TOP, CZ); scene.add(core);
+    cyl(1.62, 1.72, 0.16, M(0x2a2825, { roughness: 0.6 }), 0, 0.08, 0, core, 64);
+    cyl(1.5, 1.58, 0.12, M(GOLD, { metalness: 0.55, roughness: 0.35 }), 0, 0.2, 0, core, 64);
+    const coreTop = (() => {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 1024;
+      const c = cv.getContext('2d');
+      drawTaiji(c, 512, 512, 506, '#f7f4ec', '#1c1b19');
+      const m = new THREE.Mesh(new THREE.CircleGeometry(1.46, 64), new THREE.MeshStandardMaterial({ map: canvasTex(cv), roughness: 0.35, metalness: 0.05 }));
+      flat(m, 0.265); core.add(m); return m;
+    })();
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x7fd1b5, transparent: true, opacity: 0.0, depthWrite: false });
+    const glow = new THREE.Mesh(new THREE.RingGeometry(1.78, 2.2, 96), glowMat); flat(glow, 0.03); core.add(glow);
+    const haloMat = new THREE.MeshStandardMaterial({ color: JADE, emissive: 0x6fd0ae, emissiveIntensity: 0.0, roughness: 0.3, metalness: 0.2 });
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(1.67, 0.035, 10, 120), haloMat); halo.rotation.x = Math.PI / 2; halo.position.y = 0.28; core.add(halo);
+    // 主位名牌
+    const coreCv = document.createElement('canvas'); coreCv.width = 640; coreCv.height = 260;
+    const coreTex = canvasTex(coreCv);
+    const coreSpr = new THREE.Sprite(new THREE.SpriteMaterial({ map: coreTex, depthTest: false, transparent: true }));
+    coreSpr.scale.set(2.7, 1.1, 1); coreSpr.position.set(0, TOP + 1.7, CZ); coreSpr.renderOrder = 11; scene.add(coreSpr);
+    for (const m of [coreTop, glow, halo, coreSpr]) m.userData.id = 'louis';
+
+    // ---------- 工位（面向中央主位） ----------
+    // 弧形桌面（環形扇面擠出）
+    const deskGeo = (() => {
+      const sh = new THREE.Shape(), a0 = -0.62, a1 = 0.62, ri = 0.64, ro = 1.08;
+      sh.absarc(0, 0, ro, Math.PI / 2 - a1, Math.PI / 2 - a0, false);
+      sh.absarc(0, 0, ri, Math.PI / 2 - a0, Math.PI / 2 - a1, true);
+      const g = new THREE.ExtrudeGeometry(sh, { depth: 0.06, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.015, bevelSegments: 2, curveSegments: 24 });
+      g.rotateX(Math.PI / 2); // 形狀平面轉為水平：形狀 +y 對應 +z（朝向螢幕與中央）
+      return g;
+    })();
+    const DESK_DARK = M(0x2b2825, { roughness: 0.45 }), DESK_LIGHT = M(0xe9e3d6, { roughness: 0.5 });
+    function makeLabel() {
+      const cv = document.createElement('canvas'); cv.width = 560; cv.height = 300;
+      const tex = canvasTex(cv);
       const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-      spr.scale.set(1.7, 0.58, 1); spr.renderOrder = 12;
-      return { cv, tex, spr, fg, bg, stroke };
+      spr.renderOrder = 10;
+      return { cv, tex, spr };
     }
-    function drawPodLabel(pl, busy, title) {
-      const c = pl.cv.getContext('2d');
-      c.clearRect(0, 0, 1024, 320);
-      c.fillStyle = pl.bg; c.beginPath(); c.roundRect(8, 8, 1008, 304, 28); c.fill();
-      if (pl.stroke) { c.strokeStyle = pl.stroke; c.lineWidth = 12; c.beginPath(); c.roundRect(8, 8, 1008, 304, 28); c.stroke(); }
-      c.fillStyle = pl.fg; c.textAlign = 'center'; c.textBaseline = 'middle';
-      if (!busy) {
-        fitText(c, '空閒', 960, 120, 'bold'); c.fillText('空閒', 512, 160);
-      } else {
-        let tt = String(title || '');
-        if (tt.length > 10) tt = tt.slice(0, 10) + '…';
-        fitText(c, tt, 960, 90, 'bold'); c.fillText(tt, 512, 110);
-        fitText(c, '會議中', 960, 72, 'bold'); c.fillText('會議中', 512, 230);
+    function makeAvatar(gender, outfit, accent, light) {
+      const g = new THREE.Group();
+      const rig = new THREE.Group(); g.add(rig);
+      const skin = M(0xf0d4b6, { roughness: 0.6 });
+      const hairMat = M(0x1d1916, { roughness: 0.75, side: THREE.DoubleSide });
+      const cloth = M(outfit, { roughness: 0.75 });
+      const accentMat = M(accent, { roughness: 0.4, metalness: 0.2 });
+      const legMat = gender === 'f' ? M(light ? 0x4a423c : 0x3b3530) : cloth;
+      const shoeMat = M(light ? 0x6a5f55 : 0x151413);
+      const hip = new THREE.Group(); hip.position.y = 0.72; rig.add(hip);
+      const legs = [];
+      for (const sx of [-0.085, 0.085]) {
+        const thigh = new THREE.Group(); thigh.position.x = sx; hip.add(thigh);
+        const tw = gender === 'f' ? 0.085 : 0.115;
+        box(tw, 0.38, tw + 0.01, legMat, 0, -0.19, 0, thigh);
+        const knee = new THREE.Group(); knee.position.y = -0.38; thigh.add(knee);
+        box(tw - 0.01, 0.32, tw, legMat, 0, -0.16, 0, knee);
+        box(0.1, 0.05, 0.19, shoeMat, 0, -0.33, 0.035, knee);
+        legs.push({ thigh, knee });
       }
-      pl.tex.needsUpdate = true;
+      const upper = new THREE.Group(); hip.add(upper);
+      const torso = new THREE.Mesh(gender === 'f' ? new THREE.CylinderGeometry(0.145, 0.17, 0.5, 18) : new THREE.CylinderGeometry(0.19, 0.18, 0.52, 18), cloth);
+      torso.position.y = 0.26; upper.add(torso);
+      // 腰帶（點綴色）
+      const belt = new THREE.Mesh(new THREE.TorusGeometry(gender === 'f' ? 0.165 : 0.183, 0.022, 6, 24), accentMat); belt.rotation.x = Math.PI / 2; belt.position.y = 0.04; upper.add(belt);
+      let skirt = null, lap = null;
+      if (gender === 'f') {
+        skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.33, 0.44, 22, 1, true), M(outfit, { roughness: 0.75, side: THREE.DoubleSide }));
+        skirt.position.y = -0.2; hip.add(skirt);
+        lap = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.09, 0.44), M(outfit, { roughness: 0.75 })); lap.position.set(0, -0.02, 0.17); lap.visible = false; hip.add(lap);
+        const hem = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.21, 0.12, 22, 1, true), M(outfit, { roughness: 0.75, side: THREE.DoubleSide })); hem.position.y = -0.03; hip.add(hem);
+      } else {
+        box(0.16, 0.2, 0.02, M(0xf7f5f0), 0, 0.42, 0.172, upper);
+        box(0.045, 0.3, 0.02, accentMat, 0, 0.3, 0.19, upper);
+        box(0.06, 0.05, 0.022, accentMat, 0, 0.45, 0.188, upper);
+      }
+      cyl(0.05, 0.055, 0.08, skin, 0, 0.55, 0, upper, 10);
+      const head = new THREE.Group(); head.position.y = 0.72; upper.add(head);
+      const face = new THREE.Mesh(new THREE.SphereGeometry(0.155, 20, 16), skin); face.scale.set(1, 1.08, 1); head.add(face);
+      for (const ex of [-0.055, 0.055]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.017, 8, 6), M(0x111111)); e.position.set(ex, 0.015, 0.145); head.add(e); }
+      if (gender === 'f') {
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.172, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat); cap.position.y = 0.012; head.add(cap);
+        const back = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.5, 20, 1, true, Math.PI * 0.42, Math.PI * 1.16), hairMat);
+        back.position.y = -0.2; head.add(back);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.2, 18, 8, Math.PI * 0.42, Math.PI * 1.16, Math.PI * 0.5, Math.PI * 0.5), hairMat); tip.scale.set(1, 0.35, 1); tip.position.y = -0.45; head.add(tip);
+      } else {
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.167, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.4), hairMat); cap.position.y = 0.02; head.add(cap);
+        const nape = new THREE.Mesh(new THREE.SphereGeometry(0.163, 16, 10, Math.PI * 0.6, Math.PI * 0.8, Math.PI * 0.35, Math.PI * 0.25), hairMat); head.add(nape);
+      }
+      const arms = [];
+      for (const sx of [-1, 1]) {
+        const sh = new THREE.Group(); sh.position.set(sx * (gender === 'f' ? 0.19 : 0.235), 0.47, 0); upper.add(sh);
+        box(0.075, 0.25, 0.08, cloth, 0, -0.12, 0, sh);
+        const el2 = new THREE.Group(); el2.position.y = -0.25; sh.add(el2);
+        box(0.068, 0.22, 0.072, cloth, 0, -0.1, 0, el2);
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 6), skin); hand.position.y = -0.23; el2.add(hand);
+        arms.push({ sh, el: el2 });
+      }
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.06, 10), M(0xf2efe8)); cup.position.set(0, -0.27, 0.03); cup.visible = false; arms[1].el.add(cup);
+      const book = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.14), M(0x7a2e26)); book.position.set(-0.1, -0.26, 0.05); book.visible = false; arms[1].el.add(book);
+      const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.3, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.16, depthWrite: false }));
+      flat(shadow, 0.012); g.add(shadow);
+      return { g, rig, hip, upper, head, legs, arms, skirt, lap, cup, book, shadow, parts: [torso, face] };
     }
-    const PODS = {
-      left: { seats: makePodSeats(-8.0, -1.0, Math.atan2(1, 0)), label: makePodLabel('#1a1406', '#f3ead8', '#4285F4') },
-      right: { seats: makePodSeats(8.0, -1.0, Math.atan2(-1, 0)), label: makePodLabel('#f3ead8', '#1a1a1a', '#76B900') },
-    };
-    PODS.left.label.spr.position.set(-8.15, 2.15, -1.0); scene.add(PODS.left.label.spr);
-    drawPodLabel(PODS.left.label, false);
-    drawPodLabel(PODS.right.label, false);
 
-    // 運動區：跑步機、瑜珈墊（左前方）、桌球桌（右前方）
-    box(0.72, 0.12, 1.55, M(0x222), -7.55, 0.12, 4.65, scene);
-    const belt = box(0.54, 0.04, 1.28, M(0x3a3a3a), -7.55, 0.2, 4.65, scene);
-    box(0.05, 0.7, 0.05, M(0x888), -7.87, 0.55, 4.15, scene);
-    box(0.05, 0.7, 0.05, M(0x888), -7.23, 0.55, 4.15, scene);
-    box(0.72, 0.05, 0.05, M(0x888), -7.55, 0.9, 4.15, scene);
-    const runSign = labelSprite('跑步機', 1.1, 0.28, '#1a1406', '#f3ead8', '#EA4335'); runSign.position.set(-7.55, 1.55, 4.65); scene.add(runSign);
-    box(0.72, 0.03, 1.5, M(0xEA4335, { roughness: 0.9 }), -7.55, 0.03, 3.15, scene);
-    const yogaSign = labelSprite('瑜珈墊', 1.1, 0.28, '#1a1406', '#f3ead8', '#EA4335'); yogaSign.position.set(-7.55, 0.9, 3.15); scene.add(yogaSign);
-    const pingX = 7.5, pingZ = 4.35;
-    box(1.2, 0.06, 2.15, M(0x1b7a4a), pingX, 0.78, pingZ, scene);
-    for (const [lx, lz] of [[-0.5, -0.95], [0.5, -0.95], [-0.5, 0.95], [0.5, 0.95]]) box(0.07, 0.75, 0.07, M(0xddd), pingX + lx, 0.38, pingZ + lz, scene);
-    box(1.18, 0.16, 0.03, M(0xeee), pingX, 0.9, pingZ, scene);
-    const pingBall = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), M(0xfff4c8));
-    pingBall.position.set(pingX, 1.05, pingZ); scene.add(pingBall);
-    const pingSign = labelSprite('桌球', 1.0, 0.28, '#1a1406', '#f3ead8', '#34A853'); pingSign.position.set(pingX, 1.7, pingZ); scene.add(pingSign);
+    const desks = [];
+    for (const f of FLOORS) {
+      if (f.id === 'louis' || SEAT_DEG[f.id] == null) continue;
+      const deg = SEAT_DEG[f.id], pos = P(deg), yaw = deg * Math.PI / 180 + Math.PI;
+      const yang = PERSONAL.has(f.id); // 左半陽：深色家具；右半陰：淺色家具
+      const g = new THREE.Group(); g.position.set(pos.x, TOP, pos.z); g.rotation.y = yaw; g.scale.setScalar(DS); scene.add(g);
+      const lead = f.id === 'pa' || f.id === 'cos';
+      // 圓形座席墊
+      const matMat = new THREE.MeshStandardMaterial({ color: yang ? 0xe4ddcf : 0x46423c, roughness: 0.9, emissive: JADE, emissiveIntensity: 0 });
+      const mat = new THREE.Mesh(new THREE.CircleGeometry(lead ? 1.25 : 1.12, 48), matMat); flat(mat, 0.01); g.add(mat);
+      const rim = new THREE.Mesh(new THREE.RingGeometry(lead ? 1.22 : 1.09, lead ? 1.27 : 1.14, 64), new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.7 })); flat(rim, 0.015); g.add(rim);
+      const dm = yang ? DESK_DARK : DESK_LIGHT;
+      // 弧形桌（以圓柱片段做成）
+      const top = new THREE.Mesh(deskGeo, dm); top.position.set(0, 0.77, -0.55); g.add(top);
+      const front = new THREE.Mesh(new THREE.CylinderGeometry(1.04, 1.04, 0.42, 32, 1, true, -0.6, 1.2), new THREE.MeshStandardMaterial({ color: yang ? 0x24221f : 0xdcd5c6, roughness: 0.5, side: THREE.DoubleSide }));
+      front.position.set(0, 0.54, -0.55); g.add(front);
+      for (const sx of [-0.55, 0.55]) box(0.04, 0.33, 0.04, M(GOLD, { metalness: 0.5, roughness: 0.4 }), sx, 0.165, 0.33, g);
+      box(0.9, 0.025, 0.02, M(GOLD, { metalness: 0.5, roughness: 0.4 }), 0, 0.72, 0.5, g);
+      // 螢幕
+      const scrMat = new THREE.MeshStandardMaterial({ color: 0x101010, emissive: 0x9fe0c8, emissiveIntensity: 0.05, roughness: 0.3 });
+      box(0.72, 0.42, 0.03, M(yang ? 0x1a1917 : 0xcfc8b8), 0, 1.06, 0.36, g);
+      const scr = box(0.66, 0.36, 0.01, scrMat, 0, 1.06, 0.345, g); scr.rotation.y = Math.PI;
+      box(0.05, 0.22, 0.05, M(GOLD, { metalness: 0.5, roughness: 0.4 }), 0, 0.86, 0.38, g);
+      // 桌燈（工作中亮起）
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 10), new THREE.MeshStandardMaterial({ color: 0xfff3d6, emissive: 0xffe2a8, emissiveIntensity: 0.1 }));
+      lamp.position.set(0.5, 0.86, 0.3); g.add(lamp);
+      cyl(0.05, 0.06, 0.06, M(GOLD, { metalness: 0.5 }), 0.5, 0.78, 0.3, g, 10);
+      // 圓凳椅
+      cyl(0.24, 0.24, 0.08, M(yang ? 0x3a3632 : 0xd8d0c0), 0, 0.46, -0.42, g, 20);
+      cyl(0.04, 0.05, 0.42, M(0x6b6255), 0, 0.22, -0.42, g, 8);
+      const chairMat = M(yang ? 0x3a3632 : 0xd8d0c0);
+      const back = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.26, 20, 1, true, Math.PI * 0.7, Math.PI * 0.6), new THREE.MeshStandardMaterial({ color: yang ? 0x3a3632 : 0xd8d0c0, roughness: 0.7, side: THREE.DoubleSide })); back.position.set(0, 0.74, -0.42); g.add(back);
+      for (const sx of [-0.2, 0.2]) box(0.03, 0.3, 0.03, chairMat, sx, 0.6, -0.6, g);
+      const outfit = yang ? 0x2e2c2a : 0xf0ebe0;
+      const av = makeAvatar(f.g, outfit, f.color, !yang);
+            scene.add(av.g);
+      const label = makeLabel();
+      label.spr.position.set(pos.x, 2.55, pos.z); scene.add(label.spr);
+      const hits = [mat, top, front, label.spr, ...av.parts];
+      hits.forEach((m) => { m.userData.id = f.id; });
+      desks.push({ f, deg, pos, yaw, g, lead, yang, matMat, scrMat, lamp, av, label, hits, slot: null, atDesk: true, working: false, phase: (hashId(f.id) % 1000) / 160 });
+    }
+    // 座位世界座標（椅子處）
+    const seatWorld = (d) => { const a = d.yaw; const lx = 0, lz = -0.42 * DS; return { x: d.pos.x + lx * Math.cos(a) + lz * Math.sin(a), z: d.pos.z - lx * Math.sin(a) + lz * Math.cos(a) }; };
 
-    // 地面連線：實線＝直屬，虛線＝審核
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x6a5840, transparent: true, opacity: 0.55 });
-    const dashMat = new THREE.LineDashedMaterial({ color: 0xEA4335, dashSize: 0.25, gapSize: 0.18, transparent: true, opacity: 0.85 });
-    const link = (from, to, mat) => {
-      const a = LAYOUT[from], b = LAYOUT[to];
-      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a.x, 0.08, a.z), new THREE.Vector3(b.x, 0.08, b.z)]), mat);
-      ln.computeLineDistances(); scene.add(ln);
+    // ---------- 四隅：圓桌會議（左後）、書房（右後）、茶席（左前）、太極場（右前） ----------
+    const MEET = { x: -8.6, z: -6.4 };
+    {
+      const g = new THREE.Group(); g.position.set(MEET.x, 0, MEET.z); scene.add(g);
+      const rug = new THREE.Mesh(new THREE.CircleGeometry(1.75, 48), M(0xcfc6b4, { roughness: 0.95 })); flat(rug, 0.012); g.add(rug);
+      cyl(0.85, 0.85, 0.07, M(0x2b2825, { roughness: 0.4 }), 0, 0.74, 0, g, 40);
+      cyl(0.1, 0.18, 0.7, M(0x2b2825), 0, 0.36, 0, g, 12);
+      const yy = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32), new THREE.MeshStandardMaterial({ map: coreTop.material.map, roughness: 0.4 })); flat(yy, 0.78); g.add(yy);
+      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; cyl(0.2, 0.2, 0.08, M(0x6b6255), Math.sin(a) * 1.2, 0.46, Math.cos(a) * 1.2, g, 16); cyl(0.04, 0.05, 0.42, M(0x3a3632), Math.sin(a) * 1.2, 0.21, Math.cos(a) * 1.2, g, 8); }
+    }
+    const MEET_SEATS = Array.from({ length: 6 }, (_, i) => { const a = i * Math.PI / 3 + Math.PI / 6; return { type: 'meet', x: MEET.x + Math.sin(a) * 1.2, z: MEET.z + Math.cos(a) * 1.2, yaw: a + Math.PI }; });
+    const meetCv = document.createElement('canvas'); meetCv.width = 560; meetCv.height = 220;
+    const meetTex = canvasTex(meetCv);
+    const meetSpr = new THREE.Sprite(new THREE.SpriteMaterial({ map: meetTex, depthTest: false, transparent: true }));
+    meetSpr.scale.set(2.3, 0.9, 1); meetSpr.position.set(MEET.x, 2.3, MEET.z); meetSpr.renderOrder = 9; scene.add(meetSpr);
+    const signs = [];
+    function cornerSign(text, x, z, y = 1.7) {
+      const cv = document.createElement('canvas'); cv.width = 420; cv.height = 140;
+      const c = cv.getContext('2d');
+      c.fillStyle = 'rgba(242,238,229,.95)'; c.beginPath(); c.roundRect(6, 6, 408, 128, 20); c.fill();
+      c.strokeStyle = '#b8995a'; c.lineWidth = 5; c.stroke();
+      c.fillStyle = '#2a2723'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, text, 380, 76, 'bold', SERIF); c.fillText(text, 210, 74);
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(cv), transparent: true, depthTest: false }));
+      s.scale.set(1.5, 0.5, 1); s.position.set(x, y, z); s.renderOrder = 8; scene.add(s); signs.push(s);
+    }
+    // 書房
+    const READ = { x: 8.6, z: -6.4 };
+    {
+      const g = new THREE.Group(); g.position.set(READ.x, 0, READ.z); scene.add(g);
+      const rug = new THREE.Mesh(new THREE.CircleGeometry(1.75, 48), M(0xcfc6b4, { roughness: 0.95 })); flat(rug, 0.012); g.add(rug);
+      const sg = new THREE.Group(); sg.position.set(0.2, 0, -1.35); g.add(sg);
+      const wood = M(0x5a4636);
+      for (const y of [0.05, 0.6, 1.15, 1.7]) box(2.2, 0.05, 0.36, wood, 0, y, 0, sg);
+      for (const x of [-1.1, 0, 1.1]) box(0.05, 1.72, 0.36, wood, x, 0.86, 0, sg);
+      const bookCols = [0x7a2e26, 0x2e3a4a, 0xb8995a, 0x3a5a4a, 0xe9e3d6, 0x2b2825];
+      for (let r = 0; r < 3; r++) for (let i = 0; i < 9; i++) box(0.09, 0.32 + ((i * 7 + r) % 4) * 0.03, 0.24, M(bookCols[(i + r) % 6]), -1.0 + i * 0.12 + (i > 4 ? 0.2 : 0), 0.25 + r * 0.55 + ((i * 7 + r) % 4) * 0.015, 0, sg);
+      for (const [x, z, r] of [[-0.85, 0.2, 0.5], [0.95, 0.3, -0.5]]) {
+        const ch = new THREE.Group(); ch.position.set(x, 0, z); ch.rotation.y = r; g.add(ch);
+        box(0.62, 0.36, 0.6, M(0x8a7a66, { roughness: 0.9 }), 0, 0.2, 0, ch); box(0.62, 0.42, 0.12, M(0x8a7a66), 0, 0.55, -0.26, ch);
+      }
+    }
+    const READ_SEATS = [{ type: 'read', x: READ.x - 0.85, z: READ.z + 0.25, yaw: 0.5 }, { type: 'read', x: READ.x + 0.95, z: READ.z + 0.35, yaw: -0.5 }];
+    // 茶席
+    const TEA = { x: -8.6, z: 6.4 };
+    {
+      const g = new THREE.Group(); g.position.set(TEA.x, 0, TEA.z); scene.add(g);
+      box(3.2, 0.06, 2.6, M(0xc9bc9c, { roughness: 0.95 }), 0, 0.03, 0, g);
+      for (let i = 0; i < 6; i++) box(3.2, 0.005, 0.02, M(0x9a8a6a), 0, 0.065, -1.3 + i * 0.52, g);
+      box(1.0, 0.06, 0.62, M(0x3a2c22, { roughness: 0.4 }), 0, 0.34, 0, g);
+      for (const [x, z] of [[-0.42, -0.25], [0.42, -0.25], [-0.42, 0.25], [0.42, 0.25]]) box(0.06, 0.28, 0.06, M(0x3a2c22), x, 0.17, z, g);
+      cyl(0.08, 0.1, 0.12, M(0x6b4a3a), 0, 0.43, 0, g, 12);
+      for (const x of [-0.25, 0.22, 0.3]) cyl(0.03, 0.025, 0.04, M(0xf2efe8), x, 0.39, x > 0.25 ? 0.15 : -0.12, g, 8);
+      for (const [x, z] of [[0, -0.75], [-0.95, 0.15], [0.95, 0.15], [0, 0.85]]) cyl(0.25, 0.27, 0.08, M(0x7a2e26, { roughness: 0.9 }), x, 0.1, z, g, 16);
+    }
+    const TEA_SEATS = [
+      { type: 'tea', x: TEA.x, z: TEA.z - 0.75, yaw: 0 }, { type: 'tea', x: TEA.x - 0.95, z: TEA.z + 0.15, yaw: Math.PI / 2 },
+      { type: 'tea', x: TEA.x + 0.95, z: TEA.z + 0.15, yaw: -Math.PI / 2 },
+    ];
+    // 太極場
+    const TAI = { x: 8.6, z: 6.4 };
+    {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 512;
+      const c = cv.getContext('2d'); c.fillStyle = '#d9d2c3'; c.fillRect(0, 0, 512, 512);
+      c.globalAlpha = 0.22; drawTaiji(c, 256, 256, 200, '#ffffff', '#2a2723'); c.globalAlpha = 1;
+      const m = new THREE.Mesh(new THREE.CircleGeometry(1.75, 48), new THREE.MeshStandardMaterial({ map: canvasTex(cv), roughness: 0.95 })); flat(m, 0.015); m.position.set(TAI.x, 0.015, TAI.z); scene.add(m);
+    }
+    const TAI_SEATS = [{ type: 'taichi', x: TAI.x - 0.95, z: TAI.z - 0.45, yaw: 0 }, { type: 'taichi', x: TAI.x + 0.95, z: TAI.z - 0.45, yaw: 0 }, { type: 'taichi', x: TAI.x, z: TAI.z + 0.75, yaw: 0 }];
+    cornerSign('圓桌會議', MEET.x, MEET.z - 1.6, 1.25); cornerSign('書房', READ.x - 1.4, READ.z + 1.45, 1.1); cornerSign('茶席', TEA.x, TEA.z + 1.6, 0.95); cornerSign('太極場', TAI.x, TAI.z + 1.6, 0.95);
+    addBamboo(-10.6, 1.0, 5, 2.8); addBamboo(10.6, 1.0, 5, 2.8); addBamboo(-10.6, -2.6, 4, 2.6); addBamboo(10.6, -2.6, 4, 2.6);
+    for (const [x, z] of [[-4.2, 9.2], [4.2, 9.2], [-10.4, 4.0], [10.4, 4.0]]) addLantern(x, z);
+
+    // 地面組織線：金線＝直屬；朱紅虛線＝ PA 稽核 IA
+    const lineMat = new THREE.LineBasicMaterial({ color: GOLD, transparent: true, opacity: 0.85 });
+    const dashMat = new THREE.LineDashedMaterial({ color: CINNABAR, dashSize: 0.22, gapSize: 0.16, transparent: true, opacity: 0.95 });
+    const link = (a, b, mat) => {
+      const A = P(SEAT_DEG[a], RING_R - 0.6), B = P(SEAT_DEG[b], RING_R - 0.6);
+      const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24; const k = 1 - Math.sin(Math.PI * t) * 0.12; pts.push(new THREE.Vector3((A.x + (B.x - A.x) * t) * k, TOP + 0.02, CZ + (A.z - CZ + (B.z - A.z) * t) * k)); }
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat); ln.computeLineDistances(); scene.add(ln);
     };
     for (const t of ['admin', 'kobe', 'fly']) link('pa', t, lineMat);
     for (const t of ['clo', 'cto', 'cpo', 'fpa']) link('cos', t, lineMat);
     link('pa', 'ia', dashMat);
 
-    // 座位與成員（有進行中任務才坐工位；否則到休息／活動區）
-    const PATH_AISLE = { pts: [[0.4, 3.6], [0.4, -6.8], [-0.4, -6.8], [-0.4, 3.6]] };
-    const PATH_OUTER = { pts: [[-6.8, 6.85], [6.8, 6.85], [6.8, 6.35], [-6.8, 6.35]] };
-    function buildPath(pts) {
-      const segs = []; let acc = 0;
-      for (let i = 0; i < pts.length; i++) {
-        const a = pts[i], b = pts[(i + 1) % pts.length];
-        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-        segs.push({ a, b, len, acc }); acc += len;
-      }
-      return { segs, total: acc };
-    }
-    PATH_AISLE.info = buildPath(PATH_AISLE.pts);
-    PATH_OUTER.info = buildPath(PATH_OUTER.pts);
-    function atPath(info, dist) {
-      let u = ((dist % info.total) + info.total) % info.total;
-      for (const s of info.segs) {
-        if (u <= s.acc + s.len) {
-          const t = s.len ? (u - s.acc) / s.len : 0;
-          return { x: s.a[0] + (s.b[0] - s.a[0]) * t, z: s.a[1] + (s.b[1] - s.a[1]) * t, yaw: Math.atan2(s.b[0] - s.a[0], s.b[1] - s.a[1]) };
-        }
-      }
-      return { x: info.segs[0].a[0], z: info.segs[0].a[1], yaw: 0 };
-    }
+    // 休息／活動位置
     const SLOTS = [
-      { id: 'walk-aisle', type: 'walk', label: '散步', path: PATH_AISLE.info },
-      { id: 'walk-outer', type: 'walk', label: '散步', path: PATH_OUTER.info },
-      { id: 'coffee-1', type: 'coffee', label: '喝咖啡', x: -0.9, z: -8.05 },
-      { id: 'coffee-2', type: 'coffee', label: '喝咖啡', x: 0.05, z: -8.05 },
-      { id: 'read-sofa-l', type: 'read', label: '看書', x: -3.3, z: -8.35, rot: 0.3 },
-      { id: 'read-sofa-r', type: 'read', label: '看書', x: 3.3, z: -8.35, rot: -0.3 },
-      { id: 'read-bean', type: 'read', label: '看書', x: -2.35, z: -7.5, rot: 0.25 },
-      { id: 'treadmill', type: 'treadmill', label: '跑步', x: -7.55, z: 4.85 },
-      { id: 'yoga', type: 'yoga', label: '瑜珈', x: -7.55, z: 3.15, rot: 0.3 },
-      { id: 'pingpong', type: 'pingpong', label: '打桌球', x: 7.5, z: 5.5, rot: Math.PI },
+      { id: 'walk-in-a', type: 'walk', label: '散步', r: 3.35, sp: 0.22, off: 0 },
+      { id: 'tea-1', ...TEA_SEATS[0], label: '品茶' },
+      { id: 'read-1', ...READ_SEATS[0], label: '看書' },
+      { id: 'tai-1', ...TAI_SEATS[0], label: '打太極' },
+      { id: 'walk-out-a', type: 'walk', label: '散步', r: 8.35, sp: -0.1, off: 0 },
+      { id: 'tea-2', ...TEA_SEATS[1], label: '品茶' },
+      { id: 'read-2', ...READ_SEATS[1], label: '看書' },
+      { id: 'tai-2', ...TAI_SEATS[1], label: '打太極' },
+      { id: 'walk-in-b', type: 'walk', label: '散步', r: 3.35, sp: 0.22, off: Math.PI },
+      { id: 'tea-3', ...TEA_SEATS[2], label: '品茶' },
+      { id: 'tai-3', ...TAI_SEATS[2], label: '打太極' },
+      { id: 'walk-out-b', type: 'walk', label: '散步', r: 8.35, sp: -0.1, off: Math.PI },
     ];
 
-    function makeAvatar(color, gender) {
-      const g = new THREE.Group();
-      const hairMat = M(0x3b2a20, { roughness: 0.8 });
-      if (gender === 'f') {
-        const hair = new THREE.Mesh(new THREE.SphereGeometry(0.175, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat); hair.position.y = 1.26; g.add(hair);
-        const back = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.34, 12, 1, true, Math.PI * 0.6, Math.PI * 0.8), M(0x3b2a20, { roughness: 0.8, side: THREE.DoubleSide })); back.position.set(0, 1.12, 0); back.rotation.y = Math.PI; g.add(back);
-        const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.32, 14, 1, true), M(color, { side: THREE.DoubleSide })); skirt.position.y = 0.5; g.add(skirt);
-      } else if (gender === 'm') {
-        const hair = new THREE.Mesh(new THREE.SphereGeometry(0.168, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.4), hairMat); hair.position.y = 1.26; g.add(hair);
-        const tie = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.26, 0.02), M(0x22324d)); tie.position.set(0, 0.92, 0.215); g.add(tie);
-        const collar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.06, 0.02), M(0xffffff)); collar.position.set(0, 1.05, 0.2); g.add(collar);
-        for (const x of [-0.08, 0.08]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.42, 0.1), M(0x2b3445)); leg.position.set(x, 0.32, 0); g.add(leg); }
-      } else {
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 6, 20), M(color, { emissive: color, emissiveIntensity: 0.3 })); ring.position.y = 1.24; ring.rotation.x = Math.PI / 2; g.add(ring);
-      }
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.23, 0.55, 12), M(color));
-      body.position.y = 0.8; g.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), M(0xf1d3b3));
-      head.position.y = 1.24; g.add(head);
-      const armMat = M(color), armGeo = new THREE.BoxGeometry(0.08, 0.36, 0.08);
-      const leftArm = new THREE.Group(); leftArm.position.set(-0.22, 0.95, 0); g.add(leftArm);
-      const leftMesh = new THREE.Mesh(armGeo, armMat); leftMesh.position.y = -0.16; leftArm.add(leftMesh);
-      const rightArm = new THREE.Group(); rightArm.position.set(0.22, 0.95, 0); g.add(rightArm);
-      const rightMesh = new THREE.Mesh(armGeo, armMat); rightMesh.position.y = -0.16; rightArm.add(rightMesh);
-      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.08, 8), M(0xf2f2f2));
-      cup.position.set(0.05, -0.38, 0.08); cup.visible = false; rightArm.add(cup);
-      const book = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 0.1), M(0xEA4335));
-      book.position.set(0, -0.38, 0.08); book.visible = false; rightArm.add(book);
-      const paddle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.02), M(0xC45C26));
-      paddle.position.set(0, -0.4, 0.02); paddle.visible = false; rightArm.add(paddle);
-      return { g, body, head, leftArm, rightArm, cup, book, paddle, parts: [body, head, leftMesh, rightMesh] };
-    }
-
-    const desks = [];
-    FLOORS.forEach((f) => {
-      const L = LAYOUT[f.id]; if (!L) return;
-      const g = new THREE.Group(); g.position.set(L.x, 0, L.z);
-      const k = L.k || (L.lead ? 1.25 : 1);
-      const inner = new THREE.Group(); inner.scale.set(k, k, k); g.add(inner);
-      let zoneMat, zone, top, scr, lamp;
-      if (L.gm) {
-        zoneMat = M(f.color, { transparent: true, opacity: 0.18, emissive: f.color, emissiveIntensity: 0.05 });
-        zone = box(1.9, 0.03, 1.8, zoneMat, 0, 0.05, -0.35, g);
-        top = zone;
-        scr = M(0x0e1a2e, { emissive: f.color, emissiveIntensity: 0.1 });
-        lamp = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), M(f.color, { emissive: f.color, emissiveIntensity: 0.15 }));
-        lamp.visible = false; g.add(lamp);
-      } else {
-        zoneMat = M(f.color, { transparent: true, opacity: 0.25, emissive: f.color, emissiveIntensity: 0.05 });
-        zone = box(2.2, 0.04, 2.6, zoneMat, 0, 0.05, 0, inner);
-        top = box(1.7, 0.08, 0.8, M(L.lead ? 0xe6d2ae : 0xd9c7a8), 0, 0.75, 0.3, inner);
-        for (const [x, z] of [[-0.75, -0.05], [0.75, -0.05], [-0.75, 0.65], [0.75, 0.65]]) box(0.06, 0.72, 0.06, M(0x555f73), x, 0.36, z, inner);
-        scr = M(0x0e1a2e, { emissive: f.color, emissiveIntensity: 0.15 });
-        box(0.8, 0.5, 0.05, scr, 0, 1.1, 0.6, inner); box(0.08, 0.25, 0.08, M(0x555f73), 0, 0.88, 0.6, inner);
-        box(0.5, 0.08, 0.5, M(0x34405a), 0, 0.48, -0.5, inner); box(0.5, 0.55, 0.08, M(0x34405a), 0, 0.78, -0.76, inner);
-        lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), M(f.color, { emissive: f.color, emissiveIntensity: 0.2, roughness: 0.3 }));
-        lamp.position.set(0, 1.48, 0.6); inner.add(lamp);
-      }
-      const av = makeAvatar(f.color, f.g);
-      av.g.scale.set(k, k, k);
-      scene.add(av.g);
-      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 360;
-      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-      const ls = L.k ? Math.min(1, L.k * 1.0) : 1;
-      spr.scale.set(2.3 * ls, 1.55 * ls, 1); spr.position.set(0, 2.25, 0); spr.renderOrder = 10;
-      av.g.add(spr);
-      const hits = [zone, top, lamp, spr, ...av.parts];
-      hits.forEach((m) => { m.userData.id = f.id; m.userData.type = 'desk'; });
-      scene.add(g);
-      desks.push({ f, L, k, zoneMat, scr, lamp, cv, tex, spr, hits, busyPulse: false, avatar: av, slot: null, atDesk: true, phase: (hashId(f.id) % 1000) / 160 });
-    });
-
+    // ---------- 名牌 ----------
     function drawBar(c, x, y, w, h, value, color) {
-      c.save();
-      c.beginPath(); c.roundRect(x, y, w, h, 8); c.clip();
+      c.save(); c.beginPath(); c.roundRect(x, y, w, h, h / 2); c.clip();
       if (value == null) {
-        c.fillStyle = '#2a3a5a'; c.fillRect(x, y, w, h);
-        c.fillStyle = '#4a5d80';
-        for (let i = -h; i < w + h; i += 16) {
-          c.beginPath(); c.moveTo(x + i, y); c.lineTo(x + i + 8, y); c.lineTo(x + i + 8 - h, y + h); c.lineTo(x + i - h, y + h); c.fill();
-        }
+        c.fillStyle = '#5b5750'; c.fillRect(x, y, w, h); c.fillStyle = '#7a756c';
+        for (let i = -h; i < w + h; i += 16) { c.beginPath(); c.moveTo(x + i, y); c.lineTo(x + i + 8, y); c.lineTo(x + i + 8 - h, y + h); c.lineTo(x + i - h, y + h); c.fill(); }
       } else {
-        c.fillStyle = '#1a2438'; c.fillRect(x, y, w, h);
-        c.fillStyle = color || '#5aa9ff'; c.fillRect(x, y, w * Math.max(0, Math.min(1, value / 100)), h);
+        c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x, y, w, h);
+        c.fillStyle = color || '#7fc4a8'; c.fillRect(x, y, w * Math.max(0, Math.min(1, value / 100)), h);
       }
       c.restore();
-      c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 2;
-      c.beginPath(); c.roundRect(x, y, w, h, 8); c.stroke();
     }
-    function labelKind(d) {
-      const id = d.f.id, p = person(id), meet = meetingOf(id);
+    const FRESH_COL = { fresh: '#6fd0ae', warm: '#e0b25c', old: '#9a948a', none: '#9a948a' };
+    function labelInfo(id) {
+      const p = person(id), meet = meetingOf(id);
       const bar = showProgressBar(id, p);
-      let status = '';
+      let status;
       if (meet) status = '會議中';
-      else if (id === 'louis') {
-        const st = louisState();
-        status = st === 'active' ? '工作中' : st === 'idle' ? '休息中' : NO_DATA;
-      } else if (hasRecord(id) && !isWorking(p)) status = '休息中';
-      else if (!isWorking(p)) status = NO_DATA;
-      const compact = !bar && (status === '休息中' || status === '工作中' || status === '會議中');
-      return { p, meet, bar, status, compact };
-    }
-    function applyLabelScale(d) {
-      const k = labelKind(d);
-      const w = k.compact ? 1.52 : 1.72;
-      const h = k.compact ? 0.86 : 1.18;
-      const s = (d.avatar && d.avatar.g.scale.x) || 1;
-      d.spr.scale.set(w / s, h / s, 1);
+      else if (isWorking(p)) status = '工作中';
+      else if (hasRecord(id)) status = '休息中';
+      else status = NO_DATA;
+      return { p, meet, bar, status };
     }
     function drawLabel(d, selected) {
-      const { p, bar, status, compact } = labelKind(d);
-      const c = d.cv.getContext('2d');
-      c.clearRect(0, 0, 512, 360);
-      c.fillStyle = selected ? 'rgba(90,169,255,.96)' : 'rgba(11,18,32,.88)';
-      c.beginPath();
-      if (compact) c.roundRect(28, 88, 456, 184, 24);
-      else c.roundRect(4, 4, 504, 352, 26);
-      c.fill();
+      const { p, bar, status } = labelInfo(d.f.id);
+      const c = d.label.cv.getContext('2d'), W = 560, H = 300;
+      c.clearRect(0, 0, W, H);
+      const dark = true;
+      const h = bar ? 288 : 204, y0 = (H - h) / 2;
+      c.fillStyle = selected ? 'rgba(234,246,240,.97)' : 'rgba(28,27,25,.9)';
+      c.beginPath(); c.roundRect(8, y0, W - 16, h, 26); c.fill();
+      c.strokeStyle = selected ? '#5f9e8a' : '#b8995a'; c.lineWidth = selected ? 10 : 4; c.stroke();
+      const fg = selected ? '#1c1b19' : '#f4f1ea', sub = selected ? '#3a3632' : '#c9c2b4';
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      const m = d.f.name.match(/^(.*?)（(.*)）$/);
-      const name = m ? m[1] : d.f.name, role = m ? m[2] : '';
-      c.fillStyle = selected ? '#04121f' : '#ffffff';
-      if (compact) {
-        fitText(c, name, 480, 72, 'bold'); c.fillText(name, 256, 140);
-        c.fillStyle = selected ? '#04121f' : (status === '會議中' ? '#f5d76e' : status === '工作中' ? '#cfe0ff' : '#c5d0e0');
-        fitText(c, status, 480, 52, 'bold'); c.fillText(status, 256, 210);
-      } else if (bar) {
-        fitText(c, name, 480, 72, 'bold'); c.fillText(name, 256, role || status ? 58 : 90);
-        if (status === '會議中' || status === '工作中') {
-          c.fillStyle = selected ? '#04121f' : '#f5d76e';
-          fitText(c, status, 480, 40, 'bold'); c.fillText(status, 256, 118);
-        } else if (role) {
-          c.fillStyle = selected ? '#04121f' : '#cfe0ff'; fitText(c, role, 480, 44, 'normal'); c.fillText(role, 256, 118);
-        }
-        const pr = progressOf(p);
-        drawBar(c, 48, 168, 416, 36, pr.value, freshness(p) === 'old' ? '#8a93a3' : null);
-        c.fillStyle = selected ? '#04121f' : (pr.value == null ? '#c5d0e0' : '#f5d76e');
-        const txt = pr.value == null ? '進度暫無數據' : (pr.source === 'tasks' ? `${pr.value}%（任務 ${pr.done}／${pr.total}）` : `${pr.value}%`);
-        fitText(c, txt, 400, 36, 'bold'); c.fillText(txt, 256, 248);
-        const ut = p && p._ts ? `${fmtTaipei(p._ts, false)}${p._src === 'data' ? ' 底稿・非即時' : ' 更新'}` : '';
-        if (ut) { c.fillStyle = selected ? '#04121f' : (freshness(p) === 'fresh' ? '#5ee08f' : freshness(p) === 'warm' ? '#f5b544' : '#9aa5b5'); fitText(c, ut, 440, 32, 'normal'); c.fillText(ut, 256, 316); }
+      const [nm, role] = TAG[d.f.id];
+      c.fillStyle = fg; fitText(c, `${nm}・${role}`, W - 60, 60, 'bold'); c.fillText(`${nm}・${role}`, W / 2, y0 + 52);
+      let st = status;
+      if (status === '休息中' && d.slot && d.slot.label) st = `休息中・${d.slot.label}`;
+      if (status === '會議中') { const m = meetingOf(d.f.id); if (m) st = `會議中・${m.title}`; }
+      if (bar) {
+        const pr = progressOf(p), fr = freshness(p);
+        drawBar(c, 44, y0 + 102, W - 224, 34, pr.value, fr === 'old' ? '#9a948a' : null);
+        c.fillStyle = fg; c.textAlign = 'right'; fitText(c, pr.value == null ? '暫無' : `${pr.value}%`, 120, 46, 'bold'); c.fillText(pr.value == null ? '暫無' : `${pr.value}%`, W - 40, y0 + 120);
+        c.textAlign = 'center';
+        const t = arr(p, 'doing').map((x) => x.text).filter(has).join('；') || '工作中';
+        c.fillStyle = sub; fitText(c, t, W - 60, 38, 'normal'); let tt = t; while (c.measureText(tt).width > W - 60 && tt.length > 2) tt = tt.slice(0, -2) + '…'; c.fillText(tt, W / 2, y0 + 180);
       } else {
-        fitText(c, name, 480, 72, 'bold'); c.fillText(name, 256, role ? 58 : 90);
-        if (role) { c.fillStyle = selected ? '#04121f' : '#cfe0ff'; fitText(c, role, 480, 48, 'normal'); c.fillText(role, 256, 128); }
-        c.fillStyle = selected ? '#04121f' : '#8fa1bf';
-        fitText(c, status || NO_DATA, 480, 46, 'normal'); c.fillText(status || NO_DATA, 256, 240);
+        c.fillStyle = status === '會議中' ? '#e0b25c' : sub; fitText(c, st, W - 60, 44, 'normal'); let tt = st; while (c.measureText(tt).width > W - 60 && tt.length > 2) tt = tt.slice(0, -2) + '…'; c.fillText(tt, W / 2, y0 + 118);
       }
-      d.tex.needsUpdate = true;
-      applyLabelScale(d);
+      // 更新時間＋新鮮度圓點
+      const fr = freshness(p);
+      const ut = p ? `${fmtTaipei(p._ts, false) || NO_DATA}${p._src === 'data' ? ' 底稿・非即時' : ' 更新'}` : '尚無回報';
+      const yy = y0 + h - 34;
+      c.font = `30px ${SANS}`; const tw = c.measureText(ut).width;
+      c.fillStyle = FRESH_COL[fr]; c.beginPath(); c.arc(W / 2 - tw / 2 - 16, yy, 9, 0, Math.PI * 2); c.fill();
+      c.fillStyle = selected ? '#3a3632' : FRESH_COL[fr] === '#9a948a' ? '#b3ac9f' : FRESH_COL[fr]; c.fillText(ut, W / 2 + 8, yy);
+      d.label.tex.needsUpdate = true;
+      const s = narrow ? 1.5 : 1.3;
+      d.label.spr.scale.set(2.25 * s, 1.205 * s, 1); d.label.base = [2.25 * s, 1.205 * s]; d.label.fill = (bar ? 288 : 204) / 300;
+    }
+    function drawCore() {
+      const c = coreCv.getContext('2d'), W = 640, H = 260;
+      c.clearRect(0, 0, W, H);
+      const st = louisState(), sel = selected === 'louis';
+      c.fillStyle = sel ? 'rgba(234,246,240,.97)' : 'rgba(247,244,236,.94)';
+      c.beginPath(); c.roundRect(10, 10, W - 20, H - 20, 30); c.fill();
+      c.strokeStyle = st === 'active' ? '#5f9e8a' : '#b8995a'; c.lineWidth = st === 'active' || sel ? 10 : 5; c.stroke();
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = '#1c1b19'; fitText(c, 'Louis・總經理主位', W - 70, 62, 'bold', SERIF); c.fillText('Louis・總經理主位', W / 2, 74);
+      let line;
+      if (!louisActive || !has(louisActive.last_seen)) line = `最後來訊：${NO_DATA}`;
+      else line = `最後來訊 ${fmtTaipei(louisActive.last_seen, false)}（${ago(louisActive.last_seen)}）`;
+      c.fillStyle = st === 'active' ? '#2f7a63' : '#5a554d'; fitText(c, line, W - 70, 44, 'bold'); c.fillText(line, W / 2, 150);
+      const tip = st === 'active' ? '一小時內有來訊・主位發光' : st === 'idle' ? '超過一小時未來訊' : '只記時間、不記內容';
+      c.fillStyle = '#8a8478'; fitText(c, tip, W - 70, 32, 'normal'); c.fillText(tip, W / 2, 206);
+      coreTex.needsUpdate = true;
+      const s = narrow ? 1.4 : 1.15; coreSpr.scale.set(2.7 * s, 1.1 * s, 1); meetSpr.scale.set(2.3 * s, 0.9 * s, 1);
+    }
+    function drawMeet() {
+      const c = meetCv.getContext('2d'), W = 560, H = 220;
+      c.clearRect(0, 0, W, H);
+      const busy = meetings.length > 0;
+      c.fillStyle = 'rgba(28,27,25,.9)'; c.beginPath(); c.roundRect(8, 8, W - 16, H - 16, 26); c.fill();
+      c.strokeStyle = busy ? '#e0b25c' : '#b8995a'; c.lineWidth = busy ? 8 : 4; c.stroke();
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      if (!busy) { c.fillStyle = '#c9c2b4'; fitText(c, '會議室・空閒', W - 60, 64, 'bold'); c.fillText('會議室・空閒', W / 2, H / 2); }
+      else {
+        let t = meetings.map((x) => x.title).join('／'); c.fillStyle = '#f4f1ea'; fitText(c, t, W - 60, 54, 'bold'); while (c.measureText(t).width > W - 60 && t.length > 2) t = t.slice(0, -2) + '…'; c.fillText(t, W / 2, 80);
+        c.fillStyle = '#e0b25c'; fitText(c, '會議中', W - 60, 48, 'bold'); c.fillText('會議中', W / 2, 150);
+      }
+      meetTex.needsUpdate = true;
     }
 
+    // ---------- 大型看板內容 ----------
+    function drawBigBoard() {
+      const c = bigCv.getContext('2d'), W = 2048, H = 1280;
+      const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#191816'); bg.addColorStop(1, '#100f0e');
+      c.fillStyle = bg; c.fillRect(0, 0, W, H);
+      // 標題列
+      c.save(); c.globalAlpha = 0.9; drawTaiji(c, 92, 78, 38, '#f2eee5', '#191816'); c.restore();
+      c.strokeStyle = '#b8995a'; c.lineWidth = 3; c.beginPath(); c.arc(92, 78, 38, 0, Math.PI * 2); c.stroke();
+      c.textBaseline = 'middle'; c.textAlign = 'left'; c.fillStyle = '#f4f1ea';
+      c.font = `bold 66px ${SERIF}`; c.fillText('全員即時看板', 150, 80);
+      c.textAlign = 'right'; c.fillStyle = '#a49d90'; c.font = `34px ${SANS}`;
+      c.fillText(lastCheck ? `每 30 秒檢查・上次 ${fmtTaipei(lastCheck.toISOString())}（台北時間）` : '尚未解鎖', W - 60, 80);
+      c.fillStyle = '#b8995a'; c.fillRect(60, 140, W - 120, 3);
+      // 左欄：成員
+      const ids = ['pa', 'ia', 'admin', 'kobe', 'fly', 'cos', 'clo', 'cto', 'cpo', 'fpa'];
+      const x0 = 60, colW = 1250, y0 = 172, rowH = 100;
+      c.font = `28px ${SANS}`; c.fillStyle = '#8a8478'; c.textAlign = 'left';
+      c.fillText('成員', x0 + 30, y0 + 6); c.fillText('目前', x0 + 300, y0 + 6); c.fillText('進度', x0 + 760, y0 + 6); c.textAlign = 'right'; c.fillText('更新', x0 + colW - 20, y0 + 6); c.textAlign = 'left';
+      ids.forEach((id, i) => {
+        const f = FLOORS.find((x) => x.id === id), p = person(id), y = y0 + 34 + i * rowH;
+        if (i === 5) { c.fillStyle = 'rgba(184,153,90,.5)'; c.fillRect(x0, y - 6, colW, 2); }
+        c.fillStyle = i % 2 ? 'rgba(255,255,255,.025)' : 'rgba(255,255,255,.055)'; c.fillRect(x0, y, colW, rowH - 10);
+        c.fillStyle = PERSONAL.has(id) ? '#f2eee5' : '#4a4640'; c.beginPath(); c.arc(x0 + 30, y + 45, 13, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#b8995a'; c.lineWidth = 2; c.stroke();
+        const [nm, role] = TAG[id];
+        c.fillStyle = '#f4f1ea'; c.font = `bold 40px ${SANS}`; c.fillText(nm, x0 + 60, y + 34);
+        c.fillStyle = '#a49d90'; c.font = `26px ${SANS}`; c.fillText(role, x0 + 60, y + 72);
+        const working = isWorking(p), meet = meetingOf(id), fr = freshness(p);
+        const d = arr(p, 'doing');
+        let txt = meet ? `會議中：${meet.title}` : d.length ? d.map((x) => x.text).join('；') : (p ? '休息中' : NO_DATA);
+        c.fillStyle = working || meet ? '#f4f1ea' : '#8a8478'; c.font = `34px ${SANS}`;
+        while (c.measureText(txt).width > 430 && txt.length > 2) txt = txt.slice(0, -2) + '…';
+        c.fillText(txt, x0 + 300, y + 45);
+        if (working) {
+          const pr = progressOf(p).value;
+          drawBar(c, x0 + 760, y + 30, 190, 30, pr, fr === 'old' ? '#9a948a' : null);
+          c.fillStyle = '#f4f1ea'; c.font = `bold 32px ${SANS}`; c.fillText(pr == null ? '暫無' : `${pr}%`, x0 + 964, y + 45);
+        } else { c.fillStyle = '#5a554d'; c.font = `30px ${SANS}`; c.fillText('—', x0 + 760, y + 45); }
+        c.font = `30px ${SANS}`; c.textAlign = 'right';
+        const ut = p ? `${fmtTaipei(p._ts, false) || NO_DATA}${p._src === 'data' ? ' 底稿' : ''}` : '—';
+        c.fillStyle = FRESH_COL[fr]; c.fillText(ut, x0 + colW - 20, y + 45);
+        c.beginPath(); c.arc(x0 + colW - 40 - c.measureText(ut).width, y + 45, 9, 0, Math.PI * 2); c.fill(); c.textAlign = 'left';
+      });
+      // 右欄
+      const x2 = x0 + colW + 60, w2 = W - x2 - 60;
+      c.fillStyle = 'rgba(255,255,255,.04)'; c.fillRect(x2 - 24, 172, w2 + 48, H - 230);
+      let yy = 220;
+      // 主位
+      c.fillStyle = '#b8995a'; c.font = `bold 40px ${SERIF}`; c.fillText('主位', x2, yy); yy += 56;
+      const st = louisState();
+      c.fillStyle = st === 'active' ? '#6fd0ae' : '#c9c2b4'; c.font = `32px ${SANS}`;
+      c.fillText(louisActive && has(louisActive.last_seen) ? `Louis 最後來訊 ${fmtTaipei(louisActive.last_seen, false)}（${ago(louisActive.last_seen)}）` : `Louis 最後來訊：${NO_DATA}`, x2, yy); yy += 74;
+      c.fillStyle = '#b8995a'; c.font = `bold 40px ${SERIF}`; c.fillText('警示', x2, yy); yy += 56;
+      const al = alertList().slice(0, 5);
+      c.font = `30px ${SANS}`;
+      if (!al.length) { c.fillStyle = '#8a8478'; c.fillText('目前沒有警示', x2, yy); yy += 50; }
+      for (const a of al) {
+        c.fillStyle = a.level === 'red' ? '#d0574a' : '#e0b25c'; c.fillRect(x2, yy - 20, 8, 40);
+        c.fillStyle = '#e8e3d8'; let t = a.text; while (c.measureText(t).width > w2 - 30 && t.length > 2) t = t.slice(0, -2) + '…';
+        c.fillText(t, x2 + 22, yy); yy += 54;
+      }
+      yy = Math.max(yy + 24, 720);
+      c.fillStyle = '#b8995a'; c.font = `bold 40px ${SERIF}`; c.fillText('累計用量', x2, yy); yy += 56;
+      c.font = `30px ${SANS}`;
+      const h = usage.hermes;
+      if (h && Array.isArray(h.profiles) && h.profiles.length) for (const pf of h.profiles) {
+        c.fillStyle = '#c9c2b4'; c.fillText(String(pf.label || pf.id).replace(/（.*?）/, ''), x2, yy);
+        c.textAlign = 'right'; c.fillStyle = '#f4f1ea'; c.fillText(`${fmtTok(pf.total)} 詞元`, x2 + w2, yy); c.textAlign = 'left'; yy += 46;
+      } else { c.fillStyle = '#8a8478'; c.fillText(`Air 特殊小組：${NO_DATA}`, x2, yy); yy += 46; }
+      const g = usage.grok;
+      if (g && g.shares) {
+        c.fillStyle = '#c9c2b4'; c.fillText('助理本週額度已用', x2, yy);
+        c.textAlign = 'right'; c.fillStyle = '#f4f1ea'; c.fillText(typeof g.weekly_used_percent === 'number' ? `${Math.round(g.weekly_used_percent * 10) / 10}%` : NO_DATA, x2 + w2, yy); c.textAlign = 'left'; yy += 50;
+        const tops = Object.entries(g.shares).filter(([, v]) => typeof v === 'number').sort((a, b) => b[1] - a[1]).slice(0, 4);
+        for (const [id, v] of tops) {
+          c.fillStyle = '#a49d90'; c.fillText(TAG[id] ? TAG[id][0] : id, x2, yy);
+          drawBar(c, x2 + 150, yy - 13, w2 - 280, 26, v);
+          c.fillStyle = '#f4f1ea'; c.textAlign = 'right'; c.fillText(v < 1 ? '<1%' : `${Math.round(v)}%`, x2 + w2, yy); c.textAlign = 'left'; yy += 44;
+        }
+      } else { c.fillStyle = '#8a8478'; c.fillText(`助理額度：${NO_DATA}`, x2, yy); }
+      c.fillStyle = '#6a655c'; c.font = `24px ${SANS}`; c.fillText('特殊小組為真實詞元數；助理為週額度占比（非詞元）', x2, H - 52);
+      bigTex.needsUpdate = true;
+    }
+
+    // ---------- 狀態更新 ----------
     function assignActivities() {
-      const idle = FLOORS.map((f) => f.id).filter((id) => {
-        if (meetingOf(id)) return false;
-        if (id === 'louis') return louisState() === 'idle';
-        return hasRecord(id) && !isWorking(person(id));
-      }).sort();
+      const idle = desks.map((d) => d.f.id).filter((id) => !meetingOf(id) && hasRecord(id) && !isWorking(person(id))).sort();
       const taken = new Set(), map = {};
       for (const id of idle) {
-        let i = hashId(id) % SLOTS.length;
-        for (let n = 0; n < SLOTS.length; n++) {
-          const s = SLOTS[(i + n) % SLOTS.length];
-          if (!taken.has(s.id)) { taken.add(s.id); map[id] = s; break; }
-        }
+        const i = hashId(id) % SLOTS.length;
+        for (let n = 0; n < SLOTS.length; n++) { const s = SLOTS[(i + n) % SLOTS.length]; if (!taken.has(s.id)) { taken.add(s.id); map[id] = s; break; } }
       }
       return map;
     }
     function assignMeetSeats() {
-      const map = {}, used = { left: 0, right: 0 };
-      for (const m of meetings) {
-        const pod = m.pod === 'left' || m.pod === 'right' ? m.pod : 'right';
-        const seats = PODS[pod].seats;
-        for (const id of m.members) {
-          if (map[id]) continue;
-          const i = used[pod];
-          const seat = seats[i % seats.length];
-          const side = (i % 2 === 0) ? -0.55 : 0.55;
-          map[id] = { ...seat, lx: side };
-          used[pod]++;
-        }
-      }
+      const map = {}; let n = 0;
+      for (const m of meetings) for (const id of m.members) { if (map[id] || id === 'louis') continue; map[id] = MEET_SEATS[n % MEET_SEATS.length]; n++; }
       return map;
     }
-
-    let selected = null;
+    let selected = null, narrow = false;
     function update() {
-      const act = assignActivities();
-      const meetSeat = assignMeetSeats();
+      const act = assignActivities(), meetSeat = assignMeetSeats();
       for (const d of desks) {
-        const id = d.f.id;
-        const p = person(id);
-        const working = isWorking(p);
+        const id = d.f.id, p = person(id), working = isWorking(p), meet = meetingOf(id), on = id === selected;
         const waiting = p && arr(p, 'waiting_on_louis').length;
-        const on = id === selected;
-        const meet = meetingOf(id);
-        const louisOn = id === 'louis' && louisState() === 'active';
         if (meet) { d.atDesk = false; d.slot = meetSeat[id] || null; }
-        else if (id === 'louis') { d.atDesk = louisState() !== 'idle'; d.slot = d.atDesk ? null : (act[id] || null); }
         else { d.atDesk = working || !hasRecord(id); d.slot = d.atDesk ? null : (act[id] || null); }
-        const occupied = d.atDesk && (working || louisOn);
-        d.zoneMat.emissiveIntensity = on ? 0.9 : waiting && d.atDesk ? 0.5 : (occupied || meet) ? 0.3 : 0.05;
-        d.zoneMat.opacity = on ? 0.6 : (occupied || meet) ? 0.35 : hasRecord(id) || id === 'louis' ? 0.18 : 0.15;
-        d.scr.emissiveIntensity = occupied ? 0.8 : 0.1;
-        d.busyPulse = !!occupied;
-        d.lamp.material.emissiveIntensity = occupied ? 0.7 : 0.18;
-        d.avatar.g.visible = true;
+        if (!d.atDesk && !d.slot) d.atDesk = true;
+        d.working = d.atDesk && working;
+        d.matMat.emissiveIntensity = on ? 0.55 : waiting ? 0.3 : d.working ? 0.16 : 0;
+        d.scrMat.emissiveIntensity = d.working ? 0.9 : 0.05;
+        d.lamp.material.emissiveIntensity = d.working ? 1.0 : 0.1;
         drawLabel(d, on);
       }
-      drawPodLabel(PODS.left.label, meetings.length > 0, meetings.map((x) => x.title).join('／'));
-      drawBigBoard();
-      for (const o of officeFloors) {
-        o.mat.opacity = o.baseOp;
-        o.mat.emissiveIntensity = 0.04;
-      }
+      drawCore(); drawMeet(); drawBigBoard();
     }
     function select(id) { selected = id; update(); }
 
+    // ---------- 姿勢 ----------
+    function sit(a, hipY, kneeBend = Math.PI / 2) {
+      a.hip.position.y = hipY;
+      for (const L of a.legs) { L.thigh.rotation.x = -Math.PI / 2; L.knee.rotation.x = kneeBend; }
+      if (a.skirt) { a.skirt.visible = false; a.lap.visible = true; }
+    }
     function poseAvatar(d, sec) {
-      const a = d.avatar;
-      a.cup.visible = a.book.visible = a.paddle.visible = false;
-      a.leftArm.rotation.set(0, 0, 0); a.rightArm.rotation.set(0, 0, 0);
-      a.head.rotation.set(0, 0, 0);
-      a.body.position.y = 0.8; a.head.position.y = 1.24;
-      a.g.scale.set(d.k, d.k, d.k);
-      d.spr.position.set(0, 2.25, 0);
+      const a = d.av, k = DS * (d.lead ? 1.06 : 1), ph = d.phase;
+      a.cup.visible = a.book.visible = false;
+      a.hip.position.y = 0.72; a.upper.rotation.set(0, 0, 0); a.head.rotation.set(0, 0, 0);
+      for (const L of a.legs) { L.thigh.rotation.set(0, 0, 0); L.knee.rotation.set(0, 0, 0); }
+      for (const A of a.arms) { A.sh.rotation.set(0, 0, 0); A.el.rotation.set(0, 0, 0); }
+      if (a.skirt) { a.skirt.visible = true; a.lap.visible = false; }
+      a.g.scale.setScalar(k);
+      let lx, lz, ly = 2.55;
       if (d.atDesk || !d.slot) {
-        if (d.L.gm) {
-          a.g.position.set(d.L.x, 0, d.L.z);
-          a.g.rotation.y = d.L.rot || Math.PI;
-          a.body.position.y = 0.62; a.head.position.y = 1.06;
+        const s = seatWorld(d);
+        a.g.position.set(s.x, TOP, s.z); a.g.rotation.y = d.yaw;
+        sit(a, 0.5 / (d.lead ? 1.06 : 1));
+        if (d.working) {
+          for (const [i, A] of a.arms.entries()) { A.sh.rotation.x = -0.55; A.el.rotation.x = -0.95 + Math.sin(sec * 9 + ph + i * 1.7) * 0.08; }
+          a.head.rotation.x = 0.12 + Math.sin(sec * 0.8 + ph) * 0.03;
         } else {
-          a.g.position.set(d.L.x, 0, d.L.z - 0.45 * d.k);
-          a.g.rotation.y = 0;
+          for (const A of a.arms) { A.sh.rotation.x = -0.3; A.el.rotation.x = -0.6; }
+          a.upper.rotation.x = -0.05 + Math.sin(sec * 1.2 + ph) * 0.02;
         }
-        applyLabelScale(d);
-        return;
-      }
-      if (d.slot.type === 'meet') {
+        lx = d.pos.x; lz = d.pos.z;
+      } else {
         const s = d.slot;
-        a.g.scale.set(0.92, 0.92, 0.92);
-        a.g.position.set(s.x, 0, s.z);
-        a.g.rotation.y = s.yaw;
-        a.body.position.y = 0.52; a.head.position.y = 0.96;
-        a.leftArm.rotation.x = -0.55; a.rightArm.rotation.x = -0.55;
-        d.spr.position.set(d.slot.lx || 0, 2.7, 0);
-        applyLabelScale(d);
-        return;
+        if (s.type === 'walk') {
+          const ang = s.off + sec * s.sp + ph * 0.05;
+          a.g.position.set(Math.sin(ang) * s.r, s.r < PLAT_R ? TOP : 0, CZ + Math.cos(ang) * s.r);
+          a.g.rotation.y = ang + (s.sp > 0 ? Math.PI / 2 : -Math.PI / 2);
+          const w = Math.sin(sec * 6 + ph);
+          a.legs[0].thigh.rotation.x = w * 0.45; a.legs[1].thigh.rotation.x = -w * 0.45;
+          a.legs[0].knee.rotation.x = Math.max(0, -w) * 0.5; a.legs[1].knee.rotation.x = Math.max(0, w) * 0.5;
+          a.arms[0].sh.rotation.x = -w * 0.4; a.arms[1].sh.rotation.x = w * 0.4;
+          a.hip.position.y = 0.72 + Math.abs(w) * 0.025;
+        } else if (s.type === 'meet') {
+          a.g.position.set(s.x, 0, s.z); a.g.rotation.y = s.yaw; sit(a, 0.5);
+          for (const A of a.arms) { A.sh.rotation.x = -0.5; A.el.rotation.x = -0.7; }
+          a.head.rotation.y = Math.sin(sec * 0.7 + ph) * 0.3;
+        } else if (s.type === 'tea') {
+          a.g.position.set(s.x, 0.1, s.z); a.g.rotation.y = s.yaw;
+          sit(a, 0.24, Math.PI * 0.92);
+          a.cup.visible = true;
+          a.arms[1].sh.rotation.x = -0.6 + Math.sin(sec * 0.9 + ph) * 0.25; a.arms[1].el.rotation.x = -1.2;
+          a.arms[0].sh.rotation.x = -0.35; a.arms[0].el.rotation.x = -0.9;
+        } else if (s.type === 'read') {
+          a.g.position.set(s.x, 0, s.z); a.g.rotation.y = s.yaw; sit(a, 0.42);
+          a.book.visible = true;
+          a.arms[0].sh.rotation.x = -0.55; a.arms[0].el.rotation.x = -1.0; a.arms[1].sh.rotation.x = -0.55; a.arms[1].el.rotation.x = -1.0;
+          a.head.rotation.x = 0.3;
+        } else if (s.type === 'taichi') {
+          a.g.position.set(s.x, 0.015, s.z); a.g.rotation.y = s.yaw + Math.sin(sec * 0.35) * 0.5;
+          const t = sec * 0.6;
+          a.hip.position.y = 0.66;
+          a.legs[0].thigh.rotation.z = 0.18; a.legs[1].thigh.rotation.z = -0.18;
+          a.arms[0].sh.rotation.x = -0.9 - Math.sin(t) * 0.5; a.arms[0].sh.rotation.z = -0.35 - Math.cos(t) * 0.3; a.arms[0].el.rotation.x = -0.5;
+          a.arms[1].sh.rotation.x = -0.9 + Math.sin(t) * 0.5; a.arms[1].sh.rotation.z = 0.35 - Math.cos(t) * 0.3; a.arms[1].el.rotation.x = -0.5;
+        }
+        lx = a.g.position.x; lz = a.g.position.z; ly = 2.45;
       }
-      a.g.scale.set(1, 1, 1);
-      applyLabelScale(d);
-      const s = d.slot, ph = d.phase;
-      if (s.type === 'walk') {
-        const pos = atPath(s.path, sec * 0.9 + ph * 4);
-        a.g.position.set(pos.x, 0, pos.z);
-        a.g.rotation.y = pos.yaw;
-        const bob = Math.sin(sec * 8 + ph) * 0.04;
-        a.body.position.y = 0.8 + bob; a.head.position.y = 1.24 + bob;
-        a.leftArm.rotation.x = Math.sin(sec * 8 + ph) * 0.55;
-        a.rightArm.rotation.x = -Math.sin(sec * 8 + ph) * 0.55;
-      } else if (s.type === 'coffee') {
-        a.g.position.set(s.x, 0.18, s.z + 0.12);
-        a.g.rotation.y = Math.PI;
-        a.body.position.y = 0.58; a.head.position.y = 1.02;
-        a.cup.visible = true;
-        a.rightArm.rotation.x = -0.85 + Math.sin(sec * 1.15 + ph) * 0.28;
-      } else if (s.type === 'read') {
-        a.g.position.set(s.x, 0.1, s.z);
-        a.g.rotation.y = s.rot;
-        a.body.position.y = 0.46; a.head.position.y = 0.9;
-        a.book.visible = true;
-        a.leftArm.rotation.x = -0.75; a.rightArm.rotation.x = -0.75;
-        a.head.rotation.x = 0.22 + Math.sin(sec * 0.6 + ph) * 0.04;
-      } else if (s.type === 'treadmill') {
-        a.g.position.set(s.x, 0.14, s.z);
-        a.g.rotation.y = 0;
-        const bob = Math.abs(Math.sin(sec * 10 + ph)) * 0.06;
-        a.body.position.y = 0.84 + bob; a.head.position.y = 1.28 + bob;
-        a.leftArm.rotation.x = Math.sin(sec * 10 + ph) * 0.7;
-        a.rightArm.rotation.x = -Math.sin(sec * 10 + ph) * 0.7;
-      } else if (s.type === 'yoga') {
-        a.g.position.set(s.x, 0.02, s.z);
-        a.g.rotation.y = s.rot || 0;
-        a.body.position.y = 0.4; a.head.position.y = 0.84;
-        a.leftArm.rotation.z = 0.85 + Math.sin(sec * 0.8 + ph) * 0.1;
-        a.rightArm.rotation.z = -0.85 - Math.sin(sec * 0.8 + ph) * 0.1;
-      } else if (s.type === 'pingpong') {
-        a.g.position.set(s.x, 0, s.z);
-        a.g.rotation.y = s.rot;
-        a.paddle.visible = true;
-        a.rightArm.rotation.x = -0.25 + Math.sin(sec * 6 + ph) * 0.85;
-        a.body.position.y = 0.8 + Math.sin(sec * 6 + ph) * 0.03;
-        a.head.position.y = 1.24 + Math.sin(sec * 6 + ph) * 0.03;
-        const tt = sec * 3.2 + ph;
-        pingBall.position.set(pingX, 1.05 + Math.abs(Math.sin(tt)) * 0.35, pingZ + Math.cos(tt) * 0.72);
-      }
+      d.label.spr.position.set(lx, ly, lz);
     }
 
-    controls.target.set(0, 0.5, -0.8);
+    // ---------- 鏡頭 ----------
+    const camQ = (new URLSearchParams(location.search).get('cam') || '').split(',').map(Number);
+    const VIEW_ALL = () => (camQ.length === 6 && camQ.every(Number.isFinite) ? { pos: camQ.slice(0, 3), tgt: camQ.slice(3) }
+      : narrow ? { pos: [0, 28.5, 16], tgt: [0, 0, -0.9] } : { pos: [0, 14.2, 19.8], tgt: [0, 0.4, -0.9] });
+    function boardView() {
+      // 正對看板，依畫面比例自動決定距離，讓整面螢幕完整入鏡
+      const vf = THREE.MathUtils.degToRad(camera.fov), asp = camera.aspect || 1.6;
+      const hf = 2 * Math.atan(Math.tan(vf / 2) * asp);
+      const dist = Math.max((BOARD.h * 1.12 / 2) / Math.tan(vf / 2), (BOARD.w * 1.08 / 2) / Math.tan(hf / 2));
+      return { pos: [BOARD.x, BOARD.y, BOARD.z + dist], tgt: [BOARD.x, BOARD.y, BOARD.z] };
+    }
+    function setView(v) { camera.position.set(...v.pos); controls.target.set(...v.tgt); camera.updateProjectionMatrix(); controls.update(); }
     function resize() {
       const w = el.clientWidth, h = el.clientHeight;
       renderer.setSize(w, h, false);
       renderer.domElement.style.width = '100%'; renderer.domElement.style.height = '100%';
       camera.aspect = w / h;
-      if (!resize.done) {
-        const narrow = w / h < 1;
-        if (narrow) camera.position.set(0, 19.5, 18.2); else camera.position.set(0, 13.6, 18.2);
-        resize.done = true;
-      }
+      const wasNarrow = narrow; narrow = w / h < 1;
+      camera.fov = narrow ? 46 : 40;
       camera.updateProjectionMatrix();
+      if (!resize.done) { resize.done = true; setView(mode === 'board' ? boardView() : VIEW_ALL()); }
+      else if (mode === 'board' && !fly) setView(boardView());
+      if (wasNarrow !== narrow) update();
     }
+    let mode = new URLSearchParams(location.search).get('look') === 'board' ? 'board' : 'all';
+    let fly = null;
+    const boardCenter = new THREE.Vector3(BOARD.x, BOARD.y, BOARD.z);
     new ResizeObserver(resize).observe(el); resize();
-    const look = new URLSearchParams(location.search).get('look');
-    if (look === 'leftpod') { camera.position.set(-12.2, 5.8, 3.8); controls.target.set(-8.15, 0.55, -1.0); camera.updateProjectionMatrix(); }
-    else if (look === 'board') { camera.position.set(6.75, 1.75, 1.2); controls.target.set(8.235, 1.42, -1.746); camera.updateProjectionMatrix(); }
-    else if (look === 'rightpod') { camera.position.set(12.2, 5.8, 3.8); controls.target.set(8.15, 0.55, -1.0); camera.updateProjectionMatrix(); }
 
-
-    let userMoved = false;
+    let userMoved = mode === 'board';
     const stopSpin = () => { userMoved = true; controls.autoRotate = false; };
     renderer.domElement.addEventListener('pointerdown', stopSpin);
     renderer.domElement.addEventListener('wheel', stopSpin, { passive: true });
     renderer.domElement.addEventListener('touchstart', stopSpin, { passive: true });
-    setTimeout(() => { if (!userMoved) controls.autoRotate = true; }, 5000);
+    setTimeout(() => { if (!userMoved && mode === 'all') controls.autoRotate = true; }, 8000);
 
     const ray = new THREE.Raycaster(), v = new THREE.Vector2();
-    const targets = desks.flatMap((d) => d.hits);
+    const targets = [...desks.flatMap((d) => d.hits), coreTop, glow, halo, coreSpr];
     let down = null;
     renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
     renderer.domElement.addEventListener('pointerup', (e) => {
@@ -1223,34 +1187,81 @@ async function initBuilding() {
       v.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(v, camera);
       const hit = ray.intersectObjects(targets)[0];
-      if (hit) showDetail(hit.object.userData.id);
+      if (hit && hit.object.userData.id) showDetail(hit.object.userData.id);
     });
-    (function loop(t) {
-      if (building && building.flyStep) building.flyStep(performance.now());
-      controls.update();
-      const sec = t * 0.001;
-      for (const p of plants) p.g.rotation.z = Math.sin(sec * 1.15 + p.phase) * p.amp;
+    // 名牌防重疊：依螢幕座標由近到遠排位，較遠者向上讓開（每格重新計算，不累積）
+    const pv = new THREE.Vector3(), pv2 = new THREE.Vector3(), pv3 = new THREE.Vector3();
+    function rectOf(spr, fill) {
+      pv.copy(spr.position).project(camera);
+      const Wd = el.clientWidth, Ht = el.clientHeight;
+      const dist = camera.position.distanceTo(spr.position);
+      const ppu = Ht / (2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+      return { x: (pv.x + 1) / 2 * Wd, y: (1 - pv.y) / 2 * Ht, w: spr.scale.x * ppu * 0.96, h: spr.scale.y * ppu * fill, ppu, dist, front: pv.z < 1 };
+    }
+    let spritesShown = true;
+    function showSprites(on) {
+      if (on === spritesShown) return; spritesShown = on;
+      for (const d of desks) d.label.spr.visible = on;
+      coreSpr.visible = meetSpr.visible = on; for (const sg of signs) sg.visible = on;
+    }
+    function declutter() {
+      // 看板模式：隱藏所有名牌，避免擋住正面螢幕
+      showSprites(!(mode === 'board' && (!fly || performance.now() - fly.t0 > 500)));
+      if (!spritesShown) return;
+      const fixed = [rectOf(coreSpr, 0.85), rectOf(meetSpr, 0.85), ...signs.map((sg) => rectOf(sg, 0.9))];
+      // 拉近時名牌不無限放大：螢幕寬度上限約 300 像素
       for (const d of desks) {
-        d.lamp.material.emissiveIntensity = d.busyPulse ? 0.5 + Math.sin(sec * 3.2) * 0.4 : 0.18;
-        poseAvatar(d, sec);
+        const b = d.label.base; if (!b) continue;
+        const dist = camera.position.distanceTo(d.label.spr.position);
+        const ppu = el.clientHeight / (2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+        const k = Math.min(1, 300 / (b[0] * ppu));
+        d.label.spr.scale.set(b[0] * k, b[1] * k, 1);
       }
+      const items = desks.map((d) => ({ d, r: rectOf(d.label.spr, d.label.fill || 0.7) })).filter((o) => o.r.front).sort((a, b) => a.r.dist - b.r.dist);
+      const placed = [...fixed];
+      const hit = (a, b) => Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2;
+      const right = pv2.setFromMatrixColumn(camera.matrixWorld, 0), up = pv3.setFromMatrixColumn(camera.matrixWorld, 1);
+      const Wd = el.clientWidth;
+      for (const o of items) {
+        const r = o.r, y0 = r.y, x0 = r.x;
+        // 水平夾在畫面內，避免名牌被裁切
+        r.x = Math.min(Math.max(r.x, r.w / 2 + 4), Wd - r.w / 2 - 4);
+        if (r.x !== x0) o.d.label.spr.position.addScaledVector(right, (r.x - x0) / r.ppu);
+        for (let pass = 0; pass < 6; pass++) {
+          const c = placed.find((q) => hit(r, q));
+          if (!c) break;
+          r.y = c.y - (c.h + r.h) / 2 - 3;
+        }
+        placed.push(r);
+        if (r.y !== y0) o.d.label.spr.position.addScaledVector(up, (y0 - r.y) / r.ppu);
+      }
+    }
+    function flyTo(vw) { fly = { t0: performance.now(), from: camera.position.clone(), to: new THREE.Vector3(...vw.pos), tf: controls.target.clone(), tt: new THREE.Vector3(...vw.tgt) }; }
+    function focusBoard() { mode = 'board'; stopSpin(); flyTo(boardView()); }
+    function focusAll() { mode = 'all'; flyTo(VIEW_ALL()); }
+    (function loop(t) {
+      const now = performance.now(), sec = t * 0.001;
+      if (fly) { const k = Math.min(1, (now - fly.t0) / 1300), e = k * k * (3 - 2 * k); camera.position.lerpVectors(fly.from, fly.to, e); controls.target.lerpVectors(fly.tf, fly.tt, e); if (k >= 1) fly = null; }
+      controls.update();
+      // 看板模式：把近裁切面推到看板前，前景桌椅不會擋住螢幕（手機直式距離較遠時特別需要）
+      const nearWant = mode === 'board' && !fly ? Math.max(0.1, camera.position.distanceTo(boardCenter) - 0.9) : 0.1;
+      if (Math.abs(camera.near - nearWant) > 0.01) { camera.near = nearWant; camera.updateProjectionMatrix(); }
+      coreTop.rotation.z = sec * 0.12;
+      const st = louisState();
+      const pulse = 0.5 + Math.sin(sec * 2.2) * 0.5;
+      glowMat.opacity = st === 'active' ? 0.35 + pulse * 0.4 : 0;
+      haloMat.emissiveIntensity = st === 'active' ? 0.6 + pulse * 0.8 : st === 'idle' ? 0.05 : 0.0;
+      haloMat.color.setHex(st === 'active' ? JADE : 0x8a8478);
+      for (const b of bamboos) b.g.rotation.z = Math.sin(sec * 0.8 + b.ph) * 0.012;
+      for (const d of desks) { poseAvatar(d, sec); if (d.working) d.lamp.material.emissiveIntensity = 0.8 + Math.sin(sec * 2.6 + d.phase) * 0.25; }
+      declutter();
       renderer.render(scene, camera);
       requestAnimationFrame(loop);
     })(0);
-    let fly = null;
-    function focusBoard() {
-      fly = { t0: performance.now(), from: camera.position.clone(), to: new THREE.Vector3(6.75, 1.75, 1.2), tf: controls.target.clone(), tt: new THREE.Vector3(8.235, 1.42, -1.746) };
-      stopSpin();
-    }
-    function focusAll() {
-      fly = { t0: performance.now(), from: camera.position.clone(), to: new THREE.Vector3(0, 13.6, 18.2), tf: controls.target.clone(), tt: new THREE.Vector3(0, 0.5, -0.8) };
-    }
-    building = { update, select, focusBoard, focusAll, flyStep: (now) => {
-      if (!fly) return; const k = Math.min(1, (now - fly.t0) / 1200), e = k * k * (3 - 2 * k);
-      camera.position.lerpVectors(fly.from, fly.to, e); controls.target.lerpVectors(fly.tf, fly.tt, e); if (k >= 1) fly = null;
-    } };
+    building = { update, select, focusBoard, focusAll };
     update();
   } catch (e) {
+    console.error(e);
     el.innerHTML = '<p class="empty" style="padding:24px;text-align:center">三維畫面無法載入，下方清單仍可正常查看</p>';
   }
 }
