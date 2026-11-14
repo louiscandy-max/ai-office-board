@@ -82,9 +82,8 @@ function showDetail(id) {
   const f = FLOORS.find((x) => x.id === id);
   if (!f) return;
   const p = person(id);
-  const idx = FLOORS.indexOf(f);
   $('#detail').dataset.id = id;
-  $('#detail-title').textContent = `${FLOORS.length - idx} 樓｜${f.name}`;
+  $('#detail-title').textContent = f.name;
   const list = (items, fn) => (items.length ? `<ul>${items.map(fn).join('')}</ul>` : emptyLine);
   $('#detail-body').innerHTML = `
     <h3>正在做</h3>${list(arr(p, 'doing'), (x) => `<li>${val(x.text)}${timeTag(x.since)}</li>`)}
@@ -148,7 +147,7 @@ $('#refresh').addEventListener('click', load);
 $('#lock').addEventListener('click', () => { localStorage.removeItem(LS_KEY); sessionStorage.removeItem(LS_KEY); location.reload(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load(); });
 
-// ---------- 三維辦公樓 ----------
+// ---------- 三維開放式辦公室（所有人同一層） ----------
 async function initBuilding() {
   const el = $('#building');
   try {
@@ -158,89 +157,107 @@ async function initBuilding() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.enablePan = false;
-    controls.minDistance = 9; controls.maxDistance = 40;
-    controls.maxPolarAngle = Math.PI * 0.55;
-    scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x0b1220, 1.1));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(8, 16, 10); scene.add(sun);
+    controls.minDistance = 7; controls.maxDistance = 40;
+    controls.maxPolarAngle = Math.PI * 0.45;
+    scene.add(new THREE.HemisphereLight(0xdfeaff, 0x0b1220, 1.2));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(6, 14, 8); scene.add(sun);
+    const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
+    const box = (w, h, d, mat, x, y, z, parent) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); parent.add(m); return m; };
 
-    const H = 1.0, W = 5.2, D = 3.6, N = FLOORS.length;
-    const ground = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 0.2, 48), new THREE.MeshStandardMaterial({ color: 0x18233a }));
-    ground.position.y = -0.1; scene.add(ground);
-    const floors = [];
+    // 樓板與隔間線
+    const narrow = el.clientWidth < 600;
+    const COLS = narrow ? 2 : 4, ROWS = Math.ceil(FLOORS.length / COLS), SX = narrow ? 3.6 : 3.4, SZ = narrow ? 3.6 : 4.0;
+    const FW = COLS * SX + 1.2, FD = ROWS * SZ + 1.2;
+    box(FW, 0.2, FD, M(0x1c2842), 0, -0.1, 0, scene);
+    const grid = new THREE.GridHelper(Math.max(FW, FD), 16, 0x2f4166, 0x24324d); grid.position.y = 0.01; scene.add(grid);
+    box(FW, 1.2, 0.08, M(0x2a3a5a, { transparent: true, opacity: 0.6 }), 0, 0.6, -FD / 2, scene);
+
+    const desks = [];
     FLOORS.forEach((f, i) => {
-      const level = N - 1 - i;
-      const g = new THREE.Group(); g.position.y = level * H + H / 2;
-      const mat = new THREE.MeshStandardMaterial({ color: f.color, transparent: true, opacity: 0.55, roughness: 0.2, metalness: 0.3, emissive: f.color, emissiveIntensity: 0.05 });
-      const box = new THREE.Mesh(new THREE.BoxGeometry(W, H * 0.92, D), mat);
-      box.userData.id = f.id;
-      g.add(box);
-      g.add(new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 })));
-      const slab = new THREE.Mesh(new THREE.BoxGeometry(W + 0.2, 0.06, D + 0.2), new THREE.MeshStandardMaterial({ color: 0x2a3a5a }));
-      slab.position.y = -H / 2; g.add(slab);
-      // 標籤
-      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 160;
+      const col = i % COLS, row = Math.floor(i / COLS);
+      const g = new THREE.Group();
+      g.position.set((col - (COLS - 1) / 2) * SX, 0, (row - (ROWS - 1) / 2) * SZ);
+      // 座位區地墊（可點選）
+      const zoneMat = M(f.color, { transparent: true, opacity: 0.25, emissive: f.color, emissiveIntensity: 0.05 });
+      const zone = box(SX - 0.4, 0.04, SZ - 0.6, zoneMat, 0, 0.03, 0, g);
+      // 桌子
+      const top = box(1.9, 0.08, 0.9, M(0xd9c7a8), 0, 0.75, -0.3, g);
+      for (const [x, z] of [[-0.85, -0.65], [0.85, -0.65], [-0.85, 0.05], [0.85, 0.05]]) box(0.06, 0.72, 0.06, M(0x555f73), x, 0.36, z, g);
+      // 螢幕
+      const scr = M(0x0e1a2e, { emissive: f.color, emissiveIntensity: 0.15 });
+      box(0.9, 0.55, 0.05, scr, 0, 1.12, -0.6, g); box(0.08, 0.25, 0.08, M(0x555f73), 0, 0.88, -0.6, g);
+      // 椅子與人
+      box(0.55, 0.08, 0.55, M(0x34405a), 0, 0.48, 0.55, g); box(0.55, 0.6, 0.08, M(0x34405a), 0, 0.8, 0.82, g);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.6, 16), M(f.color)); body.position.set(0, 0.82, 0.5); g.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 16), M(0xf1d3b3)); head.position.set(0, 1.28, 0.5); g.add(head);
+      // 名牌
+      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 220;
       const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
       const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-      spr.scale.set(6.4, 1.0, 1); spr.position.set(0, 0, D / 2 + 0.6); spr.renderOrder = 10;
-      g.add(spr);
+      spr.scale.set(3.2, 0.69, 1); spr.position.set(0, 2.3, 0); spr.renderOrder = 10; g.add(spr);
+      const hits = [zone, top, body, head, spr];
+      hits.forEach((m) => { m.userData.id = f.id; });
       scene.add(g);
-      floors.push({ f, level, box, mat, cv, tex });
+      desks.push({ f, zoneMat, scr, cv, tex, hits });
     });
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(W + 0.3, 0.15, D + 0.3), new THREE.MeshStandardMaterial({ color: 0x2a3a5a }));
-    roof.position.y = N * H + 0.05; scene.add(roof);
 
-    function drawLabel(fl, selected) {
-      const p = person(fl.f.id);
-      const c = fl.cv.getContext('2d');
-      c.clearRect(0, 0, 1024, 160);
-      c.fillStyle = selected ? 'rgba(90,169,255,.95)' : 'rgba(11,18,32,.82)';
-      c.beginPath(); c.roundRect(4, 4, 1016, 152, 24); c.fill();
+    function fitText(c, text, max, size, weight) {
+      let s = size;
+      do { c.font = `${weight} ${s}px "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif`; s -= 2; } while (c.measureText(text).width > max && s > 20);
+    }
+    function drawLabel(d, selected) {
+      const p = person(d.f.id);
+      const c = d.cv.getContext('2d');
+      c.clearRect(0, 0, 1024, 220);
+      c.fillStyle = selected ? 'rgba(90,169,255,.96)' : 'rgba(11,18,32,.86)';
+      c.beginPath(); c.roundRect(4, 4, 1016, 212, 28); c.fill();
+      c.textAlign = 'center';
       c.fillStyle = selected ? '#04121f' : '#ffffff';
-      c.font = 'bold 50px "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif';
-      c.fillText(`${N - FLOORS.indexOf(fl.f)}F　${fl.f.name}`, 30, 68);
-      c.font = '40px "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif';
-      c.fillStyle = selected ? '#04121f' : '#b8c7e0';
+      fitText(c, d.f.name, 980, 76, 'bold'); c.fillText(d.f.name, 512, 92);
       let sub = NO_DATA;
       if (p) {
-        const prog = arr(p, 'tasks').filter((t) => t.status === 'in_progress').length;
-        const w = arr(p, 'waiting_on_louis').length;
-        const d = arr(p, 'doing').length;
-        sub = (d || prog || w || arr(p, 'tasks').length) ? `正在做 ${d}｜進行中 ${prog}｜等我 ${w}` : NO_DATA;
+        const dn = arr(p, 'doing').length, prog = arr(p, 'tasks').filter((t) => t.status === 'in_progress').length, w = arr(p, 'waiting_on_louis').length;
+        if (dn || prog || w || arr(p, 'tasks').length) sub = `正在做 ${dn}｜進行中 ${prog}｜等我 ${w}`;
       }
-      c.fillText(sub, 30, 128);
-      fl.tex.needsUpdate = true;
+      c.fillStyle = selected ? '#04121f' : '#b8c7e0';
+      fitText(c, sub, 980, 60, 'normal'); c.fillText(sub, 512, 178);
+      d.tex.needsUpdate = true;
     }
     let selected = null;
     function update() {
-      for (const fl of floors) {
-        const p = person(fl.f.id);
+      for (const d of desks) {
+        const p = person(d.f.id);
         const busy = p && (arr(p, 'doing').length || arr(p, 'tasks').some((t) => t.status === 'in_progress'));
         const waiting = p && arr(p, 'waiting_on_louis').length;
-        fl.mat.emissiveIntensity = fl.f.id === selected ? 0.9 : waiting ? 0.5 : busy ? 0.3 : 0.05;
-        fl.mat.opacity = p ? 0.7 : 0.35;
-        drawLabel(fl, fl.f.id === selected);
+        const on = d.f.id === selected;
+        d.zoneMat.emissiveIntensity = on ? 0.9 : waiting ? 0.5 : busy ? 0.3 : 0.05;
+        d.zoneMat.opacity = on ? 0.6 : p ? 0.35 : 0.15;
+        d.scr.emissiveIntensity = busy ? 0.8 : 0.1;
+        drawLabel(d, on);
       }
     }
     function select(id) { selected = id; update(); }
 
-    const center = new THREE.Vector3(0, N * H / 2, 0);
-    controls.target.copy(center);
+    controls.target.set(0, 0.6, 0);
     function resize() {
       const w = el.clientWidth, h = el.clientHeight;
       renderer.setSize(w, h, false);
       renderer.domElement.style.width = '100%'; renderer.domElement.style.height = '100%';
       camera.aspect = w / h;
-      const dist = w < 600 ? 19 : 15;
-      if (!resize.done) { camera.position.set(dist * 0.55, N * H * 0.75, dist); resize.done = true; }
+      if (!resize.done) {
+        if (narrow) camera.position.set(0, 17, 11); else camera.position.set(0, 10, 13.5);
+        resize.done = true;
+      }
       camera.updateProjectionMatrix();
     }
     new ResizeObserver(resize).observe(el); resize();
 
-    // 點選樓層（區分拖曳與點擊）
+    // 點選座位（區分拖曳與點擊）
     const ray = new THREE.Raycaster(), v = new THREE.Vector2();
+    const targets = desks.flatMap((d) => d.hits);
     let down = null;
     renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
     renderer.domElement.addEventListener('pointerup', (e) => {
@@ -249,7 +266,7 @@ async function initBuilding() {
       const r = renderer.domElement.getBoundingClientRect();
       v.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(v, camera);
-      const hit = ray.intersectObjects(floors.map((x) => x.box))[0];
+      const hit = ray.intersectObjects(targets)[0];
       if (hit) showDetail(hit.object.userData.id);
     });
     (function loop() { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); })();
