@@ -7,7 +7,7 @@ const FLOORS = [
   { id: 'cpo', name: 'CPO Ai（採購長）', color: 0x6fcf6f },
   { id: 'fpa', name: 'Sr. FP&A Analyst Ai（財務規劃）', color: 0xf5b544 },
   { id: 'ia',  name: 'Sr. IA Ai（投資分析師）', color: 0xff8f5a },
-  { id: 'air', name: 'Air 特殊小組（Admin／Kobe／Fly）', color: 0xff6b9a },
+  { id: 'air', name: 'Air 特殊小組', color: 0xff6b9a },
 ];
 const NO_DATA = '暫無數據';
 const STATUS_TEXT = { done: '已完成', in_progress: '進行中', pending: '待處理' };
