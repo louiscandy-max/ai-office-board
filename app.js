@@ -147,7 +147,15 @@ $('#refresh').addEventListener('click', load);
 $('#lock').addEventListener('click', () => { localStorage.removeItem(LS_KEY); sessionStorage.removeItem(LS_KEY); location.reload(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load(); });
 
-// ---------- 三維開放式辦公室（所有人同一層） ----------
+// ---------- 三維辦公室（同一層，依組織架構配置） ----------
+// 前方中央：總經理室；左半：個人區（Sr. PA Ai 帶領）；右半：公司區（CoS Ai 帶領）；中央走道分隔公私。
+const LAYOUT = {
+  pa:  { x: -3.4, z: 1.6, lead: true },
+  ia:  { x: -4.7, z: -2.4 }, air: { x: -2.1, z: -2.4 },
+  cos: { x: 3.4, z: 1.6, lead: true },
+  clo: { x: 2.1, z: -2.4 }, cto: { x: 4.7, z: -2.4 },
+  cpo: { x: 2.1, z: -6.0 }, fpa: { x: 4.7, z: -6.0 },
+};
 async function initBuilding() {
   const el = $('#building');
   try {
@@ -160,70 +168,113 @@ async function initBuilding() {
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.enablePan = false;
-    controls.minDistance = 7; controls.maxDistance = 40;
+    controls.minDistance = 7; controls.maxDistance = 45;
     controls.maxPolarAngle = Math.PI * 0.45;
     scene.add(new THREE.HemisphereLight(0xdfeaff, 0x0b1220, 1.2));
     const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(6, 14, 8); scene.add(sun);
     const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
     const box = (w, h, d, mat, x, y, z, parent) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); parent.add(m); return m; };
+    const FONT = '"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif';
+    function fitText(c, text, max, size, weight) {
+      let s = size;
+      do { c.font = `${weight} ${s}px ${FONT}`; s -= 2; } while (c.measureText(text).width > max && s > 18);
+    }
+    // 平放在地上的文字
+    function floorText(text, x, z, w, color) {
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
+      const c = cv.getContext('2d'); c.fillStyle = color; c.textAlign = 'center'; c.textBaseline = 'middle';
+      fitText(c, text, 500, 96, 'bold'); c.fillText(text, 256, 64);
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w / 4), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2; m.position.set(x, 0.03, z); scene.add(m);
+    }
 
-    // 樓板與隔間線
-    const narrow = el.clientWidth < 600;
-    const COLS = narrow ? 2 : 4, ROWS = Math.ceil(FLOORS.length / COLS), SX = narrow ? 3.6 : 3.4, SZ = narrow ? 3.6 : 4.0;
-    const FW = COLS * SX + 1.2, FD = ROWS * SZ + 1.2;
-    box(FW, 0.2, FD, M(0x1c2842), 0, -0.1, 0, scene);
-    const grid = new THREE.GridHelper(Math.max(FW, FD), 16, 0x2f4166, 0x24324d); grid.position.y = 0.01; scene.add(grid);
-    box(FW, 1.2, 0.08, M(0x2a3a5a, { transparent: true, opacity: 0.6 }), 0, 0.6, -FD / 2, scene);
+    // 樓板、兩區與中央走道
+    const FW = 13, FD = 15, Z0 = -1.3; // 樓板中心 z
+    box(FW, 0.2, FD, M(0x1c2842), 0, -0.1, Z0, scene);
+    box(5.6, 0.02, 12.6, M(0x5aa9ff, { transparent: true, opacity: 0.10 }), -3.4, 0.01, -1.1, scene); // 個人區
+    box(5.6, 0.02, 12.6, M(0x8b7bff, { transparent: true, opacity: 0.10 }), 3.4, 0.01, -1.1, scene);  // 公司區
+    box(1.0, 0.025, 13.4, M(0x3a4a6a), 0, 0.015, Z0 - 0.2, scene); // 走道
+    for (const z of [-7, -5, -3, -1, 1, 3, 5]) box(0.12, 0.03, 0.8, M(0xf5d76e), 0, 0.03, z, scene); // 走道標線
+    floorText('個人區', -4.3, 4.2, 2.6, 'rgba(140,190,255,.9)');
+    floorText('公司區', 4.3, 4.2, 2.6, 'rgba(180,170,255,.9)');
+    floorText('走道', 0, -7.4, 1.0, 'rgba(245,215,110,.9)');
 
-    const desks = [];
-    FLOORS.forEach((f, i) => {
-      const col = i % COLS, row = Math.floor(i / COLS);
-      const g = new THREE.Group();
-      g.position.set((col - (COLS - 1) / 2) * SX, 0, (row - (ROWS - 1) / 2) * SZ);
-      // 座位區地墊（可點選）
-      const zoneMat = M(f.color, { transparent: true, opacity: 0.25, emissive: f.color, emissiveIntensity: 0.05 });
-      const zone = box(SX - 0.4, 0.04, SZ - 0.6, zoneMat, 0, 0.03, 0, g);
-      // 桌子
-      const top = box(1.9, 0.08, 0.9, M(0xd9c7a8), 0, 0.75, -0.3, g);
-      for (const [x, z] of [[-0.85, -0.65], [0.85, -0.65], [-0.85, 0.05], [0.85, 0.05]]) box(0.06, 0.72, 0.06, M(0x555f73), x, 0.36, z, g);
-      // 螢幕
-      const scr = M(0x0e1a2e, { emissive: f.color, emissiveIntensity: 0.15 });
-      box(0.9, 0.55, 0.05, scr, 0, 1.12, -0.6, g); box(0.08, 0.25, 0.08, M(0x555f73), 0, 0.88, -0.6, g);
-      // 椅子與人
-      box(0.55, 0.08, 0.55, M(0x34405a), 0, 0.48, 0.55, g); box(0.55, 0.6, 0.08, M(0x34405a), 0, 0.8, 0.82, g);
-      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.6, 16), M(f.color)); body.position.set(0, 0.82, 0.5); g.add(body);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 16), M(0xf1d3b3)); head.position.set(0, 1.28, 0.5); g.add(head);
-      // 名牌
-      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 220;
+    // 總經理室（玻璃隔間，不可點選、不顯示資料）
+    const office = new THREE.Group(); office.position.set(0, 0, 5.4); scene.add(office);
+    const glass = M(0xaed8ff, { transparent: true, opacity: 0.18, roughness: 0.05, metalness: 0.1, depthWrite: false });
+    box(4.4, 1.4, 0.05, glass, 0, 0.7, -1.1, office); box(0.05, 1.4, 2.2, glass, -2.2, 0.7, 0, office); box(0.05, 1.4, 2.2, glass, 2.2, 0.7, 0, office);
+    box(1.6, 1.4, 0.05, glass, -1.4, 0.7, 1.1, office); box(1.6, 1.4, 0.05, glass, 1.4, 0.7, 1.1, office);
+    const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(4.4, 1.4, 2.2)), new THREE.LineBasicMaterial({ color: 0xcfe3ff, transparent: true, opacity: 0.5 }));
+    frame.position.y = 0.7; office.add(frame);
+    box(4.3, 0.03, 2.1, M(0x2e3d5c), 0, 0.02, 0, office);
+    box(1.8, 0.08, 0.8, M(0x8a6a4a), 0, 0.75, -0.2, office); box(0.6, 0.8, 0.6, M(0x34405a), 0, 0.4, 0.45, office);
+    {
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 120;
+      const c = cv.getContext('2d'); c.fillStyle = 'rgba(245,215,110,.95)'; c.beginPath(); c.roundRect(4, 4, 504, 112, 24); c.fill();
+      c.fillStyle = '#1a1406'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, '總經理室（Louis）', 480, 60, 'bold'); c.fillText('總經理室（Louis）', 256, 62);
       const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
       const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-      spr.scale.set(3.2, 0.69, 1); spr.position.set(0, 2.3, 0); spr.renderOrder = 10; g.add(spr);
+      spr.scale.set(2.6, 0.61, 1); spr.position.set(0, 2.0, 0); spr.renderOrder = 10; office.add(spr);
+    }
+
+    // 帶領者到組員的地面連線
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x9fb4d8, transparent: true, opacity: 0.45 });
+    for (const [lead, team] of [['pa', ['ia', 'air']], ['cos', ['clo', 'cto', 'cpo', 'fpa']]]) {
+      const a = LAYOUT[lead];
+      for (const t of team) {
+        const b = LAYOUT[t];
+        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a.x, 0.04, a.z), new THREE.Vector3(b.x, 0.04, b.z)]), lineMat));
+      }
+    }
+
+    // 座位
+    const desks = [];
+    FLOORS.forEach((f) => {
+      const L = LAYOUT[f.id]; if (!L) return;
+      const g = new THREE.Group(); g.position.set(L.x, 0, L.z);
+      const k = L.lead ? 1.25 : 1;
+      const inner = new THREE.Group(); inner.scale.set(k, k, k); g.add(inner);
+      const zoneMat = M(f.color, { transparent: true, opacity: 0.25, emissive: f.color, emissiveIntensity: 0.05 });
+      const zone = box(2.2, 0.04, 2.6, zoneMat, 0, 0.03, 0, inner);
+      const top = box(1.7, 0.08, 0.8, M(L.lead ? 0xe6d2ae : 0xd9c7a8), 0, 0.75, 0.3, inner);
+      for (const [x, z] of [[-0.75, -0.05], [0.75, -0.05], [-0.75, 0.65], [0.75, 0.65]]) box(0.06, 0.72, 0.06, M(0x555f73), x, 0.36, z, inner);
+      // 面向前方（總經理室方向），螢幕在桌子前緣、人在桌後
+      const scr = M(0x0e1a2e, { emissive: f.color, emissiveIntensity: 0.15 });
+      box(0.8, 0.5, 0.05, scr, 0, 1.1, 0.6, inner); box(0.08, 0.25, 0.08, M(0x555f73), 0, 0.88, 0.6, inner);
+      box(0.5, 0.08, 0.5, M(0x34405a), 0, 0.48, -0.5, inner); box(0.5, 0.55, 0.08, M(0x34405a), 0, 0.78, -0.76, inner);
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.23, 0.55, 16), M(f.color)); body.position.set(0, 0.8, -0.45); inner.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), M(0xf1d3b3)); head.position.set(0, 1.24, -0.45); inner.add(head);
+      // 名牌：三行（名稱／職稱／狀態），窄版避免手機上互相重疊
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 300;
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+      spr.scale.set(2.3, 1.35, 1); spr.position.set(0, 2.3 * k, 0); spr.renderOrder = 10; g.add(spr);
       const hits = [zone, top, body, head, spr];
       hits.forEach((m) => { m.userData.id = f.id; });
       scene.add(g);
       desks.push({ f, zoneMat, scr, cv, tex, hits });
     });
 
-    function fitText(c, text, max, size, weight) {
-      let s = size;
-      do { c.font = `${weight} ${s}px "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif`; s -= 2; } while (c.measureText(text).width > max && s > 20);
-    }
     function drawLabel(d, selected) {
       const p = person(d.f.id);
       const c = d.cv.getContext('2d');
-      c.clearRect(0, 0, 1024, 220);
-      c.fillStyle = selected ? 'rgba(90,169,255,.96)' : 'rgba(11,18,32,.86)';
-      c.beginPath(); c.roundRect(4, 4, 1016, 212, 28); c.fill();
-      c.textAlign = 'center';
+      c.clearRect(0, 0, 512, 300);
+      c.fillStyle = selected ? 'rgba(90,169,255,.96)' : 'rgba(11,18,32,.88)';
+      c.beginPath(); c.roundRect(4, 4, 504, 292, 26); c.fill();
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      const m = d.f.name.match(/^(.*?)（(.*)）$/);
+      const name = m ? m[1] : d.f.name, role = m ? m[2] : '';
       c.fillStyle = selected ? '#04121f' : '#ffffff';
-      fitText(c, d.f.name, 980, 76, 'bold'); c.fillText(d.f.name, 512, 92);
+      fitText(c, name, 480, 76, 'bold'); c.fillText(name, 256, role ? 66 : 100);
+      if (role) { c.fillStyle = selected ? '#04121f' : '#cfe0ff'; fitText(c, role, 480, 54, 'normal'); c.fillText(role, 256, 140); }
       let sub = NO_DATA;
       if (p) {
         const dn = arr(p, 'doing').length, prog = arr(p, 'tasks').filter((t) => t.status === 'in_progress').length, w = arr(p, 'waiting_on_louis').length;
         if (dn || prog || w || arr(p, 'tasks').length) sub = `正在做 ${dn}｜進行中 ${prog}｜等我 ${w}`;
       }
-      c.fillStyle = selected ? '#04121f' : '#b8c7e0';
-      fitText(c, sub, 980, 60, 'normal'); c.fillText(sub, 512, 178);
+      c.fillStyle = selected ? '#04121f' : (sub === NO_DATA ? '#8fa1bf' : '#f5d76e');
+      fitText(c, sub, 480, 46, 'normal'); c.fillText(sub, 256, 226);
       d.tex.needsUpdate = true;
     }
     let selected = null;
@@ -241,14 +292,16 @@ async function initBuilding() {
     }
     function select(id) { selected = id; update(); }
 
-    controls.target.set(0, 0.6, 0);
+    controls.target.set(0, 0.5, -0.6);
     function resize() {
       const w = el.clientWidth, h = el.clientHeight;
       renderer.setSize(w, h, false);
       renderer.domElement.style.width = '100%'; renderer.domElement.style.height = '100%';
       camera.aspect = w / h;
       if (!resize.done) {
-        if (narrow) camera.position.set(0, 17, 11); else camera.position.set(0, 10, 13.5);
+        // 手機：較高、較俯視的視角，讓兩區與名牌都在畫面內且不重疊
+        const narrow = w / h < 1;
+        if (narrow) camera.position.set(0, 21, 8.5); else camera.position.set(0, 16, 11.5);
         resize.done = true;
       }
       camera.updateProjectionMatrix();
