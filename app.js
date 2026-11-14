@@ -1,5 +1,6 @@
 // AI 辦公樓看板：前端只讀取加密資料檔 data.enc.json，於瀏覽器端以通關密語解密。
 const FLOORS = [
+  { id: 'louis', name: 'Louis（總經理）', color: 0x3d5a8c },
   { id: 'pa',  name: 'Sr. PA Ai（私人資深特助）', color: 0x4285F4 },
   { id: 'cos', name: 'CoS Ai（幕僚長）', color: 0x76B900 },
   { id: 'clo', name: 'CLO Ai（法務）', color: 0x5aa86a },
@@ -24,7 +25,10 @@ const $ = (s) => document.querySelector(s);
 
 let people = null;
 let encCache = null;
+let liveEncCache = null;
 let building = null;
+let meetings = [];
+let louisActive = null;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const has = (v) => v !== undefined && v !== null && String(v).trim() !== '';
@@ -80,15 +84,68 @@ function hashId(id) {
   return h;
 }
 
-function progressHtml(p) {
-  if (people && p && !isWorking(p)) return `<h3>目前</h3><p class="status-rest">休息中</p>`;
-  if (!isWorking(p)) return '';
+function parseMeetings(raw) {
+  if (!Array.isArray(raw)) return [];
+  const known = new Set(FLOORS.map((f) => f.id));
+  const out = [];
+  for (const m of raw) {
+    if (!m || !has(m.id) || !has(m.title)) continue;
+    const pod = m.pod === 'left' || m.pod === 'right' ? m.pod : 'right';
+    const members = [];
+    const seen = new Set();
+    for (const id of Array.isArray(m.members) ? m.members : []) {
+      if (!known.has(id) || seen.has(id)) continue;
+      seen.add(id); members.push(id);
+    }
+    if (members.length < 2) continue;
+    out.push({ id: String(m.id), pod, title: String(m.title).trim(), members, since: has(m.since) ? String(m.since) : '', source: has(m.source) ? String(m.source) : '' });
+  }
+  return out;
+}
+function parseLouisActive(raw) {
+  if (!raw || typeof raw !== 'object' || typeof raw.active !== 'boolean') return null;
+  const o = { active: raw.active };
+  if (has(raw.last_seen)) o.last_seen = String(raw.last_seen);
+  if (has(raw.source)) o.source = String(raw.source);
+  return o;
+}
+function meetingOf(id) {
+  if (!id) return null;
+  return meetings.find((m) => m.members.includes(id)) || null;
+}
+function louisState() {
+  if (!people || !louisActive || typeof louisActive.active !== 'boolean') return 'unknown';
+  return louisActive.active ? 'active' : 'idle';
+}
+function showProgressBar(id, p) {
+  if (id === 'louis') return progressOf(p).value != null;
+  return isWorking(p);
+}
+function progressBlock(p) {
   const pr = progressOf(p);
   if (pr.value == null) {
     return `<h3>進度</h3><div class="prog-wrap prog-unknown" role="img" aria-label="進度暫無數據"></div><p class="prog-label">進度暫無數據</p>`;
   }
   const note = pr.source === 'tasks' ? `（任務 ${pr.done}／${pr.total} 已完成）` : '';
   return `<h3>進度</h3><div class="prog-wrap" role="img" aria-label="進度 ${pr.value}%"><div class="prog-fill" style="width:${pr.value}%"></div></div><p class="prog-label">${pr.value}%${note}</p>`;
+}
+function statusHtml(id) {
+  const p = person(id);
+  const meet = meetingOf(id);
+  const bits = [];
+  if (meet) bits.push(`<h3>目前</h3><p class="status-meet">會議中：${esc(meet.title)}</p>`);
+  else if (id === 'louis') {
+    const st = louisState();
+    if (st === 'active') {
+      bits.push(`<h3>目前</h3><p class="status-work">工作中${louisActive && has(louisActive.last_seen) ? timeTag(louisActive.last_seen) : ''}</p>`);
+      if (louisActive && has(louisActive.source)) bits.push(`<div class="src">來源：${esc(louisActive.source)}</div>`);
+    } else if (st === 'idle') bits.push(`<h3>目前</h3><p class="status-rest">休息中</p>`);
+    else bits.push(`<h3>目前</h3><p class="empty">${NO_DATA}</p>`);
+  } else if (people && p && !isWorking(p)) {
+    bits.push(`<h3>目前</h3><p class="status-rest">休息中</p>`);
+  }
+  if (showProgressBar(id, p)) bits.push(progressBlock(p));
+  return bits.join('');
 }
 
 function render() {
@@ -97,7 +154,15 @@ function render() {
   for (const f of FLOORS) {
     const p = person(f.id);
     const d = arr(p, 'doing');
-    doing.push(`<div class="person"><h3>${esc(f.name)}</h3>${d.length ? `<ul>${d.map((x) => `<li>${val(x.text)}${timeTag(x.since)}</li>`).join('')}</ul>` : (people && p ? '<p class="status-rest">休息中</p>' : emptyLine)}</div>`);
+    const meet = meetingOf(f.id);
+    const items = d.length ? `<ul>${d.map((x) => `<li>${val(x.text)}${timeTag(x.since)}</li>`).join('')}</ul>` : '';
+    let body;
+    if (meet) body = `<p class="status-meet">會議中：${esc(meet.title)}</p>${items}`;
+    else if (f.id === 'louis') {
+      const st = louisState();
+      body = (st === 'active' ? '<p class="status-work">工作中</p>' : st === 'idle' ? '<p class="status-rest">休息中</p>' : emptyLine) + items;
+    } else body = items || (people && p ? '<p class="status-rest">休息中</p>' : emptyLine);
+    doing.push(`<div class="person"><h3>${esc(f.name)}</h3>${body}</div>`);
     for (const w of arr(p, 'waiting_on_louis')) waits.push({ f, w });
     const t = arr(p, 'tasks');
     const order = { in_progress: 0, pending: 1, done: 2 };
@@ -125,7 +190,7 @@ function showDetail(id) {
   $('#detail-title').textContent = f.name;
   const list = (items, fn) => (items.length ? `<ul>${items.map(fn).join('')}</ul>` : emptyLine);
   $('#detail-body').innerHTML = `
-    ${progressHtml(p)}
+    ${statusHtml(id)}
     <h3>正在做</h3>${list(arr(p, 'doing'), (x) => `<li>${val(x.text)}${timeTag(x.since)}</li>`)}
     <h3>等我回覆</h3>${list(arr(p, 'waiting_on_louis'), (x) => `<li>${val(x.text)}${timeTag(x.since)}<div class="src">來源：${val(x.source)}</div></li>`)}
     <h3>任務流</h3>${list(arr(p, 'tasks'), (x) => `<li><span class="tag ${STATUS_TEXT[x.status] ? x.status : 'pending'}">${STATUS_TEXT[x.status] || NO_DATA}</span>${val(x.title)}${timeTag(x.time)}</li>`)}`;
@@ -139,22 +204,77 @@ $('#detail-close').addEventListener('click', () => {
   if (building) building.select(null);
 });
 
+function stampMs(s) {
+  const t = Date.parse(s || '');
+  return Number.isFinite(t) ? t : null;
+}
+function isLaterOrEqual(liveTs, baseTs) {
+  const l = stampMs(liveTs), b = stampMs(baseTs);
+  if (l == null) return false;
+  if (b == null) return true;
+  return l >= b;
+}
+/** 以較新時間戳把 live.enc.json 覆蓋到 data.enc.json（依人員、louis_active）。live 沒帶的欄位（例如 meetings）維持底稿。 */
+function mergeBoard(base, live) {
+  if (!live || typeof live !== 'object') return base || {};
+  const out = {
+    updated_at: base && base.updated_at,
+    people: Array.isArray(base && base.people) ? base.people.map((p) => ({ ...p })) : [],
+  };
+  if (base && Array.isArray(base.meetings)) out.meetings = base.meetings;
+  if (base && base.louis_active) out.louis_active = base.louis_active;
+  const byId = {};
+  for (const p of out.people) if (p && p.id) byId[p.id] = p;
+  const fileLive = live.updated_at, fileBase = base && base.updated_at;
+  for (const lp of (Array.isArray(live.people) ? live.people : [])) {
+    if (!lp || !lp.id) continue;
+    const liveTs = lp.updated_at || fileLive;
+    const cur = byId[lp.id];
+    const baseTs = (cur && cur.updated_at) || fileBase;
+    if (cur && !isLaterOrEqual(liveTs, baseTs)) continue;
+    const merged = { ...(cur || {}), id: lp.id };
+    if ('doing' in lp) merged.doing = lp.doing;
+    if ('waiting_on_louis' in lp) merged.waiting_on_louis = lp.waiting_on_louis;
+    if ('tasks' in lp) merged.tasks = lp.tasks;
+    if (lp.name) merged.name = lp.name;
+    if (lp.updated_at) merged.updated_at = lp.updated_at;
+    if (cur) {
+      out.people[out.people.indexOf(cur)] = merged;
+    } else out.people.push(merged);
+    byId[lp.id] = merged;
+  }
+  if (live.louis_active) {
+    const liveTs = live.louis_active.last_seen || fileLive;
+    const baseTs = (out.louis_active && out.louis_active.last_seen) || fileBase;
+    if (!out.louis_active || isLaterOrEqual(liveTs, baseTs)) out.louis_active = live.louis_active;
+  }
+  const stamps = [out.updated_at, fileLive].filter((s) => stampMs(s) != null);
+  if (stamps.length) out.updated_at = stamps.sort((a, b) => stampMs(b) - stampMs(a))[0];
+  return out;
+}
+
 function applyData(data) {
   people = {};
   for (const p of (data && Array.isArray(data.people) ? data.people : [])) if (p && p.id) people[p.id] = p;
+  meetings = parseMeetings(data && data.meetings);
+  louisActive = parseLouisActive(data && data.louis_active);
   setUpdated((data && data.updated_at) || (encCache && encCache.updated_at));
   render();
 }
-function noData(msg) { people = null; setUpdated(null); setStatus(msg); render(); }
+function noData(msg) { people = null; meetings = []; louisActive = null; setUpdated(null); setStatus(msg); render(); }
 
 async function tryUnlock(pass, remember) {
   try {
     const data = await decrypt(encCache, pass);
+    let live = null;
+    if (liveEncCache && liveEncCache.ct) {
+      try { live = await decrypt(liveEncCache, pass); } catch (e) { live = null; }
+    }
     if (remember) localStorage.setItem(LS_KEY, pass);
     sessionStorage.setItem(LS_KEY, pass);
     $('#gate').hidden = true; $('#lock').hidden = false;
     setStatus('');
-    applyData(data);
+    applyData(mergeBoard(data, live));
     return true;
   } catch (e) { return false; }
 }
@@ -164,9 +284,17 @@ async function load() {
   setStatus('讀取最新資料中…');
   try {
     const r = await fetch(`data.enc.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (!r.ok) { encCache = null; noData('目前沒有資料檔'); return; }
+    if (!r.ok) { encCache = null; liveEncCache = null; noData('目前沒有資料檔'); return; }
     encCache = await r.json();
     if (!encCache || !encCache.ct) { noData('資料檔格式不正確'); return; }
+    liveEncCache = null;
+    try {
+      const lr = await fetch(`live.enc.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (lr.ok) {
+        const live = await lr.json();
+        if (live && live.ct) liveEncCache = live;
+      }
+    } catch (e) { liveEncCache = null; }
     setUpdated(encCache.updated_at);
     const pass = sessionStorage.getItem(LS_KEY) || localStorage.getItem(LS_KEY);
     if (pass && await tryUnlock(pass, false)) return;
@@ -192,6 +320,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 
 // ---------- 三維開放式辦公區（同一層，四個鄰里） ----------
 const LAYOUT = {
+  louis: { x: 0, z: 6.0, k: 1.08, gm: true, rot: Math.PI },
   pa:  { x: -3.3, z: 1.6, lead: true },
   admin: { x: -6.0, z: -4.2, k: 0.9 }, kobe: { x: -3.85, z: -4.2, k: 0.9 }, fly: { x: -1.7, z: -4.2, k: 0.9 },
   ia: { x: -6.45, z: 1.6, k: 0.85 },
@@ -431,17 +560,58 @@ async function initBuilding() {
     // 兩側圓形會議艙
     function pod(x, z, rot, color) {
       const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
-      const wall = new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.12, 1.5, 16, 1, true, 0.5, Math.PI * 1.65), M(color, { side: THREE.DoubleSide, roughness: 0.55 }));
+      const wall = new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.12, 1.5, 16, 1, true, 0.45, Math.PI * 1.55), M(color, { side: THREE.DoubleSide, roughness: 0.12, metalness: 0.25, transparent: true, opacity: 0.28, depthWrite: false }));
       wall.position.y = 0.75; g.add(wall);
-      const roof = new THREE.Mesh(new THREE.CircleGeometry(1.14, 16), M(color, { roughness: 0.5 }));
-      roof.rotation.x = -Math.PI / 2; roof.position.y = 1.5; g.add(roof);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.13, 0.03, 6, 24), M(color, { roughness: 0.4, metalness: 0.3 }));
+      rim.rotation.x = Math.PI / 2; rim.position.y = 1.5; g.add(rim);
+      const roof = new THREE.Mesh(new THREE.CircleGeometry(1.14, 16), M(color, { roughness: 0.18, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
+      roof.rotation.x = -Math.PI / 2; roof.position.y = 1.52; g.add(roof);
       box(1.05, 0.26, 0.42, M(0xeeeae4), 0, 0.26, -0.2, g);
       const tbl = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 12), M(0xe8d5b5)); tbl.position.set(0, 0.52, 0.15); g.add(tbl);
     }
     pod(-8.15, -1.0, Math.PI / 2, 0x4285F4);
     pod(8.15, -1.0, -Math.PI / 2, 0x1f2a18);
-    const podL = labelSprite('會議艙', 1.15, 0.3, '#1a1406', '#f3ead8', '#4285F4'); podL.position.set(-8.15, 2.0, -1.0); scene.add(podL);
-    const podR = labelSprite('會議艙', 1.15, 0.3, '#f3ead8', '#1a1a1a', '#76B900'); podR.position.set(8.15, 2.0, -1.0); scene.add(podR);
+    function makePodSeats(tx, tz, doorAtan) {
+      const n = 5, r = 0.55, seats = [];
+      for (let i = 0; i < n; i++) {
+        const a = doorAtan + Math.PI + (i - (n - 1) / 2) * 0.52;
+        const x = tx + Math.sin(a) * r;
+        const z = tz + Math.cos(a) * r;
+        seats.push({ type: 'meet', x, z, yaw: Math.atan2(tx - x, tz - z) });
+      }
+      return seats;
+    }
+    function makePodLabel(fg, bg, stroke) {
+      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 320;
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+      spr.scale.set(1.7, 0.58, 1); spr.renderOrder = 12;
+      return { cv, tex, spr, fg, bg, stroke };
+    }
+    function drawPodLabel(pl, busy, title) {
+      const c = pl.cv.getContext('2d');
+      c.clearRect(0, 0, 1024, 320);
+      c.fillStyle = pl.bg; c.beginPath(); c.roundRect(8, 8, 1008, 304, 28); c.fill();
+      if (pl.stroke) { c.strokeStyle = pl.stroke; c.lineWidth = 12; c.beginPath(); c.roundRect(8, 8, 1008, 304, 28); c.stroke(); }
+      c.fillStyle = pl.fg; c.textAlign = 'center'; c.textBaseline = 'middle';
+      if (!busy) {
+        fitText(c, '空閒', 960, 120, 'bold'); c.fillText('空閒', 512, 160);
+      } else {
+        let tt = String(title || '');
+        if (tt.length > 10) tt = tt.slice(0, 10) + '…';
+        fitText(c, tt, 960, 90, 'bold'); c.fillText(tt, 512, 110);
+        fitText(c, '會議中', 960, 72, 'bold'); c.fillText('會議中', 512, 230);
+      }
+      pl.tex.needsUpdate = true;
+    }
+    const PODS = {
+      left: { seats: makePodSeats(-8.0, -1.0, Math.atan2(1, 0)), label: makePodLabel('#1a1406', '#f3ead8', '#4285F4') },
+      right: { seats: makePodSeats(8.0, -1.0, Math.atan2(-1, 0)), label: makePodLabel('#f3ead8', '#1a1a1a', '#76B900') },
+    };
+    PODS.left.label.spr.position.set(-8.15, 2.15, -1.0); scene.add(PODS.left.label.spr);
+    PODS.right.label.spr.position.set(8.15, 2.15, -1.0); scene.add(PODS.right.label.spr);
+    drawPodLabel(PODS.left.label, false);
+    drawPodLabel(PODS.right.label, false);
 
     // 運動區：跑步機、瑜珈墊（左前方）、桌球桌（右前方）
     box(0.72, 0.12, 1.55, M(0x222), -7.55, 0.12, 4.65, scene);
@@ -535,15 +705,25 @@ async function initBuilding() {
       const g = new THREE.Group(); g.position.set(L.x, 0, L.z);
       const k = L.k || (L.lead ? 1.25 : 1);
       const inner = new THREE.Group(); inner.scale.set(k, k, k); g.add(inner);
-      const zoneMat = M(f.color, { transparent: true, opacity: 0.25, emissive: f.color, emissiveIntensity: 0.05 });
-      const zone = box(2.2, 0.04, 2.6, zoneMat, 0, 0.05, 0, inner);
-      const top = box(1.7, 0.08, 0.8, M(L.lead ? 0xe6d2ae : 0xd9c7a8), 0, 0.75, 0.3, inner);
-      for (const [x, z] of [[-0.75, -0.05], [0.75, -0.05], [-0.75, 0.65], [0.75, 0.65]]) box(0.06, 0.72, 0.06, M(0x555f73), x, 0.36, z, inner);
-      const scr = M(0x0e1a2e, { emissive: f.color, emissiveIntensity: 0.15 });
-      box(0.8, 0.5, 0.05, scr, 0, 1.1, 0.6, inner); box(0.08, 0.25, 0.08, M(0x555f73), 0, 0.88, 0.6, inner);
-      box(0.5, 0.08, 0.5, M(0x34405a), 0, 0.48, -0.5, inner); box(0.5, 0.55, 0.08, M(0x34405a), 0, 0.78, -0.76, inner);
-      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), M(f.color, { emissive: f.color, emissiveIntensity: 0.2, roughness: 0.3 }));
-      lamp.position.set(0, 1.48, 0.6); inner.add(lamp);
+      let zoneMat, zone, top, scr, lamp;
+      if (L.gm) {
+        zoneMat = M(f.color, { transparent: true, opacity: 0.18, emissive: f.color, emissiveIntensity: 0.05 });
+        zone = box(1.9, 0.03, 1.8, zoneMat, 0, 0.05, -0.35, g);
+        top = zone;
+        scr = M(0x0e1a2e, { emissive: f.color, emissiveIntensity: 0.1 });
+        lamp = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), M(f.color, { emissive: f.color, emissiveIntensity: 0.15 }));
+        lamp.visible = false; g.add(lamp);
+      } else {
+        zoneMat = M(f.color, { transparent: true, opacity: 0.25, emissive: f.color, emissiveIntensity: 0.05 });
+        zone = box(2.2, 0.04, 2.6, zoneMat, 0, 0.05, 0, inner);
+        top = box(1.7, 0.08, 0.8, M(L.lead ? 0xe6d2ae : 0xd9c7a8), 0, 0.75, 0.3, inner);
+        for (const [x, z] of [[-0.75, -0.05], [0.75, -0.05], [-0.75, 0.65], [0.75, 0.65]]) box(0.06, 0.72, 0.06, M(0x555f73), x, 0.36, z, inner);
+        scr = M(0x0e1a2e, { emissive: f.color, emissiveIntensity: 0.15 });
+        box(0.8, 0.5, 0.05, scr, 0, 1.1, 0.6, inner); box(0.08, 0.25, 0.08, M(0x555f73), 0, 0.88, 0.6, inner);
+        box(0.5, 0.08, 0.5, M(0x34405a), 0, 0.48, -0.5, inner); box(0.5, 0.55, 0.08, M(0x34405a), 0, 0.78, -0.76, inner);
+        lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), M(f.color, { emissive: f.color, emissiveIntensity: 0.2, roughness: 0.3 }));
+        lamp.position.set(0, 1.48, 0.6); inner.add(lamp);
+      }
       const av = makeAvatar(f.color);
       av.g.scale.set(k, k, k);
       scene.add(av.g);
@@ -576,52 +756,72 @@ async function initBuilding() {
       c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 2;
       c.beginPath(); c.roundRect(x, y, w, h, 8); c.stroke();
     }
+    function labelKind(d) {
+      const id = d.f.id, p = person(id), meet = meetingOf(id);
+      const bar = showProgressBar(id, p);
+      let status = '';
+      if (meet) status = '會議中';
+      else if (id === 'louis') {
+        const st = louisState();
+        status = st === 'active' ? '工作中' : st === 'idle' ? '休息中' : NO_DATA;
+      } else if (hasRecord(id) && !isWorking(p)) status = '休息中';
+      else if (!isWorking(p)) status = NO_DATA;
+      const compact = !bar && (status === '休息中' || status === '工作中' || status === '會議中');
+      return { p, meet, bar, status, compact };
+    }
     function applyLabelScale(d) {
-      const p = person(d.f.id);
-      const resting = hasRecord(d.f.id) && !isWorking(p);
-      const w = resting ? 1.52 : 1.72;
-      const h = resting ? 0.86 : 1.18;
+      const k = labelKind(d);
+      const w = k.compact ? 1.52 : 1.72;
+      const h = k.compact ? 0.86 : 1.18;
       const s = (d.avatar && d.avatar.g.scale.x) || 1;
       d.spr.scale.set(w / s, h / s, 1);
     }
     function drawLabel(d, selected) {
-      const p = person(d.f.id);
+      const { p, bar, status, compact } = labelKind(d);
       const c = d.cv.getContext('2d');
       c.clearRect(0, 0, 512, 360);
-      const working = isWorking(p);
-      const known = hasRecord(d.f.id);
-      const resting = known && !working;
       c.fillStyle = selected ? 'rgba(90,169,255,.96)' : 'rgba(11,18,32,.88)';
       c.beginPath();
-      if (resting) c.roundRect(28, 88, 456, 184, 24);
+      if (compact) c.roundRect(28, 88, 456, 184, 24);
       else c.roundRect(4, 4, 504, 352, 26);
       c.fill();
       c.textAlign = 'center'; c.textBaseline = 'middle';
       const m = d.f.name.match(/^(.*?)（(.*)）$/);
       const name = m ? m[1] : d.f.name, role = m ? m[2] : '';
       c.fillStyle = selected ? '#04121f' : '#ffffff';
-      fitText(c, name, 480, 72, 'bold'); c.fillText(name, 256, resting ? 140 : (role ? 58 : 90));
-      if (resting) {
-        c.fillStyle = selected ? '#04121f' : '#c5d0e0';
-        fitText(c, '休息中', 480, 52, 'bold'); c.fillText('休息中', 256, 210);
-      } else if (!working) {
-        if (role) { c.fillStyle = selected ? '#04121f' : '#cfe0ff'; fitText(c, role, 480, 48, 'normal'); c.fillText(role, 256, 128); }
-        c.fillStyle = selected ? '#04121f' : '#8fa1bf';
-        fitText(c, NO_DATA, 480, 46, 'normal'); c.fillText(NO_DATA, 256, 240);
-      } else {
-        if (role) { c.fillStyle = selected ? '#04121f' : '#cfe0ff'; fitText(c, role, 480, 44, 'normal'); c.fillText(role, 256, 118); }
+      if (compact) {
+        fitText(c, name, 480, 72, 'bold'); c.fillText(name, 256, 140);
+        c.fillStyle = selected ? '#04121f' : (status === '會議中' ? '#f5d76e' : status === '工作中' ? '#cfe0ff' : '#c5d0e0');
+        fitText(c, status, 480, 52, 'bold'); c.fillText(status, 256, 210);
+      } else if (bar) {
+        fitText(c, name, 480, 72, 'bold'); c.fillText(name, 256, role || status ? 58 : 90);
+        if (status === '會議中' || status === '工作中') {
+          c.fillStyle = selected ? '#04121f' : '#f5d76e';
+          fitText(c, status, 480, 40, 'bold'); c.fillText(status, 256, 118);
+        } else if (role) {
+          c.fillStyle = selected ? '#04121f' : '#cfe0ff'; fitText(c, role, 480, 44, 'normal'); c.fillText(role, 256, 118);
+        }
         const pr = progressOf(p);
         drawBar(c, 48, 168, 416, 36, pr.value);
         c.fillStyle = selected ? '#04121f' : (pr.value == null ? '#c5d0e0' : '#f5d76e');
         const txt = pr.value == null ? '進度暫無數據' : (pr.source === 'tasks' ? `${pr.value}%（任務 ${pr.done}／${pr.total}）` : `${pr.value}%`);
         fitText(c, txt, 400, 36, 'bold'); c.fillText(txt, 256, 258);
+      } else {
+        fitText(c, name, 480, 72, 'bold'); c.fillText(name, 256, role ? 58 : 90);
+        if (role) { c.fillStyle = selected ? '#04121f' : '#cfe0ff'; fitText(c, role, 480, 48, 'normal'); c.fillText(role, 256, 128); }
+        c.fillStyle = selected ? '#04121f' : '#8fa1bf';
+        fitText(c, status || NO_DATA, 480, 46, 'normal'); c.fillText(status || NO_DATA, 256, 240);
       }
       d.tex.needsUpdate = true;
       applyLabelScale(d);
     }
 
     function assignActivities() {
-      const idle = FLOORS.map((f) => f.id).filter((id) => hasRecord(id) && !isWorking(person(id))).sort();
+      const idle = FLOORS.map((f) => f.id).filter((id) => {
+        if (meetingOf(id)) return false;
+        if (id === 'louis') return louisState() === 'idle';
+        return hasRecord(id) && !isWorking(person(id));
+      }).sort();
       const taken = new Set(), map = {};
       for (const id of idle) {
         let i = hashId(id) % SLOTS.length;
@@ -632,24 +832,50 @@ async function initBuilding() {
       }
       return map;
     }
+    function assignMeetSeats() {
+      const map = {}, used = { left: 0, right: 0 };
+      for (const m of meetings) {
+        const pod = m.pod === 'left' || m.pod === 'right' ? m.pod : 'right';
+        const seats = PODS[pod].seats;
+        for (const id of m.members) {
+          if (map[id]) continue;
+          const i = used[pod];
+          const seat = seats[i % seats.length];
+          const side = (i % 2 === 0) ? -0.55 : 0.55;
+          map[id] = { ...seat, lx: side };
+          used[pod]++;
+        }
+      }
+      return map;
+    }
 
     let selected = null;
     function update() {
       const act = assignActivities();
+      const meetSeat = assignMeetSeats();
       for (const d of desks) {
-        const p = person(d.f.id);
+        const id = d.f.id;
+        const p = person(id);
         const working = isWorking(p);
         const waiting = p && arr(p, 'waiting_on_louis').length;
-        const on = d.f.id === selected;
-        d.atDesk = working || !hasRecord(d.f.id);
-        d.slot = d.atDesk ? null : (act[d.f.id] || null);
-        d.zoneMat.emissiveIntensity = on ? 0.9 : waiting && d.atDesk ? 0.5 : working ? 0.3 : 0.05;
-        d.zoneMat.opacity = on ? 0.6 : hasRecord(d.f.id) ? (working ? 0.35 : 0.18) : 0.15;
-        d.scr.emissiveIntensity = working ? 0.8 : 0.1;
-        d.busyPulse = !!working;
-        d.lamp.material.emissiveIntensity = working ? 0.7 : 0.18;
+        const on = id === selected;
+        const meet = meetingOf(id);
+        const louisOn = id === 'louis' && louisState() === 'active';
+        if (meet) { d.atDesk = false; d.slot = meetSeat[id] || null; }
+        else if (id === 'louis') { d.atDesk = louisState() !== 'idle'; d.slot = d.atDesk ? null : (act[id] || null); }
+        else { d.atDesk = working || !hasRecord(id); d.slot = d.atDesk ? null : (act[id] || null); }
+        const occupied = d.atDesk && (working || louisOn);
+        d.zoneMat.emissiveIntensity = on ? 0.9 : waiting && d.atDesk ? 0.5 : (occupied || meet) ? 0.3 : 0.05;
+        d.zoneMat.opacity = on ? 0.6 : (occupied || meet) ? 0.35 : hasRecord(id) || id === 'louis' ? 0.18 : 0.15;
+        d.scr.emissiveIntensity = occupied ? 0.8 : 0.1;
+        d.busyPulse = !!occupied;
+        d.lamp.material.emissiveIntensity = occupied ? 0.7 : 0.18;
         d.avatar.g.visible = true;
         drawLabel(d, on);
+      }
+      for (const side of ['left', 'right']) {
+        const ms = meetings.filter((x) => x.pod === side);
+        drawPodLabel(PODS[side].label, ms.length > 0, ms.map((x) => x.title).join('／'));
       }
       for (const o of officeFloors) {
         o.mat.opacity = o.baseOp;
@@ -665,9 +891,27 @@ async function initBuilding() {
       a.head.rotation.set(0, 0, 0);
       a.body.position.y = 0.8; a.head.position.y = 1.24;
       a.g.scale.set(d.k, d.k, d.k);
+      d.spr.position.set(0, 2.25, 0);
       if (d.atDesk || !d.slot) {
-        a.g.position.set(d.L.x, 0, d.L.z - 0.45 * d.k);
-        a.g.rotation.y = 0;
+        if (d.L.gm) {
+          a.g.position.set(d.L.x, 0, d.L.z);
+          a.g.rotation.y = d.L.rot || Math.PI;
+          a.body.position.y = 0.62; a.head.position.y = 1.06;
+        } else {
+          a.g.position.set(d.L.x, 0, d.L.z - 0.45 * d.k);
+          a.g.rotation.y = 0;
+        }
+        applyLabelScale(d);
+        return;
+      }
+      if (d.slot.type === 'meet') {
+        const s = d.slot;
+        a.g.scale.set(0.92, 0.92, 0.92);
+        a.g.position.set(s.x, 0, s.z);
+        a.g.rotation.y = s.yaw;
+        a.body.position.y = 0.52; a.head.position.y = 0.96;
+        a.leftArm.rotation.x = -0.55; a.rightArm.rotation.x = -0.55;
+        d.spr.position.set(d.slot.lx || 0, 2.7, 0);
         applyLabelScale(d);
         return;
       }
@@ -734,6 +978,10 @@ async function initBuilding() {
       camera.updateProjectionMatrix();
     }
     new ResizeObserver(resize).observe(el); resize();
+    const look = new URLSearchParams(location.search).get('look');
+    if (look === 'leftpod') { camera.position.set(-12.2, 5.8, 3.8); controls.target.set(-8.15, 0.55, -1.0); camera.updateProjectionMatrix(); }
+    else if (look === 'rightpod') { camera.position.set(12.2, 5.8, 3.8); controls.target.set(8.15, 0.55, -1.0); camera.updateProjectionMatrix(); }
+
 
     let userMoved = false;
     const stopSpin = () => { userMoved = true; controls.autoRotate = false; };

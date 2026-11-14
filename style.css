@@ -48,3 +48,5 @@ li{margin:3px 0}
 .prog-unknown{background:repeating-linear-gradient(45deg,#24324d 0 8px,#334866 8px 16px)}
 .prog-label{margin:0;font-size:.85rem;color:var(--muted)}
 .status-rest{color:var(--muted)}
+.status-meet{color:#f5d76e;font-weight:600}
+.status-work{color:#cfe0ff;font-weight:600}
