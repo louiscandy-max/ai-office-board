@@ -7,7 +7,8 @@ const FLOORS = [
   { id: 'cpo', name: 'CPO Ai（採購長）', color: 0x6fcf6f },
   { id: 'fpa', name: 'Sr. FP&A Analyst Ai（財務規劃）', color: 0xf5b544 },
   { id: 'ia',  name: 'Sr. IA Ai（投資分析師）', color: 0xff8f5a },
-  { id: 'air', name: 'Air 特殊小組', color: 0xff6b9a },
+  { id: 'kobe', name: 'Ai Kobe（特殊小組・個人事務）', color: 0xff6b9a },
+  { id: 'fly', name: 'Ai Fly（特殊小組・碳酸鋰預測）', color: 0xffc94d },
 ];
 const NO_DATA = '暫無數據';
 const STATUS_TEXT = { done: '已完成', in_progress: '進行中', pending: '待處理' };
@@ -151,7 +152,8 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // 前方中央：總經理室；左半：個人區（Sr. PA Ai 帶領）；右半：公司區（CoS Ai 帶領）；中央走道分隔公私。
 const LAYOUT = {
   pa:  { x: -3.4, z: 1.6, lead: true },
-  ia:  { x: -4.7, z: -2.4 }, air: { x: -2.1, z: -2.4 },
+  kobe: { x: -4.7, z: -2.4 }, fly: { x: -2.1, z: -2.4 },
+  ia:  { x: -3.4, z: -6.0 },
   cos: { x: 3.4, z: 1.6, lead: true },
   clo: { x: 2.1, z: -2.4 }, cto: { x: 4.7, z: -2.4 },
   cpo: { x: 2.1, z: -6.0 }, fpa: { x: 4.7, z: -6.0 },
@@ -220,7 +222,7 @@ async function initBuilding() {
 
     // 帶領者到組員的地面連線
     const lineMat = new THREE.LineBasicMaterial({ color: 0x9fb4d8, transparent: true, opacity: 0.45 });
-    for (const [lead, team] of [['pa', ['ia', 'air']], ['cos', ['clo', 'cto', 'cpo', 'fpa']]]) {
+    for (const [lead, team] of [['pa', ['kobe', 'fly', 'ia']], ['cos', ['clo', 'cto', 'cpo', 'fpa']]]) {
       const a = LAYOUT[lead];
       for (const t of team) {
         const b = LAYOUT[t];
