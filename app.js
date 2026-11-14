@@ -153,11 +153,11 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // 前方中央：總經理室；左半：個人區（Sr. PA Ai 帶領）；右半：公司區（CoS Ai 帶領）；中央走道分隔公私。
 const LAYOUT = {
   pa:  { x: -3.3, z: 1.6, lead: true },
-  admin: { x: -6.0, z: -2.4, k: 0.9 }, kobe: { x: -3.85, z: -2.4, k: 0.9 }, fly: { x: -1.7, z: -2.4, k: 0.9 },
+  admin: { x: -6.0, z: -4.2, k: 0.9 }, kobe: { x: -3.85, z: -4.2, k: 0.9 }, fly: { x: -1.7, z: -4.2, k: 0.9 },
   ia: { x: -6.45, z: 1.6, k: 0.85 },
   cos: { x: 3.3, z: 1.6, lead: true },
-  clo: { x: 2.55, z: -2.4 }, cto: { x: 5.15, z: -2.4 },
-  cpo: { x: 2.55, z: -6.0 }, fpa: { x: 5.15, z: -6.0 },
+  clo: { x: 2.55, z: -3.3 }, cto: { x: 5.15, z: -3.3 },
+  cpo: { x: 2.55, z: -6.3 }, fpa: { x: 5.15, z: -6.3 },
 };
 async function initBuilding() {
   const el = $('#building');
@@ -195,12 +195,25 @@ async function initBuilding() {
     // 樓板、兩區與中央走道
     const FW = 15, FD = 15, Z0 = -1.3; // 樓板中心 z
     box(FW, 0.2, FD, M(0x1c2842), 0, -0.1, Z0, scene);
-    box(6.6, 0.02, 12.6, M(0x5aa9ff, { transparent: true, opacity: 0.10 }), -3.9, 0.01, -1.1, scene); // 個人區
-    box(6.6, 0.02, 12.6, M(0x8b7bff, { transparent: true, opacity: 0.10 }), 3.9, 0.01, -1.1, scene);  // 公司區
+    // 四個工作區：左前 個人幕僚區、左後 特殊小組區、右前 公司幕僚區、右後 公司專業區（各有底色、矮隔間與地面名稱）
+    const ZONES = [
+      { name: '個人幕僚區', x: -3.9, z: 1.95, w: 6.6, d: 4.9, color: 0x5aa9ff, text: 'rgba(140,190,255,.95)', tz: 3.95 },
+      { name: '特殊小組區', x: -3.9, z: -4.4, w: 6.6, d: 7.0, color: 0xff6b9a, text: 'rgba(255,160,190,.95)', tx: -5.75, tz: -1.5, tw: 2.2 },
+      { name: '公司幕僚區', x: 3.9, z: 1.95, w: 6.6, d: 4.9, color: 0x8b7bff, text: 'rgba(185,175,255,.95)', tz: 3.95 },
+      { name: '公司專業區', x: 3.9, z: -4.4, w: 6.6, d: 7.0, color: 0x4dd4c6, text: 'rgba(130,230,220,.95)', tx: 5.75, tz: -1.5, tw: 2.2 },
+    ];
+    for (const zn of ZONES) {
+      box(zn.w - 0.2, 0.02, zn.d - 0.2, M(zn.color, { transparent: true, opacity: 0.13 }), zn.x, 0.01, zn.z, scene);
+      const wall = M(zn.color, { transparent: true, opacity: 0.55 });
+      const H = 0.32, T = 0.07, hw = zn.w / 2 - 0.1, hd = zn.d / 2 - 0.1;
+      box(zn.w - 0.2, H, T, wall, zn.x, H / 2, zn.z - hd, scene);
+      box(zn.w - 0.2, H, T, wall, zn.x, H / 2, zn.z + hd, scene);
+      box(T, H, zn.d - 0.2, wall, zn.x - hw, H / 2, zn.z, scene);
+      box(T, H, zn.d - 0.2, wall, zn.x + hw, H / 2, zn.z, scene);
+      floorText(zn.name, zn.tx ?? zn.x, zn.tz, zn.tw ?? 2.6, zn.text);
+    }
     box(1.0, 0.025, 13.4, M(0x3a4a6a), 0, 0.015, Z0 - 0.2, scene); // 走道
     for (const z of [-7, -5, -3, -1, 1, 3, 5]) box(0.12, 0.03, 0.8, M(0xf5d76e), 0, 0.03, z, scene); // 走道標線
-    floorText('個人區', -4.9, 4.2, 2.6, 'rgba(140,190,255,.9)');
-    floorText('公司區', 4.9, 4.2, 2.6, 'rgba(180,170,255,.9)');
     floorText('走道', 0, -7.4, 1.0, 'rgba(245,215,110,.9)');
 
     // 總經理室（玻璃隔間，不可點選、不顯示資料）
@@ -306,7 +319,7 @@ async function initBuilding() {
       if (!resize.done) {
         // 手機：較高、較俯視的視角，讓兩區與名牌都在畫面內且不重疊
         const narrow = w / h < 1;
-        if (narrow) camera.position.set(0, 23.5, 9.5); else camera.position.set(0, 16.5, 12);
+        if (narrow) camera.position.set(0, 23.5, 9.5); else camera.position.set(0, 19.5, 10);
         resize.done = true;
       }
       camera.updateProjectionMatrix();
