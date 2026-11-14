@@ -50,3 +50,10 @@ li{margin:3px 0}
 .status-rest{color:var(--muted)}
 .status-meet{color:#f5d76e;font-weight:600}
 .status-work{color:#cfe0ff;font-weight:600}
+.usage-card summary{cursor:pointer;list-style:none}.usage-card summary::-webkit-details-marker{display:none}.usage-card summary h2{display:inline}.usage-card summary::after{content:" ▾";color:var(--muted)}
+.usage h3{margin:10px 0 6px;font-size:.92rem;color:#cfe0ff}
+.u-head{margin:0 0 6px;font-size:.85rem;color:var(--muted)}
+.u-row{display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:2px 10px;align-items:center;padding:5px 0;border-bottom:1px dashed var(--line);font-size:.88rem}
+.u-name{font-weight:600}.u-sub{grid-column:2;color:var(--muted);font-size:.78rem}
+.u-bar{grid-column:2;height:6px;background:#1a2438;border-radius:4px;overflow:hidden}.u-bar i{display:block;height:100%;background:var(--accent)}
+@media (max-width:600px){.u-row{grid-template-columns:1fr}.u-sub,.u-bar{grid-column:1}}

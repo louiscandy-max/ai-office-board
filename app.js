@@ -26,6 +26,8 @@ const $ = (s) => document.querySelector(s);
 let people = null;
 let encCache = null;
 let liveEncCache = null;
+let agentsEncCache = null;
+let usage = { hermes: null, grok: null };
 let building = null;
 let meetings = [];
 let louisActive = null;
@@ -177,9 +179,45 @@ function render() {
   $('#waiting').innerHTML = waits.length
     ? waits.map(({ f, w }) => `<div class="wait-item"><b>${esc(f.name)}</b>：${val(w.text)}${timeTag(w.since)}<div class="src">來源：${val(w.source)}</div></div>`).join('')
     : emptyLine;
+  $('#usage').innerHTML = usageHtml();
   if (building) building.update();
   const open = $('#detail').dataset.id;
   if (open && !$('#detail').hidden) showDetail(open);
+}
+
+const fmtTok = (n) => (typeof n === 'number' && Number.isFinite(n) ? new Intl.NumberFormat('zh-TW', { notation: 'compact', maximumFractionDigits: 1 }).format(n) : NO_DATA);
+const fmtPct = (n, lt1) => (lt1 ? '&lt;1%' : (typeof n === 'number' && Number.isFinite(n) ? `${Math.round(n * 10) / 10}%` : NO_DATA));
+const shortTime = (iso) => { const t = fmtTaipei(iso); return t ? t.slice(5) : NO_DATA; };
+/** 累計用量：Hermes 為真實 token；Grok Bot 只有週額度占比（非 token）。沒有就顯示暫無數據。 */
+function usageHtml() {
+  if (!people) return emptyLine;
+  const rows = [];
+  const h = usage.hermes;
+  rows.push(`<h3>Air 特殊小組（Hermes，真實 token）</h3>`);
+  if (h && Array.isArray(h.profiles) && h.profiles.length) {
+    for (const p of h.profiles) {
+      const today = p.today && typeof p.today.total === 'number'
+        ? `今日 ${fmtTok(p.today.total)}${has(p.today.since) && p.today.partial ? `（自 ${esc(shortTime(p.today.since))} 起）` : ''}` : `今日 ${NO_DATA}`;
+      rows.push(`<div class="u-row"><span class="u-name">${esc(p.label || p.id)}</span><span class="u-val">累計 ${fmtTok(p.total)}｜${today}</span><span class="u-sub">輸入 ${fmtTok(p.input)}／輸出 ${fmtTok(p.output)}／快取讀取 ${fmtTok(p.cache_read)}</span></div>`);
+    }
+    rows.push(`<p class="src">來源：Air Hermes state.db 會話用量（唯讀），擷取 ${esc(shortTime(h.captured_at))}（台北時間）。累計＝輸入＋輸出（不含快取讀取）。</p>`);
+  } else rows.push(emptyLine);
+  const g = usage.grok;
+  rows.push(`<h3>Grok Bot 助理（週額度占比，非 token）</h3>`);
+  if (g && g.shares) {
+    rows.push(`<p class="u-head">本週額度已用 ${fmtPct(g.weekly_used_percent)}｜重設 ${esc(shortTime(g.week_reset))}｜擷取 ${esc(shortTime(g.captured_at))}</p>`);
+    const lt1 = new Set(Array.isArray(g.lt1) ? g.lt1 : []);
+    const cum = g.cumulative_points || {};
+    for (const id of ['pa', 'cos', 'clo', 'cto', 'cpo', 'fpa', 'ia']) {
+      const f = FLOORS.find((x) => x.id === id);
+      const sh = g.shares[id];
+      const w = typeof sh === 'number' ? Math.max(0, Math.min(100, sh)) : 0;
+      const c = cum[id];
+      rows.push(`<div class="u-row"><span class="u-name">${esc(f ? f.name.replace(/（.*$/, '') : id)}</span><span class="u-val">本週占比 ${typeof sh === 'number' ? fmtPct(sh, lt1.has(id)) : NO_DATA}｜累計估算 ${typeof c === 'number' ? `${Math.round(c * 10) / 10} 點` : NO_DATA}</span><span class="u-bar"><i style="width:${w}%"></i></span></div>`);
+    }
+    rows.push(`<p class="src">累計估算＝各額度週最後一筆「已用%×占比」加總，單位為週額度百分點，自 ${esc(shortTime(g.first_captured_at))} 起共 ${esc(g.weeks_counted)} 週；早期回填只列前幾名。</p>`);
+  } else rows.push(emptyLine);
+  return rows.join('');
 }
 
 function showDetail(id) {
@@ -215,7 +253,7 @@ function isLaterOrEqual(liveTs, baseTs) {
   return l >= b;
 }
 /** 以較新時間戳把 live.enc.json 覆蓋到 data.enc.json（依人員、louis_active）。live 沒帶的欄位（例如 meetings）維持底稿。 */
-function mergeBoard(base, live) {
+function mergeBoard(base, live, baseFileTs) {
   if (!live || typeof live !== 'object') return base || {};
   const out = {
     updated_at: base && base.updated_at,
@@ -225,7 +263,7 @@ function mergeBoard(base, live) {
   if (base && base.louis_active) out.louis_active = base.louis_active;
   const byId = {};
   for (const p of out.people) if (p && p.id) byId[p.id] = p;
-  const fileLive = live.updated_at, fileBase = base && base.updated_at;
+  const fileLive = live.updated_at, fileBase = baseFileTs !== undefined ? baseFileTs : (base && base.updated_at);
   for (const lp of (Array.isArray(live.people) ? live.people : [])) {
     if (!lp || !lp.id) continue;
     const liveTs = lp.updated_at || fileLive;
@@ -261,7 +299,7 @@ function applyData(data) {
   setUpdated((data && data.updated_at) || (encCache && encCache.updated_at));
   render();
 }
-function noData(msg) { people = null; meetings = []; louisActive = null; setUpdated(null); setStatus(msg); render(); }
+function noData(msg) { people = null; meetings = []; louisActive = null; usage = { hermes: null, grok: null }; setUpdated(null); setStatus(msg); render(); }
 
 async function tryUnlock(pass, remember) {
   try {
@@ -274,7 +312,13 @@ async function tryUnlock(pass, remember) {
     sessionStorage.setItem(LS_KEY, pass);
     $('#gate').hidden = true; $('#lock').hidden = false;
     setStatus('');
-    applyData(mergeBoard(data, live));
+    let agents = null;
+    if (agentsEncCache && agentsEncCache.ct) {
+      try { agents = await decrypt(agentsEncCache, pass); } catch (e) { agents = null; }
+    }
+    usage = { hermes: (live && live.usage && live.usage.hermes) || null, grok: (agents && agents.usage && agents.usage.grok) || null };
+    // 依序合併：夜間底稿 ← Air 即時（Kobe/Fly/Louis）← Grok Bot 助理即時；每人以較新時間戳為準
+    applyData(mergeBoard(mergeBoard(data, live), agents, data && data.updated_at));
     return true;
   } catch (e) { return false; }
 }
@@ -287,7 +331,11 @@ async function load() {
     if (!r.ok) { encCache = null; liveEncCache = null; noData('目前沒有資料檔'); return; }
     encCache = await r.json();
     if (!encCache || !encCache.ct) { noData('資料檔格式不正確'); return; }
-    liveEncCache = null;
+    liveEncCache = null; agentsEncCache = null;
+    try {
+      const ar = await fetch(`agents.enc.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (ar.ok) { const a = await ar.json(); if (a && a.ct) agentsEncCache = a; }
+    } catch (e) { agentsEncCache = null; }
     try {
       const lr = await fetch(`live.enc.json?t=${Date.now()}`, { cache: 'no-store' });
       if (lr.ok) {
