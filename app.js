@@ -152,10 +152,10 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // ---------- 三維辦公室（同一層，依組織架構配置） ----------
 // 前方中央：總經理室；左半：個人區（Sr. PA Ai 帶領）；右半：公司區（CoS Ai 帶領）；中央走道分隔公私。
 const LAYOUT = {
-  pa:  { x: -3.85, z: 1.6, lead: true },
+  pa:  { x: -3.3, z: 1.6, lead: true },
   admin: { x: -6.0, z: -2.4, k: 0.9 }, kobe: { x: -3.85, z: -2.4, k: 0.9 }, fly: { x: -1.7, z: -2.4, k: 0.9 },
-  ia: { x: -3.85, z: -6.0 },
-  cos: { x: 3.85, z: 1.6, lead: true },
+  ia: { x: -6.45, z: 1.6, k: 0.85 },
+  cos: { x: 3.3, z: 1.6, lead: true },
   clo: { x: 2.55, z: -2.4 }, cto: { x: 5.15, z: -2.4 },
   cpo: { x: 2.55, z: -6.0 }, fpa: { x: 5.15, z: -6.0 },
 };
@@ -221,15 +221,17 @@ async function initBuilding() {
       spr.scale.set(2.6, 0.61, 1); spr.position.set(0, 2.0, 0); spr.renderOrder = 10; office.add(spr);
     }
 
-    // 帶領者到組員的地面連線
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x9fb4d8, transparent: true, opacity: 0.45 });
-    for (const [lead, team] of [['pa', ['admin', 'kobe', 'fly', 'ia']], ['cos', ['clo', 'cto', 'cpo', 'fpa']]]) {
-      const a = LAYOUT[lead];
-      for (const t of team) {
-        const b = LAYOUT[t];
-        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a.x, 0.04, a.z), new THREE.Vector3(b.x, 0.04, b.z)]), lineMat));
-      }
-    }
+    // 地面連線：實線＝直屬，虛線＝審核
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x9fb4d8, transparent: true, opacity: 0.55 });
+    const dashMat = new THREE.LineDashedMaterial({ color: 0xf5d76e, dashSize: 0.25, gapSize: 0.18, transparent: true, opacity: 0.9 });
+    const link = (from, to, mat) => {
+      const a = LAYOUT[from], b = LAYOUT[to];
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a.x, 0.08, a.z), new THREE.Vector3(b.x, 0.08, b.z)]), mat);
+      ln.computeLineDistances(); scene.add(ln);
+    };
+    for (const t of ['admin', 'kobe', 'fly']) link('pa', t, lineMat);
+    for (const t of ['clo', 'cto', 'cpo', 'fpa']) link('cos', t, lineMat);
+    link('pa', 'ia', dashMat);
 
     // 座位
     const desks = [];
@@ -252,7 +254,7 @@ async function initBuilding() {
       const cv = document.createElement('canvas'); cv.width = 512; cv.height = 300;
       const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
       const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-      const ls = L.k ? 2.05 / 2.3 : 1; spr.scale.set(2.3 * ls, 1.35 * ls, 1); spr.position.set(0, 2.3 * k, 0); spr.renderOrder = 10; g.add(spr);
+      const ls = L.k ? Math.min(1, L.k * 1.0) : 1; spr.scale.set(2.3 * ls, 1.35 * ls, 1); spr.position.set(0, 2.3 * k, 0); spr.renderOrder = 10; g.add(spr);
       const hits = [zone, top, body, head, spr];
       hits.forEach((m) => { m.userData.id = f.id; });
       scene.add(g);
