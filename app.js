@@ -152,12 +152,12 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // ---------- 三維辦公室（同一層，依組織架構配置） ----------
 // 前方中央：總經理室；左半：個人區（Sr. PA Ai 帶領）；右半：公司區（CoS Ai 帶領）；中央走道分隔公私。
 const LAYOUT = {
-  pa:  { x: -3.4, z: 1.6, lead: true },
-  admin: { x: -4.7, z: -2.4 }, kobe: { x: -2.1, z: -2.4 },
-  fly: { x: -4.7, z: -6.0 }, ia: { x: -2.1, z: -6.0 },
-  cos: { x: 3.4, z: 1.6, lead: true },
-  clo: { x: 2.1, z: -2.4 }, cto: { x: 4.7, z: -2.4 },
-  cpo: { x: 2.1, z: -6.0 }, fpa: { x: 4.7, z: -6.0 },
+  pa:  { x: -3.85, z: 1.6, lead: true },
+  admin: { x: -6.0, z: -2.4, k: 0.9 }, kobe: { x: -3.85, z: -2.4, k: 0.9 }, fly: { x: -1.7, z: -2.4, k: 0.9 },
+  ia: { x: -3.85, z: -6.0 },
+  cos: { x: 3.85, z: 1.6, lead: true },
+  clo: { x: 2.55, z: -2.4 }, cto: { x: 5.15, z: -2.4 },
+  cpo: { x: 2.55, z: -6.0 }, fpa: { x: 5.15, z: -6.0 },
 };
 async function initBuilding() {
   const el = $('#building');
@@ -193,14 +193,14 @@ async function initBuilding() {
     }
 
     // 樓板、兩區與中央走道
-    const FW = 13, FD = 15, Z0 = -1.3; // 樓板中心 z
+    const FW = 15, FD = 15, Z0 = -1.3; // 樓板中心 z
     box(FW, 0.2, FD, M(0x1c2842), 0, -0.1, Z0, scene);
-    box(5.6, 0.02, 12.6, M(0x5aa9ff, { transparent: true, opacity: 0.10 }), -3.4, 0.01, -1.1, scene); // 個人區
-    box(5.6, 0.02, 12.6, M(0x8b7bff, { transparent: true, opacity: 0.10 }), 3.4, 0.01, -1.1, scene);  // 公司區
+    box(6.6, 0.02, 12.6, M(0x5aa9ff, { transparent: true, opacity: 0.10 }), -3.9, 0.01, -1.1, scene); // 個人區
+    box(6.6, 0.02, 12.6, M(0x8b7bff, { transparent: true, opacity: 0.10 }), 3.9, 0.01, -1.1, scene);  // 公司區
     box(1.0, 0.025, 13.4, M(0x3a4a6a), 0, 0.015, Z0 - 0.2, scene); // 走道
     for (const z of [-7, -5, -3, -1, 1, 3, 5]) box(0.12, 0.03, 0.8, M(0xf5d76e), 0, 0.03, z, scene); // 走道標線
-    floorText('個人區', -4.3, 4.2, 2.6, 'rgba(140,190,255,.9)');
-    floorText('公司區', 4.3, 4.2, 2.6, 'rgba(180,170,255,.9)');
+    floorText('個人區', -4.9, 4.2, 2.6, 'rgba(140,190,255,.9)');
+    floorText('公司區', 4.9, 4.2, 2.6, 'rgba(180,170,255,.9)');
     floorText('走道', 0, -7.4, 1.0, 'rgba(245,215,110,.9)');
 
     // 總經理室（玻璃隔間，不可點選、不顯示資料）
@@ -236,7 +236,7 @@ async function initBuilding() {
     FLOORS.forEach((f) => {
       const L = LAYOUT[f.id]; if (!L) return;
       const g = new THREE.Group(); g.position.set(L.x, 0, L.z);
-      const k = L.lead ? 1.25 : 1;
+      const k = L.k || (L.lead ? 1.25 : 1);
       const inner = new THREE.Group(); inner.scale.set(k, k, k); g.add(inner);
       const zoneMat = M(f.color, { transparent: true, opacity: 0.25, emissive: f.color, emissiveIntensity: 0.05 });
       const zone = box(2.2, 0.04, 2.6, zoneMat, 0, 0.03, 0, inner);
@@ -252,7 +252,7 @@ async function initBuilding() {
       const cv = document.createElement('canvas'); cv.width = 512; cv.height = 300;
       const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
       const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-      spr.scale.set(2.3, 1.35, 1); spr.position.set(0, 2.3 * k, 0); spr.renderOrder = 10; g.add(spr);
+      const ls = L.k ? 2.05 / 2.3 : 1; spr.scale.set(2.3 * ls, 1.35 * ls, 1); spr.position.set(0, 2.3 * k, 0); spr.renderOrder = 10; g.add(spr);
       const hits = [zone, top, body, head, spr];
       hits.forEach((m) => { m.userData.id = f.id; });
       scene.add(g);
@@ -304,7 +304,7 @@ async function initBuilding() {
       if (!resize.done) {
         // 手機：較高、較俯視的視角，讓兩區與名牌都在畫面內且不重疊
         const narrow = w / h < 1;
-        if (narrow) camera.position.set(0, 21, 8.5); else camera.position.set(0, 16, 11.5);
+        if (narrow) camera.position.set(0, 23.5, 9.5); else camera.position.set(0, 16.5, 12);
         resize.done = true;
       }
       camera.updateProjectionMatrix();
