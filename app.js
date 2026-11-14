@@ -58,34 +58,6 @@ async function decrypt(enc, pass) {
 function person(id) { return people && people[id] ? people[id] : null; }
 const arr = (p, k) => (p && Array.isArray(p[k]) ? p[k] : []);
 
-function officeState(off) {
-  return off.members.map((id) => {
-    const f = FLOORS.find((x) => x.id === id);
-    const p = person(id);
-    const doing = arr(p, 'doing');
-    const waiting = arr(p, 'waiting_on_louis');
-    return { f, p, doing, waiting, empty: !p || (!doing.length && !waiting.length) };
-  });
-}
-
-function boardInner(off) {
-  return officeState(off).map(({ f, doing, waiting, empty }) => {
-    let body;
-    if (empty) body = emptyLine;
-    else {
-      body = doing.length
-        ? `<ul>${doing.map((x) => `<li>${val(x.text)}${timeTag(x.since)}</li>`).join('')}</ul>`
-        : emptyLine;
-      if (waiting.length) body += `<p class="board-wait">等我 ${waiting.length}</p>`;
-    }
-    return `<div class="board-person"><h4>${esc(f.name)}</h4>${body}</div>`;
-  }).join('');
-}
-
-function highlightBoard(id) {
-  document.querySelectorAll('.office-board').forEach((el) => el.classList.toggle('active', !!id && el.dataset.office === id));
-}
-
 function render() {
   const doing = [], flow = [];
   const waits = [];
@@ -107,20 +79,9 @@ function render() {
   $('#waiting').innerHTML = waits.length
     ? waits.map(({ f, w }) => `<div class="wait-item"><b>${esc(f.name)}</b>：${val(w.text)}${timeTag(w.since)}<div class="src">來源：${val(w.source)}</div></div>`).join('')
     : emptyLine;
-  $('#boards').innerHTML = OFFICES.map((off) =>
-    `<div class="office-board" data-office="${esc(off.id)}" role="button" tabindex="0"><h3>${esc(off.name)}｜工作看板</h3><p class="zone-tag">${esc(off.zone)}</p>${boardInner(off)}</div>`
-  ).join('');
-  document.querySelectorAll('#boards .office-board').forEach((el) => {
-    const open = () => showOfficeBoard(el.dataset.office);
-    el.addEventListener('click', open);
-    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
-  });
   if (building) building.update();
   const open = $('#detail').dataset.id;
-  if (open && !$('#detail').hidden) {
-    if (open.startsWith('office:')) showOfficeBoard(open.slice(7));
-    else showDetail(open);
-  }
+  if (open && !$('#detail').hidden) showDetail(open);
 }
 
 function showDetail(id) {
@@ -135,25 +96,12 @@ function showDetail(id) {
     <h3>等我回覆</h3>${list(arr(p, 'waiting_on_louis'), (x) => `<li>${val(x.text)}${timeTag(x.since)}<div class="src">來源：${val(x.source)}</div></li>`)}
     <h3>任務流</h3>${list(arr(p, 'tasks'), (x) => `<li><span class="tag ${STATUS_TEXT[x.status] ? x.status : 'pending'}">${STATUS_TEXT[x.status] || NO_DATA}</span>${val(x.title)}${timeTag(x.time)}</li>`)}`;
   $('#detail').hidden = false;
-  highlightBoard(null);
   if (building) building.select(id);
   $('#detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function showOfficeBoard(id) {
-  const off = OFFICES.find((x) => x.id === id);
-  if (!off) return;
-  $('#detail').dataset.id = 'office:' + id;
-  $('#detail-title').textContent = `${off.name}｜工作看板`;
-  $('#detail-body').innerHTML = boardInner(off);
-  $('#detail').hidden = false;
-  highlightBoard(id);
-  if (building) building.selectOffice(id);
-  $('#detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
 $('#detail-close').addEventListener('click', () => {
   $('#detail').hidden = true; $('#detail').dataset.id = '';
-  highlightBoard(null);
   if (building) building.select(null);
 });
 
@@ -208,7 +156,7 @@ $('#refresh').addEventListener('click', load);
 $('#lock').addEventListener('click', () => { localStorage.removeItem(LS_KEY); sessionStorage.removeItem(LS_KEY); location.reload(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load(); });
 
-// ---------- 三維開放式辦公區（同一層，四個鄰里＋獨立工作看板） ----------
+// ---------- 三維開放式辦公區（同一層，四個鄰里） ----------
 const LAYOUT = {
   pa:  { x: -3.3, z: 1.6, lead: true },
   admin: { x: -6.0, z: -4.2, k: 0.9 }, kobe: { x: -3.85, z: -4.2, k: 0.9 }, fly: { x: -1.7, z: -4.2, k: 0.9 },
@@ -245,13 +193,6 @@ async function initBuilding() {
     function fitText(c, text, max, size, weight) {
       let s = size;
       do { c.font = `${weight} ${s}px ${FONT}`; s -= 2; } while (c.measureText(text).width > max && s > 18);
-    }
-    function ellipsize(c, text, maxW) {
-      const t = String(text ?? '');
-      if (c.measureText(t).width <= maxW) return t;
-      const chars = [...t];
-      while (chars.length && c.measureText(chars.join('') + '…').width > maxW) chars.pop();
-      return chars.join('') + '…';
     }
     function floorText(text, x, z, w, color) {
       const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
@@ -342,7 +283,6 @@ async function initBuilding() {
       box(0.2, 0.16, 0.02, M(0xFBBC05), 0.16, 1.36, 0.06, g);
     }
 
-    const boards = [];
     const officeFloors = [];
 
     function addNeighborhood(zn) {
@@ -386,81 +326,8 @@ async function initBuilding() {
       if (zn.z > 0) addShelf(left ? x0 + 0.25 : x1 - 0.25, zn.z, left ? Math.PI / 2 : -Math.PI / 2, 1.7);
       else addWhiteboard(zn.x + (left ? -2.4 : 2.4), z0 + 0.55, 0);
 
-      // 獨立立式工作看板（前緣，後排再往外側，避免被名牌擋住）
-      const n = zn.members.length;
-      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = n >= 3 ? 1120 : 840;
-      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-      tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter;
-      const bw = 3.35, bh = bw * (cv.height / cv.width);
-      // 前排看板放在鄰里前緣；後排放到地毯後緣，避免被前排名牌擋住
-      const bx = zn.z < 0 ? zn.x + (left ? -1.7 : 1.7) : zn.x;
-      const bz = zn.z < 0 ? z0 + 0.9 : z1 - 0.7;
-      const frame = M(0x8a6239);
-      box(0.08, 1.55, 0.08, frame, bx - bw / 2 + 0.1, 0.78, bz, scene);
-      box(0.08, 1.55, 0.08, frame, bx + bw / 2 - 0.1, 0.78, bz, scene);
-      box(bw + 0.12, bh + 0.12, 0.06, M(0x1a2233), bx, 1.5, bz, scene);
-      const board = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-      board.scale.set(bw, bh, 1);
-      board.position.set(bx, 1.5, bz + 0.08);
-      board.renderOrder = 8;
-      board.userData = { type: 'board', id: zn.id };
-      scene.add(board);
-      boards.push({ zn, cv, tex, hits: [board] });
     }
     OFFICES.forEach(addNeighborhood);
-
-    function drawBoard(b) {
-      const { zn, cv, tex } = b;
-      const c = cv.getContext('2d');
-      const W = cv.width, H = cv.height;
-      c.clearRect(0, 0, W, H);
-      c.fillStyle = '#101827';
-      c.beginPath(); c.roundRect(0, 0, W, H, 28); c.fill();
-      c.strokeStyle = hex(zn.accent || zn.color); c.lineWidth = 16; c.stroke();
-      c.fillStyle = hex(zn.accent || zn.color);
-      c.fillRect(0, 0, W, 150);
-      c.fillStyle = zn.side === 'nvidia' && zn.color === 0x1f2a18 ? '#04121f' : '#04121f';
-      if (zn.side === 'nvidia') c.fillStyle = '#0b1400';
-      if (zn.side === 'google' && zn.color === 0xFBBC05) c.fillStyle = '#1a1406';
-      c.textAlign = 'center'; c.textBaseline = 'middle';
-      fitText(c, `${zn.name}｜工作看板`, W - 48, 78, 'bold');
-      c.fillText(ellipsize(c, `${zn.name}｜工作看板`, W - 48), W / 2, 76);
-      const rows = officeState(zn);
-      const pad = 40, inner = W - pad * 2;
-      const top = 172, slot = (H - top - 24) / rows.length;
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i], y = top + i * slot;
-        c.fillStyle = 'rgba(255,255,255,.07)';
-        c.beginPath(); c.roundRect(pad - 8, y, inner + 16, slot - 14, 16); c.fill();
-        c.textAlign = 'left'; c.textBaseline = 'top';
-        const short = (row.f.name.match(/^(.*?)（/) || [null, row.f.name])[1];
-        c.fillStyle = '#ffffff';
-        c.font = `bold 58px ${FONT}`;
-        c.fillText(ellipsize(c, short, inner), pad, y + 10);
-        c.font = `48px ${FONT}`;
-        let ty = y + 76;
-        if (row.empty) {
-          c.fillStyle = '#8fa1bf'; c.fillText(NO_DATA, pad, ty);
-        } else {
-          if (row.doing.length) {
-            c.fillStyle = '#e6edf7';
-            const line = ellipsize(c, '· ' + row.doing[0].text, inner);
-            c.fillText(line, pad, ty); ty += 56;
-            if (row.doing.length > 1) {
-              c.fillStyle = '#b7c4d8';
-              c.fillText(ellipsize(c, '· ' + row.doing[1].text, inner), pad, ty); ty += 52;
-            }
-          } else {
-            c.fillStyle = '#8fa1bf'; c.fillText(NO_DATA, pad, ty); ty += 56;
-          }
-          if (row.waiting.length) {
-            c.fillStyle = '#ffb3b3'; c.font = `bold 48px ${FONT}`;
-            c.fillText('等我 ' + row.waiting.length, pad, ty);
-          }
-        }
-      }
-      tex.needsUpdate = true;
-    }
 
     // 總經理室：開放辦公區裡的小型玻璃角落辦公室
     const office = new THREE.Group(); office.position.set(0, 0, 5.55); scene.add(office);
@@ -603,29 +470,26 @@ async function initBuilding() {
       fitText(c, sub, 480, 46, 'normal'); c.fillText(sub, 256, 226);
       d.tex.needsUpdate = true;
     }
-    let selected = null, selectedOffice = null;
+    let selected = null;
     function update() {
       for (const d of desks) {
         const p = person(d.f.id);
         const busy = p && (arr(p, 'doing').length || arr(p, 'tasks').some((t) => t.status === 'in_progress'));
         const waiting = p && arr(p, 'waiting_on_louis').length;
         const on = d.f.id === selected;
-        const inOff = selectedOffice && OFFICES.some((o) => o.id === selectedOffice && o.members.includes(d.f.id));
-        d.zoneMat.emissiveIntensity = on ? 0.9 : inOff ? 0.55 : waiting ? 0.5 : busy ? 0.3 : 0.05;
-        d.zoneMat.opacity = on || inOff ? 0.6 : p ? 0.35 : 0.15;
+        d.zoneMat.emissiveIntensity = on ? 0.9 : waiting ? 0.5 : busy ? 0.3 : 0.05;
+        d.zoneMat.opacity = on ? 0.6 : p ? 0.35 : 0.15;
         d.scr.emissiveIntensity = busy ? 0.8 : 0.1;
         d.busyPulse = !!(busy || waiting);
         d.lamp.material.emissiveIntensity = d.busyPulse ? 0.7 : 0.18;
         drawLabel(d, on);
       }
       for (const o of officeFloors) {
-        o.mat.opacity = selectedOffice === o.id ? Math.min(0.62, o.baseOp + 0.18) : o.baseOp;
-        o.mat.emissiveIntensity = selectedOffice === o.id ? 0.22 : 0.04;
+        o.mat.opacity = o.baseOp;
+        o.mat.emissiveIntensity = 0.04;
       }
-      for (const b of boards) drawBoard(b);
     }
-    function select(id) { selected = id; selectedOffice = null; update(); }
-    function selectOffice(id) { selectedOffice = id; selected = null; update(); }
+    function select(id) { selected = id; update(); }
 
     controls.target.set(0, 0.5, -0.8);
     function resize() {
@@ -650,7 +514,7 @@ async function initBuilding() {
     setTimeout(() => { if (!userMoved) controls.autoRotate = true; }, 5000);
 
     const ray = new THREE.Raycaster(), v = new THREE.Vector2();
-    const targets = desks.flatMap((d) => d.hits).concat(boards.flatMap((b) => b.hits));
+    const targets = desks.flatMap((d) => d.hits);
     let down = null;
     renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
     renderer.domElement.addEventListener('pointerup', (e) => {
@@ -660,9 +524,7 @@ async function initBuilding() {
       v.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(v, camera);
       const hit = ray.intersectObjects(targets)[0];
-      if (!hit) return;
-      if (hit.object.userData.type === 'board') showOfficeBoard(hit.object.userData.id);
-      else showDetail(hit.object.userData.id);
+      if (hit) showDetail(hit.object.userData.id);
     });
     (function loop(t) {
       controls.update();
@@ -674,7 +536,7 @@ async function initBuilding() {
       renderer.render(scene, camera);
       requestAnimationFrame(loop);
     })(0);
-    building = { update, select, selectOffice };
+    building = { update, select };
     update();
   } catch (e) {
     el.innerHTML = '<p class="empty" style="padding:24px;text-align:center">三維畫面無法載入，下方清單仍可正常查看</p>';
