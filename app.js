@@ -1,406 +1,1260 @@
-// AI 辦公樓看板（同一層平面版）：瀏覽器端以通關密語解密加密資料檔，每 30 秒自動輪詢。
-const REPO_RAW = 'https://raw.githubusercontent.com/louiscandy-max/ai-office-board/main/';
-const POLL_MS = 30000;
-const FILES = ['data', 'live', 'agents', 'directory'];
-const NO_DATA = '暫無數據';
-const LS_KEY = 'aiOfficeBoard.pass';
-const STATUS_TEXT = { done: '已完成', in_progress: '進行中', pending: '待處理' };
-// 性別依據：Grok Bot 助理 profile 描述；Admin／Kobe 依 Air default profile SOUL.md「女性」；
-// Fly（work profile）、CoS、CLO、CTO 無任何來源載明性別 → 中性形象。
-const PEOPLE = [
-  { id: 'pa',    name: 'Sr. PA Ai',  role: '私人資深特助', room: '私人特助室',   g: 'f', color: '#4285F4', rel: '個人側主管', side: 'p' },
-  { id: 'admin', name: 'Admin',      role: 'Air 執行維運', room: '維運室',       g: 'f', color: '#34A853', rel: '直屬 PA', side: 'p' },
-  { id: 'kobe',  name: 'Ai Kobe',    role: '個人事務',     room: '個人事務室',   g: 'f', color: '#EA4335', rel: '直屬 PA', side: 'p' },
-  { id: 'fly',   name: 'Ai Fly',     role: '碳酸鋰預測',   room: '預測室',       g: 'n', color: '#F9AB00', rel: '直屬 PA', side: 'p' },
-  { id: 'ia',    name: 'Sr. IA Ai',  role: '投資分析師',   room: '投資分析室',   g: 'f', color: '#A142F4', rel: '與 PA 平行・受 PA 稽核', side: 'p' },
-  { id: 'cos',   name: 'CoS Ai',     role: '幕僚長',       room: '幕僚長室',     g: 'n', color: '#76B900', rel: '與 PA 平行', side: 'c' },
-  { id: 'clo',   name: 'CLO Ai',     role: '法務長',       room: '法務室',       g: 'n', color: '#2E7D5B', rel: '直屬 CoS', side: 'c' },
-  { id: 'cto',   name: 'CTO Ai',     role: '技術長',       room: '技術長室',     g: 'n', color: '#00897B', rel: '直屬 CoS', side: 'c' },
-  { id: 'cpo',   name: 'CPO Ai',     role: '採購長',       room: '採購長室',     g: 'f', color: '#5D7F2A', rel: '直屬 CoS', side: 'c' },
-  { id: 'fpa',   name: 'Sr. FP&A Ai', role: '財務規劃分析', room: '財務規劃室',  g: 'f', color: '#9E9D24', rel: '直屬 CoS', side: 'c' },
-  { id: 'louis', name: 'Louis',      role: '總經理',       room: '總經理室',     g: 'm', color: '#3d5a8c', rel: '總經理', side: 'x' },
+// AI 辦公樓看板：前端只讀取加密資料檔 data.enc.json，於瀏覽器端以通關密語解密。
+// 性別依據：助理 profile 描述（PA、CPO、FP&A、IA 女性）；Admin／Kobe 依 Air default SOUL.md「女性」；
+// CoS、CLO、CTO、Fly 無來源載明 → 中性形象（無髮型、無裙裝或領帶）。
+const FLOORS = [
+  { id: 'louis', g: 'm', name: 'Louis（總經理）', color: 0x3d5a8c },
+  { id: 'pa', g: 'f',  name: 'Sr. PA Ai（私人資深特助）', color: 0x4285F4 },
+  { id: 'cos', g: 'n', name: 'CoS Ai（幕僚長）', color: 0x76B900 },
+  { id: 'clo', g: 'n', name: 'CLO Ai（法務）', color: 0x5aa86a },
+  { id: 'cto', g: 'n', name: 'CTO Ai（技術長）', color: 0x76B900 },
+  { id: 'cpo', g: 'f', name: 'CPO Ai（採購長）', color: 0x3d5c2a },
+  { id: 'fpa', g: 'f', name: 'Sr. FP&A Analyst Ai（財務規劃）', color: 0xc5e86a },
+  { id: 'ia', g: 'f',  name: 'Sr. IA Ai（投資分析師）', color: 0xEA4335 },
+  { id: 'admin', g: 'f', name: 'Admin（特殊小組・Air 執行維運）', color: 0x34A853 },
+  { id: 'kobe', g: 'f', name: 'Ai Kobe（特殊小組・個人事務）', color: 0xEA4335 },
+  { id: 'fly', g: 'n', name: 'Ai Fly（特殊小組・碳酸鋰預測）', color: 0xFBBC05 },
 ];
-const BY_ID = Object.fromEntries(PEOPLE.map((p) => [p.id, p]));
-const AI_IDS = PEOPLE.filter((p) => p.id !== 'louis').map((p) => p.id);
-const SRC_LABEL = { data: '夜間底稿', live: 'Air 即時', agents: '助理即時' };
-
+const OFFICES = [
+  { id: 'personal', name: '個人幕僚辦公室', zone: '個人幕僚區', members: ['pa', 'ia'], x: -3.9, z: 2.05, w: 6.6, d: 4.6, color: 0x4285F4, side: 'google' },
+  { id: 'special',  name: '特殊小組辦公室', zone: '特殊小組區', members: ['admin', 'kobe', 'fly'], x: -3.9, z: -4.55, w: 6.6, d: 6.6, color: 0xFBBC05, side: 'google' },
+  { id: 'staff',    name: '公司幕僚辦公室', zone: '公司幕僚區', members: ['cos'], x: 3.9, z: 2.05, w: 6.6, d: 4.6, color: 0x76B900, side: 'nvidia' },
+  { id: 'pro',      name: '公司專業辦公室', zone: '公司專業區', members: ['clo', 'cto', 'cpo', 'fpa'], x: 3.9, z: -4.55, w: 6.6, d: 6.6, color: 0x1f2a18, accent: 0x76B900, side: 'nvidia' },
+];
+const NO_DATA = '暫無數據';
+const STATUS_TEXT = { done: '已完成', in_progress: '進行中', pending: '待處理' };
+const LS_KEY = 'aiOfficeBoard.pass';
 const $ = (s) => document.querySelector(s);
+
+let people = null;
+let encCache = null;
+let liveEncCache = null;
+let agentsEncCache = null;
+let usage = { hermes: null, grok: null };
+let building = null;
+let meetings = [];
+let louisActive = null;
+
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const has = (v) => v !== undefined && v !== null && String(v).trim() !== '';
-const arr = (p, k) => (p && Array.isArray(p[k]) ? p[k] : []);
-const stampMs = (s) => { const t = Date.parse(s || ''); return Number.isFinite(t) ? t : null; };
-
-let pass = null;
-const enc = {};      // name -> 加密檔（含 ct）
-const plain = {};    // name -> 解密後資料
-const fetchState = {}; // name -> 'ok' | 'missing' | 'error'
-let board = null;    // 合併後 { people:{id:rec}, meetings, louis_active, usage }
-let lastCheck = null, lastChange = null, timer = null, busy = false;
+const val = (v) => (has(v) ? esc(v) : `<span class="empty">${NO_DATA}</span>`);
+const timeTag = (t) => `<span class="time">${has(t) ? esc(t) : NO_DATA}</span>`;
+const emptyLine = `<p class="empty">${NO_DATA}</p>`;
 
 function fmtTaipei(iso, withDate = true) {
-  const ms = stampMs(iso); if (ms == null) return null;
-  const p = Object.fromEntries(new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+  if (!has(iso)) return null;
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  const p = Object.fromEntries(new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d).map((x) => [x.type, x.value]));
   return withDate ? `${p.month}/${p.day} ${p.hour}:${p.minute}` : `${p.hour}:${p.minute}`;
 }
-function ago(iso) {
-  const ms = stampMs(iso); if (ms == null) return null;
-  const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
-  if (m < 1) return '剛剛';
-  if (m < 60) return `${m} 分鐘前`;
-  const h = Math.floor(m / 60);
-  if (h < 48) return `${h} 小時前`;
-  return `${Math.floor(h / 24)} 天前`;
+function setUpdated(iso) {
+  const t = fmtTaipei(iso);
+  $('#updated').textContent = t ? `資料更新於 ${t}（台北時間）` : `資料更新於：${NO_DATA}`;
 }
-function freshness(rec) {
-  if (!rec) return 'none';
-  if (rec._src === 'data') return 'old';
-  const ms = stampMs(rec._ts); if (ms == null) return 'old';
-  const m = (Date.now() - ms) / 60000;
-  return m <= 15 ? 'fresh' : m <= 120 ? 'warm' : 'old';
-}
+const setStatus = (m) => { $('#status').textContent = m || ''; };
 
 const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-async function decrypt(e, pw) {
-  const baseKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
-  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(e.salt), iterations: e.iter || 600000 }, baseKey, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
-  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(e.iv) }, key, b64(e.ct));
+async function decrypt(enc, pass) {
+  const baseKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: b64(enc.salt), iterations: enc.iter || 600000 },
+    baseKey, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(enc.iv) }, key, b64(enc.ct));
   return JSON.parse(new TextDecoder().decode(pt));
 }
 
-/** 先讀 raw.githubusercontent（commit 後立即可見，加 ?t= 避開 CDN 快取），失敗再讀同網域。 */
-async function fetchEnc(name) {
-  const t = Date.now();
-  for (const base of [REPO_RAW, '']) {
-    try {
-      const r = await fetch(`${base}${name}.enc.json?t=${t}`, { cache: 'no-store' });
-      if (r.status === 404) { if (base) continue; return { state: 'missing' }; }
-      if (!r.ok) continue;
-      const j = await r.json();
-      if (j && j.ct) return { state: 'ok', json: j };
-    } catch (e) { /* 換下一個來源 */ }
+function person(id) { return people && people[id] ? people[id] : null; }
+const arr = (p, k) => (p && Array.isArray(p[k]) ? p[k] : []);
+
+function isWorking(p) { return !!(p && arr(p, 'doing').length); }
+function hasRecord(id) { return !!(people && people[id]); }
+
+/** 只使用資料裡既有的數字，不臆造。優先 doing[].progress（0–100），否則 tasks 已完成／總數。 */
+function progressOf(p) {
+  if (!p) return { value: null };
+  const nums = arr(p, 'doing').map((x) => x.progress).filter((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 100);
+  if (nums.length) return { value: Math.round(nums.reduce((a, b) => a + b, 0) / nums.length), source: 'doing' };
+  const tasks = arr(p, 'tasks');
+  if (tasks.length) {
+    const done = tasks.filter((x) => x.status === 'done').length;
+    return { value: Math.round((done / tasks.length) * 100), source: 'tasks', done, total: tasks.length };
   }
-  return { state: 'error' };
+  return { value: null };
 }
 
-/** 合併：夜間底稿 ← Air 即時 ← 助理即時；每人以較新時間戳為準，並記錄來源與時間。 */
-function merge() {
-  const out = { people: {}, meetings: [], louis_active: null, usage: { hermes: null, grok: null } };
-  const d = plain.data;
-  if (d) {
-    for (const p of arr(d, 'people')) if (p && p.id) out.people[p.id] = { ...p, _src: 'data', _ts: p.updated_at || d.updated_at };
-    if (Array.isArray(d.meetings)) out.meetings = d.meetings;
-    if (d.louis_active) out.louis_active = { ...d.louis_active, _src: 'data' };
-  }
-  for (const name of ['live', 'agents']) {
-    const L = plain[name]; if (!L) continue;
-    for (const lp of arr(L, 'people')) {
-      if (!lp || !lp.id) continue;
-      const ts = lp.updated_at || L.updated_at;
-      const cur = out.people[lp.id];
-      const curMs = cur ? stampMs(cur._ts) : null, ms = stampMs(ts);
-      if (cur && curMs != null && (ms == null || ms < curMs)) continue;
-      const m = { ...(cur || {}), id: lp.id, _src: name, _ts: ts };
-      for (const k of ['doing', 'waiting_on_louis', 'tasks', 'name']) if (k in lp) m[k] = lp[k];
-      out.people[lp.id] = m;
+function hashId(id) {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619) >>> 0;
+  return h;
+}
+
+function parseMeetings(raw) {
+  if (!Array.isArray(raw)) return [];
+  const known = new Set(FLOORS.map((f) => f.id));
+  const out = [];
+  for (const m of raw) {
+    if (!m || !has(m.id) || !has(m.title)) continue;
+    const pod = 'left'; // 右側會議艙已改為大型看板會議室，所有會議集中在左艙
+    const members = [];
+    const seen = new Set();
+    for (const id of Array.isArray(m.members) ? m.members : []) {
+      if (!known.has(id) || seen.has(id)) continue;
+      seen.add(id); members.push(id);
     }
-    if (L.louis_active) {
-      const cur = out.louis_active;
-      const a = stampMs(L.louis_active.last_seen), b = cur ? stampMs(cur.last_seen) : null;
-      if (!cur || b == null || (a != null && a >= b)) out.louis_active = { ...L.louis_active, _src: name };
-    }
-    if (L.usage && L.usage.hermes) out.usage.hermes = L.usage.hermes;
-    if (L.usage && L.usage.grok) out.usage.grok = L.usage.grok;
+    if (members.length < 2) continue;
+    out.push({ id: String(m.id), pod, title: String(m.title).trim(), members, since: has(m.since) ? String(m.since) : '', source: has(m.source) ? String(m.source) : '' });
   }
   return out;
 }
-
-function progressOf(p) {
-  if (!p) return null;
-  const nums = arr(p, 'doing').map((x) => x.progress).filter((n) => typeof n === 'number' && n >= 0 && n <= 100);
-  if (nums.length) return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
-  if (!arr(p, 'doing').length) return null;
-  const t = arr(p, 'tasks');
-  if (t.length) return Math.round((t.filter((x) => x.status === 'done').length / t.length) * 100);
-  return null;
+function parseLouisActive(raw) {
+  if (!raw || typeof raw !== 'object' || typeof raw.active !== 'boolean') return null;
+  const o = { active: raw.active };
+  if (has(raw.last_seen)) o.last_seen = String(raw.last_seen);
+  if (has(raw.source)) o.source = String(raw.source);
+  return o;
 }
-function stateOf(id) {
-  if (!board) return 'none';
-  if (id === 'louis') { const la = board.louis_active; return la && typeof la.active === 'boolean' ? (la.active ? 'work' : 'rest') : 'none'; }
-  const p = board.people[id]; if (!p) return 'none';
-  return arr(p, 'doing').length ? 'work' : 'rest';
+function meetingOf(id) {
+  if (!id) return null;
+  return meetings.find((m) => m.members.includes(id)) || null;
 }
-const STATE_TEXT = { work: '工作中', rest: '休息中', none: '無資料' };
-const meetingOf = (id) => (board ? board.meetings.find((m) => Array.isArray(m.members) && m.members.includes(id)) : null);
-
-function bar(v, cls = '') {
-  return v == null
-    ? `<div class="bar unknown ${cls}" role="img" aria-label="進度暫無數據"></div>`
-    : `<div class="bar ${cls}" role="img" aria-label="進度 ${v}%"><i style="width:${v}%"></i></div>`;
+function louisState() {
+  if (!people || !louisActive || typeof louisActive.active !== 'boolean') return 'unknown';
+  return louisActive.active ? 'active' : 'idle';
 }
-
-// ---- 人物形象（SVG）：f 女性、m 男性、n 中性 ----
-function avatar(g, color, state) {
-  const skin = '#f2d0b1', hair = '#3b2a20';
-  const eyes = '<circle cx="28" cy="25" r="1.4" fill="#2b2b2b"/><circle cx="36" cy="25" r="1.4" fill="#2b2b2b"/>';
-  let s = '';
-  if (g === 'f') {
-    s = `<path d="M19 26c0-11 6-17 13-17s13 6 13 17v15c-4 2-22 2-26 0z" fill="${hair}"/>
-      <path d="M11 64c0-12 9-19 21-19s21 7 21 19z" fill="${color}"/>
-      <path d="M26 45q6 7 12 0" fill="none" stroke="#fff" stroke-width="2" opacity=".8"/>
-      <circle cx="32" cy="25" r="10" fill="${skin}"/>
-      <path d="M22 24c1-8 6-12 10-12s10 4 11 12c-6-1-10-4-12-8-2 4-5 7-9 8z" fill="${hair}"/>
-      ${eyes}<path d="M29.5 30q2.5 1.8 5 0" stroke="#c4566a" stroke-width="1.4" fill="none"/>
-      <circle cx="22.3" cy="28" r="1.2" fill="#f5c542"/><circle cx="41.7" cy="28" r="1.2" fill="#f5c542"/>`;
-  } else if (g === 'm') {
-    s = `<path d="M11 64c0-12 9-19 21-19s21 7 21 19z" fill="${color}"/>
-      <path d="M26 45l6 9 6-9z" fill="#fff"/><path d="M31 47h2l1.2 9-2.2 3-2.2-3z" fill="#22324d"/>
-      <circle cx="32" cy="25" r="10" fill="${skin}"/>
-      <path d="M22 23c0-7 4-11 10-11s10 4 10 11c-2-3-5-5-10-5s-8 2-10 5z" fill="${hair}"/>
-      ${eyes}<path d="M29.5 30.5h5" stroke="#8a5a44" stroke-width="1.4"/>`;
-  } else {
-    s = `<path d="M12 64c0-11 9-18 20-18s20 7 20 18z" fill="${color}"/>
-      <circle cx="32" cy="25" r="11" fill="#e9eef5" stroke="${color}" stroke-width="2.5"/>
-      ${eyes}<path d="M29 30q3 2 6 0" stroke="#5b6b82" stroke-width="1.4" fill="none"/>`;
-  }
-  return `<svg class="av av-${state}" viewBox="0 0 64 64" aria-hidden="true">${s}</svg>`;
+function showProgressBar(id, p) {
+  if (id === 'louis') return progressOf(p).value != null;
+  return isWorking(p);
 }
-
-function chatLink(id, small) {
-  const d = plain.directory && plain.directory.people && plain.directory.people[id];
-  const url = d && d.chat;
-  if (!url || !(/^grokbot:\/\//.test(url) || /^https:\/\/t\.me\//.test(url))) return '';
-  return `<a class="chat${small ? ' sm' : ''}" href="${esc(url)}" onclick="event.stopPropagation()">開啟對話</a>`;
-}
-function updatedLine(id) {
-  if (id === 'louis') {
-    const la = board && board.louis_active;
-    if (!la || !has(la.last_seen)) return `<span class="upd none">最後活動：${NO_DATA}</span>`;
-    return `<span class="upd ${freshness({ _src: la._src === 'data' ? 'data' : 'x', _ts: la.last_seen })}">最後活動 ${esc(fmtTaipei(la.last_seen))}（${esc(ago(la.last_seen))}）・只記時間</span>`;
-  }
-  const p = board && board.people[id];
-  if (!p) return `<span class="upd none">尚無任何回報</span>`;
-  const t = fmtTaipei(p._ts);
-  const f = freshness(p);
-  const lab = SRC_LABEL[p._src] || '';
-  return `<span class="upd ${f}"><i></i>${t ? `更新 ${esc(t)}（${esc(ago(p._ts))}）` : `更新時間${NO_DATA}`}・${esc(lab)}${p._src === 'data' ? '・非即時' : ''}</span>`;
-}
-
-function officeHtml(f) {
-  const st = stateOf(f.id);
-  const p = board && board.people[f.id];
-  const meet = meetingOf(f.id);
-  const doing = arr(p, 'doing');
-  let task;
-  if (meet) task = `<p class="task meet">會議中：${esc(meet.title)}</p>`;
-  else if (f.id === 'louis') task = '';
-  else if (doing.length) task = `<p class="task">${doing.map((x) => esc(x.text)).join('；')}</p>`;
-  else task = `<p class="task muted">${st === 'none' ? '尚無資料' : '目前沒有執行中任務'}</p>`;
+function progressBlock(p) {
   const pr = progressOf(p);
-  const showBar = f.id !== 'louis' && st === 'work';
-  return `<article class="office side-${f.side} st-${st} f-${f.id === 'louis' ? 'x' : freshness(p)}" data-id="${f.id}" tabindex="0" style="--c:${f.color}">
-    <div class="door">${esc(f.room)}</div>
-    <div class="who">${avatar(f.g, f.color, st)}<div><b>${esc(f.name)}</b><span class="role">${esc(f.role)}</span><span class="rel">${esc(f.rel)}</span></div>
-      <span class="pill ${st}">${STATE_TEXT[st]}</span></div>
-    ${task}
-    ${showBar ? `<div class="prog">${bar(pr)}<span>${pr == null ? '進度暫無數據' : pr + '%'}</span></div>` : ''}
-    <div class="foot">${updatedLine(f.id)}${chatLink(f.id)}</div>
-  </article>`;
-}
-
-function boardHtml() {
-  if (!board) return `<p class="muted">${NO_DATA}</p>`;
-  return AI_IDS.map((id) => {
-    const f = BY_ID[id]; const p = board.people[id]; const st = stateOf(id);
-    const d = arr(p, 'doing'); const pr = progressOf(p);
-    const txt = d.length ? d.map((x) => x.text).join('；') : (st === 'none' ? '尚無資料' : '休息中');
-    return `<div class="brow st-${st} f-${freshness(p)}" data-id="${id}"><span class="bn" style="--c:${f.color}">${esc(f.name)}</span>
-      <span class="bt" title="${esc(txt)}">${esc(txt)}</span>
-      <span class="bb">${st === 'work' ? bar(pr, 'thin') : ''}</span>
-      <span class="bp">${st === 'work' ? (pr == null ? '—' : pr + '%') : ''}</span>
-      <span class="bu ${freshness(p)}">${p ? esc(fmtTaipei(p._ts) || NO_DATA) + (p._src === 'data' ? ' 底稿' : '') : '無資料'}</span></div>`;
-  }).join('');
-}
-
-function alertsHtml() {
-  const out = [];
-  for (const n of ['data', 'live', 'agents']) if (fetchState[n] === 'error') out.push(`<li class="a-err">${SRC_LABEL[n]}資料讀取失敗，畫面可能不是最新</li>`);
-  if (board) {
-    for (const id of [...AI_IDS, 'louis']) {
-      const p = board.people[id];
-      for (const w of arr(p, 'waiting_on_louis')) out.push(`<li class="a-wait"><b>${esc(BY_ID[id].name)}</b> 等你回覆：${esc(w.text)}${has(w.since) ? `<span class="muted">（${esc(w.since)}）</span>` : ''}</li>`);
-    }
-    for (const id of AI_IDS) {
-      const p = board.people[id];
-      if (p && arr(p, 'doing').length && freshness(p) === 'old') out.push(`<li class="a-stale"><b>${esc(BY_ID[id].name)}</b> 的進度已超過 2 小時沒更新或來自夜間底稿（${esc(fmtTaipei(p._ts) || NO_DATA)}），不代表目前狀態</li>`);
-    }
-    const none = AI_IDS.filter((id) => !board.people[id]).map((id) => BY_ID[id].name);
-    if (none.length) out.push(`<li class="a-none">尚無資料：${esc(none.join('、'))}</li>`);
-    const g = board.usage.grok;
-    if (g && typeof g.weekly_used_percent === 'number' && g.weekly_used_percent >= 80) out.push(`<li class="a-err">Grok Bot 本週額度已用 ${Math.round(g.weekly_used_percent)}%</li>`);
+  if (pr.value == null) {
+    return `<h3>進度</h3><div class="prog-wrap prog-unknown" role="img" aria-label="進度暫無數據"></div><p class="prog-label">進度暫無數據</p>`;
   }
-  return out.length ? `<ul class="alerts">${out.join('')}</ul>` : '<p class="muted">目前沒有警示</p>';
+  const note = pr.source === 'tasks' ? `（任務 ${pr.done}／${pr.total} 已完成）` : '';
+  return `<h3>進度</h3><div class="prog-wrap" role="img" aria-label="進度 ${pr.value}%"><div class="prog-fill" style="width:${pr.value}%"></div></div><p class="prog-label">${pr.value}%${note}</p>`;
 }
-
-const fmtTok = (n) => (typeof n === 'number' && Number.isFinite(n) ? new Intl.NumberFormat('zh-TW', { notation: 'compact', maximumFractionDigits: 1 }).format(n) : NO_DATA);
-function usageHtml() {
-  if (!board) return `<p class="muted">${NO_DATA}</p>`;
-  const rows = [];
-  const h = board.usage.hermes;
-  rows.push('<h5>Air 特殊小組（Hermes，真實 token）</h5>');
-  if (h && Array.isArray(h.profiles) && h.profiles.length) {
-    for (const p of h.profiles) {
-      const today = p.today && typeof p.today.total === 'number' ? `今日 ${fmtTok(p.today.total)}${p.today.partial && has(p.today.since) ? `（自 ${esc(fmtTaipei(p.today.since, false))} 起）` : ''}` : `今日 ${NO_DATA}`;
-      rows.push(`<div class="urow"><span>${esc(p.label || p.id)}</span><b>累計 ${fmtTok(p.total)}</b><em>${today}</em></div>`);
-    }
-    rows.push(`<p class="src">擷取 ${esc(fmtTaipei(h.captured_at) || NO_DATA)}；累計＝輸入＋輸出（不含快取讀取）</p>`);
-  } else rows.push(`<p class="muted">${NO_DATA}</p>`);
-  const g = board.usage.grok;
-  rows.push('<h5>Grok Bot 助理（週額度占比，非 token）</h5>');
-  if (g && g.shares) {
-    const lt1 = new Set(Array.isArray(g.lt1) ? g.lt1 : []);
-    const cum = g.cumulative_points || {};
-    rows.push(`<p class="src">本週已用 ${typeof g.weekly_used_percent === 'number' ? Math.round(g.weekly_used_percent * 10) / 10 + '%' : NO_DATA}｜重設 ${esc(fmtTaipei(g.week_reset) || NO_DATA)}｜擷取 ${esc(fmtTaipei(g.captured_at) || NO_DATA)}</p>`);
-    for (const id of ['pa', 'cos', 'clo', 'cto', 'cpo', 'fpa', 'ia']) {
-      const sh = g.shares[id]; const w = typeof sh === 'number' ? Math.max(0, Math.min(100, sh)) : 0;
-      const c = cum[id];
-      rows.push(`<div class="urow g"><span>${esc(BY_ID[id].name)}</span><b>${typeof sh === 'number' ? (lt1.has(id) ? '&lt;1%' : Math.round(sh) + '%') : NO_DATA}</b><em>累計 ${typeof c === 'number' ? Math.round(c * 10) / 10 + ' 點' : NO_DATA}</em><i class="ub"><i style="width:${w}%"></i></i></div>`);
-    }
-    rows.push('<p class="src">累計＝各額度週最後一筆「已用%×占比」加總（週額度百分點，估算）</p>');
-  } else rows.push(`<p class="muted">${NO_DATA}</p>`);
-  return rows.join('');
-}
-
-function meetingsHtml() {
-  const ms = board ? board.meetings : [];
-  if (!ms.length) return '<p class="muted">空閒</p>';
-  return ms.map((m) => `<div class="mt"><b>${esc(m.title)}</b><span>${esc((m.members || []).map((id) => (BY_ID[id] ? BY_ID[id].name : id)).join('、'))}</span>${has(m.since) ? `<span class="muted">${esc(m.since)} 起</span>` : ''}</div>`).join('');
+function statusHtml(id) {
+  const p = person(id);
+  const meet = meetingOf(id);
+  const bits = [];
+  if (meet) bits.push(`<h3>目前</h3><p class="status-meet">會議中：${esc(meet.title)}</p>`);
+  else if (id === 'louis') {
+    const st = louisState();
+    if (st === 'active') {
+      bits.push(`<h3>目前</h3><p class="status-work">工作中${louisActive && has(louisActive.last_seen) ? timeTag(louisActive.last_seen) : ''}</p>`);
+      if (louisActive && has(louisActive.source)) bits.push(`<div class="src">來源：${esc(louisActive.source)}</div>`);
+    } else if (st === 'idle') bits.push(`<h3>目前</h3><p class="status-rest">休息中</p>`);
+    else bits.push(`<h3>目前</h3><p class="empty">${NO_DATA}</p>`);
+  } else if (people && p && !isWorking(p)) {
+    bits.push(`<h3>目前</h3><p class="status-rest">休息中</p>`);
+  }
+  if (showProgressBar(id, p)) bits.push(progressBlock(p));
+  return bits.join('');
 }
 
 function render() {
-  for (const el of document.querySelectorAll('[data-office]')) {
-    const f = BY_ID[el.dataset.office]; if (f) el.innerHTML = officeHtml(f);
+  const doing = [], flow = [];
+  const waits = [];
+  for (const f of FLOORS) {
+    const p = person(f.id);
+    const d = arr(p, 'doing');
+    const meet = meetingOf(f.id);
+    const items = d.length ? `<ul>${d.map((x) => `<li>${val(x.text)}${timeTag(x.since)}</li>`).join('')}</ul>` : '';
+    let body;
+    if (meet) body = `<p class="status-meet">會議中：${esc(meet.title)}</p>${items}`;
+    else if (f.id === 'louis') {
+      const st = louisState();
+      body = (st === 'active' ? '<p class="status-work">工作中</p>' : st === 'idle' ? '<p class="status-rest">休息中</p>' : emptyLine) + items;
+    } else body = items || (people && p ? '<p class="status-rest">休息中</p>' : emptyLine);
+    doing.push(`<div class="person f-${f.id === 'louis' ? 'x' : freshness(p)}"><h3>${esc(f.name)}</h3>${body}${updLine(f.id)}${chatLink(f.id)}</div>`);
+    for (const w of arr(p, 'waiting_on_louis')) waits.push({ f, w });
+    const t = arr(p, 'tasks');
+    const order = { in_progress: 0, pending: 1, done: 2 };
+    const ts = [...t].sort((a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3));
+    flow.push(`<div class="person"><h3>${esc(f.name)}</h3>${ts.length ? `<ul class="flow">${ts.map((x) => {
+      const st = STATUS_TEXT[x.status] ? x.status : 'pending';
+      return `<li class="${st}"><span class="tag ${st}">${STATUS_TEXT[x.status] || NO_DATA}</span>${val(x.title)}${timeTag(x.time)}</li>`;
+    }).join('')}</ul>` : emptyLine}</div>`);
   }
-  $('#board-rows').innerHTML = boardHtml();
-  $('#alerts').innerHTML = alertsHtml();
+  $('#doing').innerHTML = doing.join('');
+  $('#flow').innerHTML = flow.join('');
+  $('#waiting').innerHTML = waits.length
+    ? waits.map(({ f, w }) => `<div class="wait-item"><b>${esc(f.name)}</b>：${val(w.text)}${timeTag(w.since)}<div class="src">來源：${val(w.source)}</div></div>`).join('')
+    : emptyLine;
   $('#usage').innerHTML = usageHtml();
-  $('#meetings').innerHTML = meetingsHtml();
-  const resting = board ? AI_IDS.filter((id) => stateOf(id) === 'rest' && !meetingOf(id)) : [];
-  $('#lounge').innerHTML = resting.length ? resting.map((id) => `<span class="lp" style="--c:${BY_ID[id].color}">${avatar(BY_ID[id].g, BY_ID[id].color, 'rest')}${esc(BY_ID[id].name)}</span>`).join('') : '<span class="muted">目前沒有人</span>';
-  $('#board-clock').textContent = lastChange ? `資料最後變動 ${fmtTaipei(lastChange)}` : '';
-  updateLive();
-  drawLines();
+  const al = alertList();
+  if ($('#alerts')) $('#alerts').innerHTML = al.length ? al.map((a) => `<div class="wait-item ${a.level}">${esc(a.text)}</div>`).join('') : emptyLine;
+  if (building) building.update();
   const open = $('#detail').dataset.id;
-  if (open && !$('#detail').hidden) showDetail(open, false);
+  if (open && !$('#detail').hidden) showDetail(open);
 }
 
-function updateLive() {
-  const el = $('#live'), t = $('#live-text');
-  if (!pass) { el.className = 'live off'; t.textContent = '尚未解鎖'; return; }
-  const bad = ['data', 'live', 'agents'].some((n) => fetchState[n] === 'error');
-  el.className = `live ${bad ? 'warn' : 'on'}`;
-  t.textContent = `即時更新中・每 30 秒檢查・上次 ${lastCheck ? new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(lastCheck) : '—'}`;
+const fmtTok = (n) => (typeof n === 'number' && Number.isFinite(n) ? new Intl.NumberFormat('zh-TW', { notation: 'compact', maximumFractionDigits: 1 }).format(n) : NO_DATA);
+const fmtPct = (n, lt1) => (lt1 ? '&lt;1%' : (typeof n === 'number' && Number.isFinite(n) ? `${Math.round(n * 10) / 10}%` : NO_DATA));
+const shortTime = (iso) => fmtTaipei(iso) || NO_DATA;
+/** 累計用量：Hermes 為真實 token；Grok Bot 只有週額度占比（非 token）。沒有就顯示暫無數據。 */
+function usageHtml() {
+  if (!people) return emptyLine;
+  const rows = [];
+  const h = usage.hermes;
+  rows.push(`<h3>Air 特殊小組（Hermes，真實 token）</h3>`);
+  if (h && Array.isArray(h.profiles) && h.profiles.length) {
+    for (const p of h.profiles) {
+      const today = p.today && typeof p.today.total === 'number'
+        ? `今日 ${fmtTok(p.today.total)}${has(p.today.since) && p.today.partial ? `（自 ${esc(shortTime(p.today.since))} 起）` : ''}` : `今日 ${NO_DATA}`;
+      rows.push(`<div class="u-row"><span class="u-name">${esc(p.label || p.id)}</span><span class="u-val">累計 ${fmtTok(p.total)}｜${today}</span><span class="u-sub">輸入 ${fmtTok(p.input)}／輸出 ${fmtTok(p.output)}／快取讀取 ${fmtTok(p.cache_read)}</span></div>`);
+    }
+    rows.push(`<p class="src">來源：Air Hermes state.db 會話用量（唯讀），擷取 ${esc(shortTime(h.captured_at))}（台北時間）。累計＝輸入＋輸出（不含快取讀取）。</p>`);
+  } else rows.push(emptyLine);
+  const g = usage.grok;
+  rows.push(`<h3>Grok Bot 助理（週額度占比，非 token）</h3>`);
+  if (g && g.shares) {
+    rows.push(`<p class="u-head">本週額度已用 ${fmtPct(g.weekly_used_percent)}｜重設 ${esc(shortTime(g.week_reset))}｜擷取 ${esc(shortTime(g.captured_at))}</p>`);
+    const lt1 = new Set(Array.isArray(g.lt1) ? g.lt1 : []);
+    const cum = g.cumulative_points || {};
+    for (const id of ['pa', 'cos', 'clo', 'cto', 'cpo', 'fpa', 'ia']) {
+      const f = FLOORS.find((x) => x.id === id);
+      const sh = g.shares[id];
+      const w = typeof sh === 'number' ? Math.max(0, Math.min(100, sh)) : 0;
+      const c = cum[id];
+      rows.push(`<div class="u-row"><span class="u-name">${esc(f ? f.name.replace(/（.*$/, '') : id)}</span><span class="u-val">本週占比 ${typeof sh === 'number' ? fmtPct(sh, lt1.has(id)) : NO_DATA}｜累計估算 ${typeof c === 'number' ? `${Math.round(c * 10) / 10} 點` : NO_DATA}</span><span class="u-bar"><i style="width:${w}%"></i></span></div>`);
+    }
+    rows.push(`<p class="src">累計估算＝各額度週最後一筆「已用%×占比」加總，單位為週額度百分點，自 ${esc(shortTime(g.first_captured_at))} 起共 ${esc(g.weeks_counted)} 週；早期回填只列前幾名。</p>`);
+  } else rows.push(emptyLine);
+  return rows.join('');
 }
 
-// ---- 組織連線（SVG，依實際版面計算） ----
-function drawLines() {
-  const svg = $('#org-lines'), floor = $('#floor');
-  if (!svg || window.matchMedia('(max-width: 900px)').matches) { if (svg) svg.innerHTML = ''; return; }
-  const fr = floor.getBoundingClientRect();
-  const R = (sel) => { const e = floor.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return { l: r.left - fr.left, r: r.right - fr.left, t: r.top - fr.top, b: r.bottom - fr.top, cx: (r.left + r.right) / 2 - fr.left, cy: (r.top + r.bottom) / 2 - fr.top }; };
-  const pa = R('.s-pa'), sp = R('.s-special'), ia = R('.s-ia'), cos = R('.s-cos'), pro = R('.s-pro');
-  if (!pa || !sp || !ia || !cos || !pro) return;
-  svg.setAttribute('viewBox', `0 0 ${fr.width} ${fr.height}`);
-  const gx = Math.max(6, pa.l - 12), gy = Math.max(6, pa.t - 30);
-  const paths = [
-    [`M${pa.cx} ${pa.b} V${sp.t}`, 'solid', '直屬'],
-    [`M${pa.l} ${pa.cy} H${gx} V${ia.cy} H${ia.l}`, 'dash', '稽核'],
-    [`M${pa.cx} ${pa.t} V${gy} H${cos.cx} V${cos.t}`, 'dot', '平行'],
-    [`M${cos.cx} ${cos.b} V${pro.t}`, 'solid', '直屬'],
-  ];
-  svg.innerHTML = paths.map(([d, c]) => `<path d="${d}" class="ol ${c}"/>`).join('') +
-    `<text x="${(pa.cx + cos.cx) / 2}" y="${gy - 4}" class="olt">PA 與 CoS 平行協作</text>`;
-}
-
-function showDetail(id, scroll = true) {
-  const f = BY_ID[id]; if (!f) return;
-  const p = board && board.people[id];
-  const list = (items, fn) => (items.length ? `<ul>${items.map(fn).join('')}</ul>` : `<p class="muted">${NO_DATA}</p>`);
+function showDetail(id) {
+  const f = FLOORS.find((x) => x.id === id);
+  if (!f) return;
+  const p = person(id);
   $('#detail').dataset.id = id;
-  $('#detail-title').innerHTML = `${esc(f.name)}・${esc(f.role)}`;
-  $('#detail-body').innerHTML = `<p>${updatedLine(id)} ${chatLink(id)}</p>
-    <h3>正在做</h3>${list(arr(p, 'doing'), (x) => `<li>${esc(x.text)}${typeof x.progress === 'number' ? `（${x.progress}%）` : ''}<span class="muted"> ${esc(x.since || '')}</span></li>`)}
-    <h3>等我回覆</h3>${list(arr(p, 'waiting_on_louis'), (x) => `<li>${esc(x.text)}<span class="muted"> ${esc(x.since || '')} 來源：${esc(x.source || NO_DATA)}</span></li>`)}
-    <h3>任務流</h3>${list(arr(p, 'tasks'), (x) => `<li><span class="tag ${STATUS_TEXT[x.status] ? x.status : 'pending'}">${STATUS_TEXT[x.status] || NO_DATA}</span>${esc(x.title)}<span class="muted"> ${esc(x.time || '')}</span></li>`)}`;
+  $('#detail-title').textContent = f.name;
+  const list = (items, fn) => (items.length ? `<ul>${items.map(fn).join('')}</ul>` : emptyLine);
+  $('#detail-body').innerHTML = `
+    ${updLine(id)}${chatLink(id)}
+    ${statusHtml(id)}
+    <h3>正在做</h3>${list(arr(p, 'doing'), (x) => `<li>${val(x.text)}${timeTag(x.since)}</li>`)}
+    <h3>等我回覆</h3>${list(arr(p, 'waiting_on_louis'), (x) => `<li>${val(x.text)}${timeTag(x.since)}<div class="src">來源：${val(x.source)}</div></li>`)}
+    <h3>任務流</h3>${list(arr(p, 'tasks'), (x) => `<li><span class="tag ${STATUS_TEXT[x.status] ? x.status : 'pending'}">${STATUS_TEXT[x.status] || NO_DATA}</span>${val(x.title)}${timeTag(x.time)}</li>`)}`;
   $('#detail').hidden = false;
-  if (scroll) $('#detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (building) building.select(id);
+  $('#detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// ---- 輪詢 ----
-async function poll(force = false) {
-  if (busy || !pass) return;
-  busy = true; $('#refresh').disabled = true;
-  let changed = false;
+$('#detail-close').addEventListener('click', () => {
+  $('#detail').hidden = true; $('#detail').dataset.id = '';
+  if (building) building.select(null);
+});
+
+function stampMs(s) {
+  const t = Date.parse(s || '');
+  return Number.isFinite(t) ? t : null;
+}
+const SRC_LABEL = { data: '夜間底稿', live: 'Air 即時', agents: '助理即時' };
+const FILES = ['data', 'live', 'agents', 'directory'];
+const REPO = 'louiscandy-max/ai-office-board';
+const POLL_MS = 30000;
+let pass = null, lastCheck = null, pollTimer = null, polling = false;
+const encs = {}, plains = {}, fetchState = {};
+let directory = null;
+
+function shortName(f) { return f.name.replace(/（.*$/, ''); }
+/** fresh：15 分鐘內；warm：2 小時內；old：更舊或來自夜間底稿；none：無資料 */
+function freshness(p) {
+  if (!p) return 'none';
+  if (p._src === 'data') return 'old';
+  const ms = stampMs(p._ts); if (ms == null) return 'old';
+  const m = (Date.now() - ms) / 60000;
+  return m <= 15 ? 'fresh' : m <= 120 ? 'warm' : 'old';
+}
+function ago(iso) {
+  const ms = stampMs(iso); if (ms == null) return '';
+  const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+  if (m < 1) return '剛剛'; if (m < 60) return `${m} 分鐘前`;
+  const h = Math.floor(m / 60); return h < 48 ? `${h} 小時前` : `${Math.floor(h / 24)} 天前`;
+}
+function updLine(id) {
+  if (id === 'louis') {
+    if (!louisActive || !has(louisActive.last_seen)) return `<div class="upd none">最後活動：${NO_DATA}</div>`;
+    return `<div class="upd">最後活動 ${esc(fmtTaipei(louisActive.last_seen))}（${esc(ago(louisActive.last_seen))}）・只記時間</div>`;
+  }
+  const p = person(id);
+  if (!p) return `<div class="upd none">尚無任何回報</div>`;
+  const f = freshness(p);
+  return `<div class="upd ${f}"><i></i>更新 ${esc(fmtTaipei(p._ts) || NO_DATA)}（${esc(ago(p._ts))}）・${esc(SRC_LABEL[p._src] || '')}${p._src === 'data' ? '・非即時' : ''}</div>`;
+}
+function chatLink(id) {
+  const d = directory && directory.people && directory.people[id];
+  const url = d && d.chat;
+  if (!url || !(/^grokbot:\/\//.test(url) || /^https:\/\/t\.me\//.test(url))) return '';
+  return `<a class="chat" href="${esc(url)}">開啟對話</a>`;
+}
+function alertList() {
+  const out = [];
+  for (const n of ['data', 'live', 'agents']) if (fetchState[n] === 'error') out.push({ level: 'red', text: `${SRC_LABEL[n]}讀取失敗，畫面可能不是最新` });
+  if (!people) return out;
+  for (const f of FLOORS) for (const w of arr(person(f.id), 'waiting_on_louis')) out.push({ level: 'red', text: `${shortName(f)} 等你回覆：${w.text}` });
+  for (const f of FLOORS) {
+    const p = person(f.id);
+    if (f.id !== 'louis' && p && isWorking(p) && freshness(p) === 'old') out.push({ level: 'amber', text: `${shortName(f)} 進度來自${p._src === 'data' ? '夜間底稿' : '2 小時前'}（${fmtTaipei(p._ts) || NO_DATA}），非即時` });
+  }
+  const none = FLOORS.filter((f) => f.id !== 'louis' && !person(f.id)).map(shortName);
+  if (none.length) out.push({ level: 'amber', text: `尚無資料：${none.join('、')}` });
+  if (usage.grok && typeof usage.grok.weekly_used_percent === 'number' && usage.grok.weekly_used_percent >= 80) out.push({ level: 'red', text: `Grok Bot 本週額度已用 ${Math.round(usage.grok.weekly_used_percent)}%` });
+  return out;
+}
+
+/** 合併：夜間底稿 ← Air 即時 ← 助理即時；每人以較新時間戳為準，記錄來源 _src 與時間 _ts。 */
+function mergeAll() {
+  const d = plains.data || {};
+  const out = { updated_at: d.updated_at, people: [], meetings: Array.isArray(d.meetings) ? d.meetings : [], louis_active: d.louis_active || null };
+  const by = {};
+  for (const p of arr(d, 'people')) if (p && p.id) { by[p.id] = { ...p, _src: 'data', _ts: p.updated_at || d.updated_at }; }
+  usage = { hermes: null, grok: null };
+  for (const n of ['live', 'agents']) {
+    const L = plains[n]; if (!L) continue;
+    for (const lp of arr(L, 'people')) {
+      if (!lp || !lp.id) continue;
+      const ts = lp.updated_at || L.updated_at, cur = by[lp.id];
+      const a = stampMs(ts), b = cur ? stampMs(cur._ts) : null;
+      if (cur && b != null && (a == null || a < b)) continue;
+      const m = { ...(cur || {}), id: lp.id, _src: n, _ts: ts };
+      for (const k of ['doing', 'waiting_on_louis', 'tasks', 'name']) if (k in lp) m[k] = lp[k];
+      by[lp.id] = m;
+    }
+    if (L.louis_active) {
+      const cur = out.louis_active, a = stampMs(L.louis_active.last_seen), b = cur ? stampMs(cur.last_seen) : null;
+      if (!cur || b == null || (a != null && a >= b)) out.louis_active = L.louis_active;
+    }
+    if (L.usage && L.usage.hermes) usage.hermes = L.usage.hermes;
+    if (L.usage && L.usage.grok) usage.grok = L.usage.grok;
+    if (stampMs(L.updated_at) > (stampMs(out.updated_at) || 0)) out.updated_at = L.updated_at;
+  }
+  out.people = Object.values(by);
+  directory = plains.directory || null;
+  return out;
+}
+
+function applyData(data) {
+  people = {};
+  for (const p of (data && Array.isArray(data.people) ? data.people : [])) if (p && p.id) people[p.id] = p;
+  meetings = parseMeetings(data && data.meetings);
+  louisActive = parseLouisActive(data && data.louis_active);
+  setUpdated(data && data.updated_at);
+  render();
+}
+function noData(msg) { people = null; meetings = []; louisActive = null; usage = { hermes: null, grok: null }; setUpdated(null); setStatus(msg); render(); }
+
+/** 取得 main 最新 commit（API 以 ETag 重新驗證，304 不計入額度），再以 commit 固定網址讀 raw，避開 CDN 約 5 分鐘快取。 */
+async function headSha() {
   try {
-    const res = await Promise.all(FILES.map((n) => fetchEnc(n)));
+    const r = await fetch(`https://api.github.com/repos/${REPO}/commits/main`, { cache: 'no-cache', headers: { Accept: 'application/vnd.github.sha' } });
+    if (r.ok) { const t = (await r.text()).trim(); if (/^[0-9a-f]{40}$/.test(t)) return t; }
+  } catch (e) { /* 改用備援 */ }
+  return null;
+}
+async function fetchEnc(name, sha) {
+  const t = Date.now();
+  const urls = [];
+  if (sha) urls.push(`https://raw.githubusercontent.com/${REPO}/${sha}/${name}.enc.json`);
+  urls.push(`https://raw.githubusercontent.com/${REPO}/main/${name}.enc.json?t=${t}`, `${name}.enc.json?t=${t}`);
+  let missing = false;
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, { cache: u.includes('?t=') ? 'no-store' : 'default' });
+      if (r.status === 404) { missing = true; continue; }
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (j && j.ct) return { state: 'ok', json: j };
+    } catch (e) { /* 下一個來源 */ }
+  }
+  return { state: missing ? 'missing' : 'error' };
+}
+
+async function poll(force) {
+  if (polling || !pass) return;
+  polling = true; $('#refresh').disabled = true;
+  try {
+    const sha = await headSha();
+    const res = await Promise.all(FILES.map((n) => fetchEnc(n, sha)));
+    let changed = false;
     for (let i = 0; i < FILES.length; i++) {
       const n = FILES[i], r = res[i];
       fetchState[n] = r.state;
-      if (r.state !== 'ok') { if (r.state === 'missing' && plain[n]) { delete plain[n]; delete enc[n]; changed = true; } continue; }
-      if (!force && enc[n] && enc[n].ct === r.json.ct) continue;
-      try { plain[n] = await decrypt(r.json, pass); enc[n] = r.json; changed = true; }
+      if (r.state !== 'ok') { if (r.state === 'missing' && plains[n]) { delete plains[n]; delete encs[n]; changed = true; } continue; }
+      if (!force && encs[n] && encs[n].ct === r.json.ct) continue;
+      try { plains[n] = await decrypt(r.json, pass); encs[n] = r.json; changed = true; }
       catch (e) { if (n === 'data') { lockOut('通關密語已變更，請重新輸入'); return; } }
     }
     lastCheck = new Date();
-    if (changed) { board = merge(); lastChange = new Date().toISOString(); }
-    setStatus(fetchState.data === 'ok' || plain.data ? '' : '讀取資料失敗，稍後會自動重試');
-    render();
-  } finally { busy = false; $('#refresh').disabled = false; }
+    if (changed || force) applyData(mergeAll()); else render();
+    setStatus(plains.data ? '' : '讀取資料失敗，稍後自動重試');
+    updateLive();
+  } finally { polling = false; $('#refresh').disabled = false; }
 }
-function startPolling() { stopPolling(); timer = setInterval(() => { if (document.visibilityState === 'visible') poll(); }, POLL_MS); }
-function stopPolling() { if (timer) clearInterval(timer); timer = null; }
-const setStatus = (m) => { $('#status').textContent = m || ''; };
-
+function updateLive() {
+  const el = $('#live'); if (!el) return;
+  const bad = ['data', 'live', 'agents'].some((n) => fetchState[n] === 'error');
+  el.className = `live ${!pass ? 'off' : bad ? 'warn' : 'on'}`;
+  $('#live-text').textContent = !pass ? '尚未解鎖' : `即時更新中・每 30 秒檢查・上次 ${lastCheck ? new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(lastCheck) : '—'}`;
+}
 function lockOut(msg) {
-  pass = null; stopPolling(); board = null;
-  for (const k of Object.keys(plain)) delete plain[k];
-  for (const k of Object.keys(enc)) delete enc[k];
+  pass = null; if (pollTimer) clearInterval(pollTimer); pollTimer = null;
+  for (const k of Object.keys(plains)) delete plains[k];
+  for (const k of Object.keys(encs)) delete encs[k];
+  directory = null;
   localStorage.removeItem(LS_KEY); sessionStorage.removeItem(LS_KEY);
-  $('#gate').hidden = false; $('#lock').hidden = true; setStatus(msg || '需要通關密語才能查看內容');
-  render(); $('#pass').focus();
+  people = null; render(); updateLive();
+  $('#gate').hidden = false; $('#lock').hidden = true; setStatus(msg || '需要通關密語才能查看內容'); $('#pass').focus();
 }
 
-async function unlock(pw, remember) {
-  const r = await fetchEnc('data');
-  if (r.state !== 'ok') { $('#gate-msg').textContent = '目前讀不到資料檔，請稍後再試'; return false; }
-  try { plain.data = await decrypt(r.json, pw); enc.data = r.json; } catch (e) { return false; }
+async function tryUnlock(pw, remember) {
+  const r = await fetchEnc('data', await headSha());
+  if (r.state !== 'ok') { setStatus('目前讀不到資料檔，稍後再試'); return false; }
+  try { plains.data = await decrypt(r.json, pw); encs.data = r.json; } catch (e) { return false; }
   pass = pw;
-  sessionStorage.setItem(LS_KEY, pw); if (remember) localStorage.setItem(LS_KEY, pw);
-  $('#gate').hidden = true; $('#lock').hidden = false;
-  board = merge(); render();
-  await poll(); startPolling();
+  if (remember) localStorage.setItem(LS_KEY, pw);
+  sessionStorage.setItem(LS_KEY, pw);
+  $('#gate').hidden = true; $('#lock').hidden = false; setStatus('');
+  applyData(mergeAll());
+  await poll(true);
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(() => { if (document.visibilityState === 'visible') poll(false); }, POLL_MS);
   return true;
+}
+
+async function load() {
+  render(); updateLive();
+  const saved = sessionStorage.getItem(LS_KEY) || localStorage.getItem(LS_KEY);
+  if (saved && await tryUnlock(saved, false)) return;
+  if (saved) { localStorage.removeItem(LS_KEY); sessionStorage.removeItem(LS_KEY); }
+  people = null; render();
+  setStatus('需要通關密語才能查看內容');
+  $('#gate').hidden = false; $('#pass').focus();
 }
 
 $('#gate-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   $('#gate-msg').textContent = '解密中…';
-  const ok = await unlock($('#pass').value, $('#remember').checked);
-  if (ok) { $('#gate-msg').textContent = ''; $('#pass').value = ''; }
-  else if ($('#gate-msg').textContent === '解密中…') $('#gate-msg').textContent = '通關密語不正確';
+  const ok = await tryUnlock($('#pass').value, $('#remember').checked);
+  $('#gate-msg').textContent = ok ? '' : '通關密語不正確';
+  if (ok) $('#pass').value = '';
 });
-$('#refresh').addEventListener('click', () => poll(true));
+$('#refresh').addEventListener('click', () => (pass ? poll(true) : load()));
 $('#lock').addEventListener('click', () => { lockOut(''); location.reload(); });
-$('#detail-close').addEventListener('click', () => { $('#detail').hidden = true; $('#detail').dataset.id = ''; });
-$('#floor').addEventListener('click', (e) => { const o = e.target.closest('[data-id]'); if (o && !e.target.closest('a')) showDetail(o.dataset.id); });
-$('#floor').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const o = e.target.closest('[data-id]'); if (o) showDetail(o.dataset.id); } });
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && pass) poll(); });
-new ResizeObserver(() => drawLines()).observe($('#floor'));
-setInterval(() => { if (pass && board) render(); }, 60000); // 只更新「幾分鐘前」
+$('#to-board').addEventListener('click', () => { if (building && building.focusBoard) { building.focusBoard(); $('#building').scrollIntoView({ behavior: 'smooth', block: 'center' }); } });
+$('#to-all').addEventListener('click', () => { if (building && building.focusAll) building.focusAll(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && pass) poll(false); });
+setInterval(() => { if (pass && people) render(); }, 60000);
 
-(async function init() {
-  render();
-  const saved = sessionStorage.getItem(LS_KEY) || localStorage.getItem(LS_KEY);
-  if (saved && await unlock(saved, false)) return;
-  if (saved) { localStorage.removeItem(LS_KEY); sessionStorage.removeItem(LS_KEY); }
-  $('#gate').hidden = false; setStatus('需要通關密語才能查看內容'); $('#pass').focus();
-})();
+// ---------- 三維開放式辦公區（同一層，四個鄰里） ----------
+const LAYOUT = {
+  louis: { x: 0, z: 6.0, k: 1.08, gm: true, rot: Math.PI },
+  pa:  { x: -3.3, z: 1.6, lead: true },
+  admin: { x: -6.0, z: -4.2, k: 0.9 }, kobe: { x: -3.85, z: -4.2, k: 0.9 }, fly: { x: -1.7, z: -4.2, k: 0.9 },
+  ia: { x: -6.45, z: 1.6, k: 0.85 },
+  cos: { x: 3.3, z: 1.6, lead: true },
+  clo: { x: 2.55, z: -3.3 }, cto: { x: 5.15, z: -3.3 },
+  cpo: { x: 2.55, z: -6.3 }, fpa: { x: 5.15, z: -6.3 },
+};
+
+async function initBuilding() {
+  const el = $('#building');
+  try {
+    const THREE = await import('three');
+    const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    el.appendChild(renderer.domElement);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xd4e8fb);
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.enablePan = false;
+    controls.minDistance = 3; controls.maxDistance = 48;
+    controls.maxPolarAngle = Math.PI * 0.48;
+    controls.autoRotate = false; controls.autoRotateSpeed = 0.55;
+    scene.add(new THREE.HemisphereLight(0xfff6e8, 0x4a3a28, 1.15));
+    const sun = new THREE.DirectionalLight(0xfff5e0, 1.15); sun.position.set(6, 16, 10); scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xddeeff, 0.35); fill.position.set(-8, 8, -4); scene.add(fill);
+
+    const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...extra });
+    const box = (w, h, d, mat, x, y, z, parent) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); parent.add(m); return m; };
+    const FONT = '"PingFang TC","Noto Sans CJK TC","Noto Sans TC","Microsoft JhengHei",sans-serif';
+    const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+    function fitText(c, text, max, size, weight) {
+      let s = size;
+      do { c.font = `${weight} ${s}px ${FONT}`; s -= 2; } while (c.measureText(text).width > max && s > 18);
+    }
+    function floorText(text, x, z, w, color) {
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
+      const c = cv.getContext('2d'); c.fillStyle = color; c.textAlign = 'center'; c.textBaseline = 'middle';
+      fitText(c, text, 500, 96, 'bold'); c.fillText(text, 256, 64);
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w / 4), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2; m.position.set(x, 0.04, z); scene.add(m);
+    }
+    function labelSprite(text, w, h, fg, bg, stroke) {
+      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256;
+      const c = cv.getContext('2d');
+      c.fillStyle = bg; c.beginPath(); c.roundRect(8, 8, 1008, 240, 28); c.fill();
+      if (stroke) { c.strokeStyle = stroke; c.lineWidth = 12; c.stroke(); }
+      c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
+      fitText(c, text, 960, 110, 'bold'); c.fillText(text, 512, 132);
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+      spr.scale.set(w, h, 1); spr.renderOrder = 12;
+      return spr;
+    }
+
+    // 木質樓板與中央走道
+    const FW = 18, FD = 18.4, Z0 = -1.6;
+    {
+      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
+      const c = cv.getContext('2d');
+      for (let i = 0; i < 8; i++) {
+        c.fillStyle = i % 2 ? '#c4a06a' : '#d2b07a';
+        c.fillRect(0, i * 32, 256, 32);
+        c.strokeStyle = 'rgba(90,50,20,.22)'; c.beginPath(); c.moveTo(0, i * 32); c.lineTo(256, i * 32); c.stroke();
+      }
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(10, 10);
+      const floor = new THREE.Mesh(new THREE.BoxGeometry(FW, 0.2, FD), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.78 }));
+      floor.position.set(0, -0.1, Z0); scene.add(floor);
+    }
+    box(1.35, 0.03, 16.6, M(0xe6d3b0), 0, 0.02, Z0 - 0.2, scene);
+    for (const z of [-8.5, -6.5, -4.5, -2.5, -0.5, 1.5, 3.5, 5.2]) box(0.14, 0.035, 0.7, M(0xf5d76e), 0, 0.04, z, scene);
+    floorText('走道', 0, -9.4, 1.1, 'rgba(120,80,30,.8)');
+
+    const beam = M(0xddd6c8, { roughness: 0.5 });
+
+    const potMat = M(0xc46a3a, { roughness: 0.7 });
+    const leafMat = M(0x3d9a54, { roughness: 0.72 });
+    const stemMat = M(0x5a8a3a);
+    const potGeo = new THREE.CylinderGeometry(0.18, 0.14, 0.2, 8);
+    const leafGeo = new THREE.SphereGeometry(1, 9, 7);
+    const plants = [];
+    function addPlant(x, z, s = 1) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(s);
+      const pot = new THREE.Mesh(potGeo, potMat); pot.position.y = 0.12; g.add(pot);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.45, 6), stemMat); stem.position.y = 0.42; g.add(stem);
+      for (const [lx, ly, lz, r] of [[0, 0.75, 0, 0.22], [0.12, 0.7, 0.08, 0.16], [-0.1, 0.68, -0.08, 0.15]]) {
+        const leaf = new THREE.Mesh(leafGeo, leafMat);
+        leaf.position.set(lx, ly, lz); leaf.scale.set(r, r * 0.85, r); g.add(leaf);
+      }
+      scene.add(g);
+      plants.push({ g, phase: Math.random() * Math.PI * 2, amp: 0.02 + Math.random() * 0.02 });
+    }
+    function addPendant(x, z, shade) {
+      box(0.45, 0.06, 0.08, beam, x, 3.92, z, scene);
+      box(0.018, 1.35, 0.018, M(0x667), x, 3.2, z, scene);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.22, 10, 1, true), M(shade, { roughness: 0.35, metalness: 0.2, emissive: shade, emissiveIntensity: 0.22 }));
+      cone.position.set(x, 2.52, z); cone.rotation.x = Math.PI; scene.add(cone);
+      const glow = new THREE.Mesh(new THREE.CircleGeometry(0.2, 12), new THREE.MeshBasicMaterial({ color: 0xfff3c8, transparent: true, opacity: 0.9, side: THREE.DoubleSide }));
+      glow.position.set(x, 2.42, z); glow.rotation.x = Math.PI / 2; scene.add(glow);
+    }
+    function addShelf(x, z, rot, w = 1.8) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
+      const wood = M(0x8a6239);
+      box(w, 0.06, 0.32, wood, 0, 0.18, 0, g);
+      box(w, 0.06, 0.32, wood, 0, 0.48, 0, g);
+      box(w, 0.06, 0.32, wood, 0, 0.78, 0, g);
+      box(0.06, 0.78, 0.32, wood, -w / 2 + 0.03, 0.45, 0, g);
+      box(0.06, 0.78, 0.32, wood, w / 2 - 0.03, 0.45, 0, g);
+      const hues = [0x4285F4, 0xEA4335, 0xFBBC05, 0x34A853, 0x76B900, 0x1a1a1a];
+      for (let i = 0; i < 6; i++) box(0.1, 0.2, 0.16, M(hues[i % hues.length]), -w / 2 + 0.25 + i * 0.26, 0.62, 0, g);
+    }
+    function addWhiteboard(x, z, rot) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
+      box(1.5, 1.15, 0.05, M(0x2a2a2a), 0, 1.15, 0, g);
+      box(1.4, 1.05, 0.04, M(0xf7f7f4), 0, 1.15, 0.03, g);
+      box(0.06, 1.1, 0.06, M(0x8a6239), -0.55, 0.55, 0, g);
+      box(0.06, 1.1, 0.06, M(0x8a6239), 0.55, 0.55, 0, g);
+      box(0.22, 0.16, 0.02, M(0x4285F4), -0.4, 1.35, 0.06, g);
+      box(0.2, 0.16, 0.02, M(0xEA4335), -0.12, 1.32, 0.06, g);
+      box(0.2, 0.16, 0.02, M(0xFBBC05), 0.16, 1.36, 0.06, g);
+    }
+
+    const officeFloors = [];
+
+    function addNeighborhood(zn) {
+      const left = zn.x < 0;
+      const x0 = zn.x - zn.w / 2, x1 = zn.x + zn.w / 2;
+      const z0 = zn.z - zn.d / 2, z1 = zn.z + zn.d / 2;
+      const trim = zn.accent || zn.color;
+      box(zn.w - 0.05, 0.02, zn.d - 0.05, M(trim, { roughness: 0.85 }), zn.x, 0.015, zn.z, scene);
+      const baseOp = zn.side === 'nvidia' && !zn.accent ? 0.5 : 0.36;
+      const carpet = box(zn.w - 0.22, 0.025, zn.d - 0.22, M(zn.color, { transparent: true, opacity: baseOp, roughness: 0.9, emissive: trim, emissiveIntensity: 0.04 }), zn.x, 0.03, zn.z, scene);
+      officeFloors.push({ id: zn.id, mat: carpet.material, baseOp });
+      // 區名銘牌平放在靠近走道的地毯上
+      const labelX = left ? x1 - 1.2 : x0 + 1.2;
+      {
+        const cv = document.createElement('canvas'); cv.width = 768; cv.height = 192;
+        const c = cv.getContext('2d');
+        c.fillStyle = zn.side === 'nvidia' ? '#141a10' : '#f7f4ee';
+        c.beginPath(); c.roundRect(10, 16, 748, 160, 24); c.fill();
+        c.strokeStyle = hex(zn.accent || zn.color); c.lineWidth = 8; c.stroke();
+        c.fillStyle = zn.side === 'nvidia' ? '#b6f35a' : '#1a3a7a';
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        fitText(c, zn.zone, 700, 96, 'bold'); c.fillText(zn.zone, 384, 98);
+        const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+        const m = new THREE.Mesh(new THREE.PlaneGeometry(2.15, 0.54), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+        m.rotation.x = -Math.PI / 2; m.position.set(labelX, 0.055, zn.z); scene.add(m);
+      }
+
+      // 角落植栽
+      addPlant(x0 + 0.35, z0 + 0.35, 0.95);
+      addPlant(x1 - 0.35, z0 + 0.35, 0.9);
+      addPlant(x0 + 0.35, z1 - 0.35, 1.0);
+      if (zn.members.length < 4) addPlant(x1 - 0.35, z1 - 0.35, 0.85);
+
+      // 吊燈
+      const shades = zn.side === 'google' ? [0x4285F4, 0xEA4335, 0xFBBC05, 0x34A853] : [0x1a1a1a, 0x76B900, 0x2a2a2a];
+      addPendant(zn.x - 1.5, zn.z + 0.4, shades[0]);
+      addPendant(zn.x + 1.5, zn.z + 0.4, shades[1]);
+      if (zn.d > 5) addPendant(zn.x, zn.z - 1.6, shades[2]);
+
+      // 矮櫃與白板（當軟隔間，不是牆）
+      if (zn.z > 0) addShelf(left ? x0 + 0.25 : x1 - 0.25, zn.z, left ? Math.PI / 2 : -Math.PI / 2, 1.7);
+      else addWhiteboard(zn.x + (left ? -2.4 : 2.4), z0 + 0.55, 0);
+
+    }
+    OFFICES.forEach(addNeighborhood);
+
+    // 總經理室：開放辦公區裡的小型玻璃角落辦公室
+    const office = new THREE.Group(); office.position.set(0, 0, 5.55); scene.add(office);
+    const glass = M(0xaed8ff, { transparent: true, opacity: 0.22, roughness: 0.05, metalness: 0.1, depthWrite: false });
+    box(4.2, 1.55, 0.05, glass, 0, 0.78, -1.05, office);
+    box(0.05, 1.55, 2.1, glass, -2.1, 0.78, 0, office);
+    box(0.05, 1.55, 2.1, glass, 2.1, 0.78, 0, office);
+    box(1.5, 1.55, 0.05, glass, -1.35, 0.78, 1.05, office);
+    box(1.5, 1.55, 0.05, glass, 1.35, 0.78, 1.05, office);
+    const gmFrame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(4.2, 1.55, 2.1)), new THREE.LineBasicMaterial({ color: 0xcfe3ff, transparent: true, opacity: 0.55 }));
+    gmFrame.position.y = 0.78; office.add(gmFrame);
+    box(4.1, 0.03, 2.0, M(0x2e3d5c), 0, 0.02, 0, office);
+    box(1.8, 0.08, 0.8, M(0x8a6a4a), 0, 0.75, -0.2, office);
+    box(0.6, 0.8, 0.6, M(0x34405a), 0, 0.4, 0.45, office);
+    {
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 120;
+      const c = cv.getContext('2d'); c.fillStyle = 'rgba(245,215,110,.95)'; c.beginPath(); c.roundRect(4, 4, 504, 112, 24); c.fill();
+      c.fillStyle = '#1a1406'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, '總經理室（Louis）', 480, 60, 'bold'); c.fillText('總經理室（Louis）', 256, 62);
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+      spr.scale.set(2.6, 0.61, 1); spr.position.set(0, 2.15, 0); spr.renderOrder = 10; office.add(spr);
+    }
+    addPlant(-2.5, 6.5, 1.05); addPlant(2.5, 6.5, 1.0);
+
+    // 走道末端：咖啡吧與休憩區
+    box(3.4, 0.9, 0.7, M(0x6b4a2a), 0, 0.45, -8.7, scene);
+    box(3.5, 0.07, 0.8, M(0xe8d5b5), 0, 0.94, -8.7, scene);
+    box(0.5, 0.55, 0.36, M(0x222), -1.05, 1.28, -8.7, scene);
+    box(0.22, 0.14, 0.16, M(0x76B900), -1.05, 1.6, -8.7, scene);
+    box(0.12, 0.14, 0.12, M(0xf2f2f2), -0.5, 1.05, -8.55, scene);
+    box(0.12, 0.14, 0.12, M(0x4285F4), -0.28, 1.05, -8.55, scene);
+    for (const sx of [-0.9, 0.05, 1.0]) {
+      const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.08, 10), M(0x333));
+      stool.position.set(sx, 0.55, -8.05); scene.add(stool);
+      box(0.07, 0.5, 0.07, M(0x555), sx, 0.25, -8.05, scene);
+    }
+    const cafeSign = labelSprite('咖啡吧', 1.7, 0.42, '#1a1406', '#f3ead8', '#76B900');
+    cafeSign.position.set(0, 1.95, -8.7); scene.add(cafeSign);
+    addPlant(-2.0, -8.9, 0.95); addPlant(2.0, -8.9, 0.9);
+
+    // 沙發、豆袋、小茶几
+    function sofa(x, z, rot, color) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
+      box(1.55, 0.34, 0.68, M(color, { roughness: 0.85 }), 0, 0.28, 0, g);
+      box(1.55, 0.52, 0.18, M(color, { roughness: 0.85 }), 0, 0.58, -0.26, g);
+      box(0.12, 0.38, 0.68, M(color), -0.72, 0.42, 0, g);
+      box(0.12, 0.38, 0.68, M(color), 0.72, 0.42, 0, g);
+    }
+    sofa(-3.3, -8.5, 0.3, 0x4285F4);
+    sofa(3.3, -8.5, -0.3, 0x1a1a1a);
+    const beanGeo = new THREE.SphereGeometry(1, 10, 8);
+    function beanbag(x, z, color) {
+      const m = new THREE.Mesh(beanGeo, M(color, { roughness: 0.92 }));
+      m.scale.set(0.42, 0.26, 0.42); m.position.set(x, 0.2, z); scene.add(m);
+    }
+    beanbag(-2.35, -7.7, 0xEA4335);
+    beanbag(-3.7, -7.55, 0xFBBC05);
+    beanbag(2.45, -7.7, 0x76B900);
+    beanbag(3.65, -7.5, 0x34A853);
+    box(0.85, 0.07, 0.55, M(0xdecaa0), -3.15, 0.32, -7.7, scene);
+    // 彩色圓球雕塑（校園感）
+    const orbGeo = new THREE.SphereGeometry(0.28, 12, 10);
+    [[-0.35, 0.28, -7.55, 0x4285F4], [0.05, 0.28, -7.35, 0xEA4335], [0.28, 0.28, -7.7, 0xFBBC05], [-0.05, 0.52, -7.55, 0x34A853]].forEach(([x, y, z, col]) => {
+      const o = new THREE.Mesh(orbGeo, M(col, { roughness: 0.35, metalness: 0.15 })); o.position.set(x, y, z); scene.add(o);
+    });
+
+    // 兩側圓形會議艙
+    function pod(x, z, rot, color) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
+      const wall = new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.12, 1.5, 16, 1, true, 0.45, Math.PI * 1.55), M(color, { side: THREE.DoubleSide, roughness: 0.12, metalness: 0.25, transparent: true, opacity: 0.28, depthWrite: false }));
+      wall.position.y = 0.75; g.add(wall);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(1.13, 0.03, 6, 24), M(color, { roughness: 0.4, metalness: 0.3 }));
+      rim.rotation.x = Math.PI / 2; rim.position.y = 1.5; g.add(rim);
+      const roof = new THREE.Mesh(new THREE.CircleGeometry(1.14, 16), M(color, { roughness: 0.18, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
+      roof.rotation.x = -Math.PI / 2; roof.position.y = 1.52; g.add(roof);
+      box(1.05, 0.26, 0.42, M(0xeeeae4), 0, 0.26, -0.2, g);
+      const tbl = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 12), M(0xe8d5b5)); tbl.position.set(0, 0.52, 0.15); g.add(tbl);
+    }
+    pod(-8.15, -1.0, Math.PI / 2, 0x4285F4);
+    // 原右側會議艙改裝：大型看板會議室（大螢幕顯示全員任務、進度、警示、累計用量）
+    const BIG = { x: 7.85, z: -0.95, rot: -0.45 };
+    const bigCv = document.createElement('canvas'); bigCv.width = 2048; bigCv.height = 1280;
+    const bigTex = new THREE.CanvasTexture(bigCv); bigTex.colorSpace = THREE.SRGBColorSpace; bigTex.anisotropy = 4;
+    {
+      const g = new THREE.Group(); g.position.set(BIG.x, 0, BIG.z); g.rotation.y = BIG.rot; scene.add(g);
+      box(2.9, 0.03, 2.3, M(0x2b3240, { roughness: 0.9 }), 0, 0.03, 0.15, g);
+      box(2.9, 2.5, 0.12, M(0x3a4252, { roughness: 0.5 }), 0, 1.25, -1.0, g);
+      box(2.62, 1.66, 0.06, M(0x111111, { roughness: 0.3, metalness: 0.4 }), 0, 1.42, -0.92, g);
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(2.52, 1.575), new THREE.MeshBasicMaterial({ map: bigTex, toneMapped: false }));
+      scr.position.set(0, 1.42, -0.885); g.add(scr);
+      scr.userData.type = 'board'; g.userData.screen = scr; BIG.screen = scr;
+      box(1.7, 0.06, 0.6, M(0xe8d5b5), 0, 0.62, 0.35, g);
+      for (const x of [-0.6, 0, 0.6]) { box(0.06, 0.58, 0.06, M(0x555f73), x * 1.2, 0.3, 0.35, g); }
+      for (const x of [-0.55, 0, 0.55]) { box(0.36, 0.06, 0.36, M(0x34405a), x, 0.42, 0.95, g); box(0.36, 0.4, 0.06, M(0x34405a), x, 0.65, 1.12, g); }
+      const sign = labelSprite('大型看板會議室', 1.9, 0.42, '#f3ead8', '#1a1a1a', '#76B900'); sign.position.set(0, 2.85, -0.9); g.add(sign);
+    }
+    function drawBigBoard() {
+      const c = bigCv.getContext('2d'), W = 2048, H = 1280;
+      c.fillStyle = '#0b1220'; c.fillRect(0, 0, W, H);
+      c.fillStyle = '#ffffff'; c.textBaseline = 'middle'; c.textAlign = 'left';
+      c.font = `bold 64px ${FONT}`; c.fillText('全員即時看板', 48, 64);
+      c.font = `36px ${FONT}`; c.fillStyle = '#8fa1bf'; c.textAlign = 'right';
+      c.fillText(lastCheck ? `每 30 秒檢查・上次 ${fmtTaipei(lastCheck.toISOString())}（台北）` : '尚未解鎖', W - 48, 64);
+      c.textAlign = 'left';
+      const ids = FLOORS.map((f) => f.id).filter((id) => id !== 'louis');
+      const rowH = 84, y0 = 130, colW = 1290;
+      ids.forEach((id, i) => {
+        const f = FLOORS.find((x) => x.id === id), p = person(id), y = y0 + i * rowH;
+        const fr = freshness(p), working = isWorking(p);
+        c.fillStyle = i % 2 ? '#101a2c' : '#131f35'; c.fillRect(32, y, colW, rowH - 8);
+        c.fillStyle = hex(f.color); c.fillRect(32, y, 12, rowH - 8);
+        c.fillStyle = '#ffffff'; c.font = `bold 38px ${FONT}`; { let nm = shortName(f).replace(' Analyst', ''); while (c.measureText(nm).width > 255 && nm.length > 2) nm = nm.slice(0, -1); c.fillText(nm, 60, y + 38); }
+        const d = arr(p, 'doing');
+        const txt = d.length ? d.map((x) => x.text).join('；') : (p ? '休息中' : '無資料');
+        c.fillStyle = working ? '#e6edf7' : '#6f7f99'; c.font = `34px ${FONT}`;
+        let t = txt; while (c.measureText(t).width > 470 && t.length > 2) t = t.slice(0, -2) + '…';
+        c.fillText(t, 330, y + 38);
+        if (working) {
+          const pr = progressOf(p).value;
+          drawBar(c, 830, y + 22, 220, 32, pr, fr === 'old' ? '#6f7f99' : null);
+          c.fillStyle = '#ffffff'; c.font = `bold 34px ${FONT}`; c.fillText(pr == null ? '—' : pr + '%', 1062, y + 38);
+        }
+        c.fillStyle = fr === 'fresh' ? '#5ee08f' : fr === 'warm' ? '#f5b544' : '#6f7f99'; c.font = `28px ${FONT}`;
+        c.textAlign = 'right'; c.fillText(p ? `${fmtTaipei(p._ts, false) || NO_DATA}${p._src === 'data' ? ' 底稿' : ''}` : '—', colW + 20, y + 38); c.textAlign = 'left';
+      });
+      const x2 = colW + 70, w2 = W - x2 - 40;
+      c.fillStyle = '#9fb4d6'; c.font = `bold 40px ${FONT}`; c.fillText('警示', x2, 150);
+      const al = alertList().slice(0, 5);
+      c.font = `30px ${FONT}`;
+      let yy = 205;
+      if (!al.length) { c.fillStyle = '#6f7f99'; c.fillText('目前沒有警示', x2, yy); yy += 50; }
+      for (const a of al) {
+        c.fillStyle = a.level === 'red' ? '#ff6b6b' : '#f5b544'; c.fillRect(x2, yy - 22, 8, 44);
+        c.fillStyle = '#e6edf7'; let t = a.text; while (c.measureText(t).width > w2 - 30 && t.length > 2) t = t.slice(0, -2) + '…';
+        c.fillText(t, x2 + 22, yy); yy += 58;
+      }
+      yy = Math.max(yy + 20, 560);
+      c.fillStyle = '#9fb4d6'; c.font = `bold 40px ${FONT}`; c.fillText('累計用量', x2, yy); yy += 58;
+      c.font = `30px ${FONT}`;
+      const h = usage.hermes;
+      if (h && Array.isArray(h.profiles)) for (const pf of h.profiles) {
+        c.fillStyle = '#cfd8e6'; c.fillText(String(pf.label || pf.id).replace(/（.*?）/, ''), x2, yy);
+        c.textAlign = 'right'; c.fillStyle = '#ffffff'; c.fillText(`${fmtTok(pf.total)} token`, x2 + w2, yy); c.textAlign = 'left'; yy += 46;
+      } else { c.fillStyle = '#6f7f99'; c.fillText(`Hermes：${NO_DATA}`, x2, yy); yy += 46; }
+      const g = usage.grok;
+      if (g && g.shares) {
+        c.fillStyle = '#cfd8e6'; c.fillText('Grok Bot 本週額度已用', x2, yy);
+        c.textAlign = 'right'; c.fillStyle = '#ffffff'; c.fillText(typeof g.weekly_used_percent === 'number' ? `${Math.round(g.weekly_used_percent * 10) / 10}%` : NO_DATA, x2 + w2, yy); c.textAlign = 'left'; yy += 50;
+        const top = Object.entries(g.shares).filter(([, v]) => typeof v === 'number').sort((a, b) => b[1] - a[1]).slice(0, 4);
+        for (const [id, v] of top) {
+          const f = FLOORS.find((x) => x.id === id);
+          c.fillStyle = '#8fa1bf'; c.fillText(f ? shortName(f) : id, x2, yy);
+          drawBar(c, x2 + 230, yy - 14, w2 - 360, 28, v);
+          c.fillStyle = '#ffffff'; c.textAlign = 'right'; c.fillText(v < 1 ? '<1%' : `${Math.round(v)}%`, x2 + w2, yy); c.textAlign = 'left'; yy += 44;
+        }
+      } else { c.fillStyle = '#6f7f99'; c.fillText(`Grok Bot：${NO_DATA}`, x2, yy); }
+      c.fillStyle = '#6f7f99'; c.font = `24px ${FONT}`; c.fillText('Hermes 為真實 token；Grok Bot 為週額度占比（非 token）', x2, H - 40);
+      bigTex.needsUpdate = true;
+    }
+    function makePodSeats(tx, tz, doorAtan) {
+      const n = 5, r = 0.55, seats = [];
+      for (let i = 0; i < n; i++) {
+        const a = doorAtan + Math.PI + (i - (n - 1) / 2) * 0.52;
+        const x = tx + Math.sin(a) * r;
+        const z = tz + Math.cos(a) * r;
+        seats.push({ type: 'meet', x, z, yaw: Math.atan2(tx - x, tz - z) });
+      }
+      return seats;
+    }
+    function makePodLabel(fg, bg, stroke) {
+      const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 320;
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+      spr.scale.set(1.7, 0.58, 1); spr.renderOrder = 12;
+      return { cv, tex, spr, fg, bg, stroke };
+    }
+    function drawPodLabel(pl, busy, title) {
+      const c = pl.cv.getContext('2d');
+      c.clearRect(0, 0, 1024, 320);
+      c.fillStyle = pl.bg; c.beginPath(); c.roundRect(8, 8, 1008, 304, 28); c.fill();
+      if (pl.stroke) { c.strokeStyle = pl.stroke; c.lineWidth = 12; c.beginPath(); c.roundRect(8, 8, 1008, 304, 28); c.stroke(); }
+      c.fillStyle = pl.fg; c.textAlign = 'center'; c.textBaseline = 'middle';
+      if (!busy) {
+        fitText(c, '空閒', 960, 120, 'bold'); c.fillText('空閒', 512, 160);
+      } else {
+        let tt = String(title || '');
+        if (tt.length > 10) tt = tt.slice(0, 10) + '…';
+        fitText(c, tt, 960, 90, 'bold'); c.fillText(tt, 512, 110);
+        fitText(c, '會議中', 960, 72, 'bold'); c.fillText('會議中', 512, 230);
+      }
+      pl.tex.needsUpdate = true;
+    }
+    const PODS = {
+      left: { seats: makePodSeats(-8.0, -1.0, Math.atan2(1, 0)), label: makePodLabel('#1a1406', '#f3ead8', '#4285F4') },
+      right: { seats: makePodSeats(8.0, -1.0, Math.atan2(-1, 0)), label: makePodLabel('#f3ead8', '#1a1a1a', '#76B900') },
+    };
+    PODS.left.label.spr.position.set(-8.15, 2.15, -1.0); scene.add(PODS.left.label.spr);
+    drawPodLabel(PODS.left.label, false);
+    drawPodLabel(PODS.right.label, false);
+
+    // 運動區：跑步機、瑜珈墊（左前方）、桌球桌（右前方）
+    box(0.72, 0.12, 1.55, M(0x222), -7.55, 0.12, 4.65, scene);
+    const belt = box(0.54, 0.04, 1.28, M(0x3a3a3a), -7.55, 0.2, 4.65, scene);
+    box(0.05, 0.7, 0.05, M(0x888), -7.87, 0.55, 4.15, scene);
+    box(0.05, 0.7, 0.05, M(0x888), -7.23, 0.55, 4.15, scene);
+    box(0.72, 0.05, 0.05, M(0x888), -7.55, 0.9, 4.15, scene);
+    const runSign = labelSprite('跑步機', 1.1, 0.28, '#1a1406', '#f3ead8', '#EA4335'); runSign.position.set(-7.55, 1.55, 4.65); scene.add(runSign);
+    box(0.72, 0.03, 1.5, M(0xEA4335, { roughness: 0.9 }), -7.55, 0.03, 3.15, scene);
+    const yogaSign = labelSprite('瑜珈墊', 1.1, 0.28, '#1a1406', '#f3ead8', '#EA4335'); yogaSign.position.set(-7.55, 0.9, 3.15); scene.add(yogaSign);
+    const pingX = 7.5, pingZ = 4.35;
+    box(1.2, 0.06, 2.15, M(0x1b7a4a), pingX, 0.78, pingZ, scene);
+    for (const [lx, lz] of [[-0.5, -0.95], [0.5, -0.95], [-0.5, 0.95], [0.5, 0.95]]) box(0.07, 0.75, 0.07, M(0xddd), pingX + lx, 0.38, pingZ + lz, scene);
+    box(1.18, 0.16, 0.03, M(0xeee), pingX, 0.9, pingZ, scene);
+    const pingBall = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), M(0xfff4c8));
+    pingBall.position.set(pingX, 1.05, pingZ); scene.add(pingBall);
+    const pingSign = labelSprite('桌球', 1.0, 0.28, '#1a1406', '#f3ead8', '#34A853'); pingSign.position.set(pingX, 1.7, pingZ); scene.add(pingSign);
+
+    // 地面連線：實線＝直屬，虛線＝審核
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x6a5840, transparent: true, opacity: 0.55 });
+    const dashMat = new THREE.LineDashedMaterial({ color: 0xEA4335, dashSize: 0.25, gapSize: 0.18, transparent: true, opacity: 0.85 });
+    const link = (from, to, mat) => {
+      const a = LAYOUT[from], b = LAYOUT[to];
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a.x, 0.08, a.z), new THREE.Vector3(b.x, 0.08, b.z)]), mat);
+      ln.computeLineDistances(); scene.add(ln);
+    };
+    for (const t of ['admin', 'kobe', 'fly']) link('pa', t, lineMat);
+    for (const t of ['clo', 'cto', 'cpo', 'fpa']) link('cos', t, lineMat);
+    link('pa', 'ia', dashMat);
+
+    // 座位與成員（有進行中任務才坐工位；否則到休息／活動區）
+    const PATH_AISLE = { pts: [[0.4, 3.6], [0.4, -6.8], [-0.4, -6.8], [-0.4, 3.6]] };
+    const PATH_OUTER = { pts: [[-6.8, 6.85], [6.8, 6.85], [6.8, 6.35], [-6.8, 6.35]] };
+    function buildPath(pts) {
+      const segs = []; let acc = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        segs.push({ a, b, len, acc }); acc += len;
+      }
+      return { segs, total: acc };
+    }
+    PATH_AISLE.info = buildPath(PATH_AISLE.pts);
+    PATH_OUTER.info = buildPath(PATH_OUTER.pts);
+    function atPath(info, dist) {
+      let u = ((dist % info.total) + info.total) % info.total;
+      for (const s of info.segs) {
+        if (u <= s.acc + s.len) {
+          const t = s.len ? (u - s.acc) / s.len : 0;
+          return { x: s.a[0] + (s.b[0] - s.a[0]) * t, z: s.a[1] + (s.b[1] - s.a[1]) * t, yaw: Math.atan2(s.b[0] - s.a[0], s.b[1] - s.a[1]) };
+        }
+      }
+      return { x: info.segs[0].a[0], z: info.segs[0].a[1], yaw: 0 };
+    }
+    const SLOTS = [
+      { id: 'walk-aisle', type: 'walk', label: '散步', path: PATH_AISLE.info },
+      { id: 'walk-outer', type: 'walk', label: '散步', path: PATH_OUTER.info },
+      { id: 'coffee-1', type: 'coffee', label: '喝咖啡', x: -0.9, z: -8.05 },
+      { id: 'coffee-2', type: 'coffee', label: '喝咖啡', x: 0.05, z: -8.05 },
+      { id: 'read-sofa-l', type: 'read', label: '看書', x: -3.3, z: -8.35, rot: 0.3 },
+      { id: 'read-sofa-r', type: 'read', label: '看書', x: 3.3, z: -8.35, rot: -0.3 },
+      { id: 'read-bean', type: 'read', label: '看書', x: -2.35, z: -7.5, rot: 0.25 },
+      { id: 'treadmill', type: 'treadmill', label: '跑步', x: -7.55, z: 4.85 },
+      { id: 'yoga', type: 'yoga', label: '瑜珈', x: -7.55, z: 3.15, rot: 0.3 },
+      { id: 'pingpong', type: 'pingpong', label: '打桌球', x: 7.5, z: 5.5, rot: Math.PI },
+    ];
+
+    function makeAvatar(color, gender) {
+      const g = new THREE.Group();
+      const hairMat = M(0x3b2a20, { roughness: 0.8 });
+      if (gender === 'f') {
+        const hair = new THREE.Mesh(new THREE.SphereGeometry(0.175, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat); hair.position.y = 1.26; g.add(hair);
+        const back = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.34, 12, 1, true, Math.PI * 0.6, Math.PI * 0.8), M(0x3b2a20, { roughness: 0.8, side: THREE.DoubleSide })); back.position.set(0, 1.12, 0); back.rotation.y = Math.PI; g.add(back);
+        const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.32, 14, 1, true), M(color, { side: THREE.DoubleSide })); skirt.position.y = 0.5; g.add(skirt);
+      } else if (gender === 'm') {
+        const hair = new THREE.Mesh(new THREE.SphereGeometry(0.168, 12, 12, 0, Math.PI * 2, 0, Math.PI * 0.4), hairMat); hair.position.y = 1.26; g.add(hair);
+        const tie = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.26, 0.02), M(0x22324d)); tie.position.set(0, 0.92, 0.215); g.add(tie);
+        const collar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.06, 0.02), M(0xffffff)); collar.position.set(0, 1.05, 0.2); g.add(collar);
+        for (const x of [-0.08, 0.08]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.42, 0.1), M(0x2b3445)); leg.position.set(x, 0.32, 0); g.add(leg); }
+      } else {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 6, 20), M(color, { emissive: color, emissiveIntensity: 0.3 })); ring.position.y = 1.24; ring.rotation.x = Math.PI / 2; g.add(ring);
+      }
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.23, 0.55, 12), M(color));
+      body.position.y = 0.8; g.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), M(0xf1d3b3));
+      head.position.y = 1.24; g.add(head);
+      const armMat = M(color), armGeo = new THREE.BoxGeometry(0.08, 0.36, 0.08);
+      const leftArm = new THREE.Group(); leftArm.position.set(-0.22, 0.95, 0); g.add(leftArm);
+      const leftMesh = new THREE.Mesh(armGeo, armMat); leftMesh.position.y = -0.16; leftArm.add(leftMesh);
+      const rightArm = new THREE.Group(); rightArm.position.set(0.22, 0.95, 0); g.add(rightArm);
+      const rightMesh = new THREE.Mesh(armGeo, armMat); rightMesh.position.y = -0.16; rightArm.add(rightMesh);
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.08, 8), M(0xf2f2f2));
+      cup.position.set(0.05, -0.38, 0.08); cup.visible = false; rightArm.add(cup);
+      const book = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 0.1), M(0xEA4335));
+      book.position.set(0, -0.38, 0.08); book.visible = false; rightArm.add(book);
+      const paddle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.02), M(0xC45C26));
+      paddle.position.set(0, -0.4, 0.02); paddle.visible = false; rightArm.add(paddle);
+      return { g, body, head, leftArm, rightArm, cup, book, paddle, parts: [body, head, leftMesh, rightMesh] };
+    }
+
+    const desks = [];
+    FLOORS.forEach((f) => {
+      const L = LAYOUT[f.id]; if (!L) return;
+      const g = new THREE.Group(); g.position.set(L.x, 0, L.z);
+      const k = L.k || (L.lead ? 1.25 : 1);
+      const inner = new THREE.Group(); inner.scale.set(k, k, k); g.add(inner);
+      let zoneMat, zone, top, scr, lamp;
+      if (L.gm) {
+        zoneMat = M(f.color, { transparent: true, opacity: 0.18, emissive: f.color, emissiveIntensity: 0.05 });
+        zone = box(1.9, 0.03, 1.8, zoneMat, 0, 0.05, -0.35, g);
+        top = zone;
+        scr = M(0x0e1a2e, { emissive: f.color, emissiveIntensity: 0.1 });
+        lamp = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), M(f.color, { emissive: f.color, emissiveIntensity: 0.15 }));
+        lamp.visible = false; g.add(lamp);
+      } else {
+        zoneMat = M(f.color, { transparent: true, opacity: 0.25, emissive: f.color, emissiveIntensity: 0.05 });
+        zone = box(2.2, 0.04, 2.6, zoneMat, 0, 0.05, 0, inner);
+        top = box(1.7, 0.08, 0.8, M(L.lead ? 0xe6d2ae : 0xd9c7a8), 0, 0.75, 0.3, inner);
+        for (const [x, z] of [[-0.75, -0.05], [0.75, -0.05], [-0.75, 0.65], [0.75, 0.65]]) box(0.06, 0.72, 0.06, M(0x555f73), x, 0.36, z, inner);
+        scr = M(0x0e1a2e, { emissive: f.color, emissiveIntensity: 0.15 });
+        box(0.8, 0.5, 0.05, scr, 0, 1.1, 0.6, inner); box(0.08, 0.25, 0.08, M(0x555f73), 0, 0.88, 0.6, inner);
+        box(0.5, 0.08, 0.5, M(0x34405a), 0, 0.48, -0.5, inner); box(0.5, 0.55, 0.08, M(0x34405a), 0, 0.78, -0.76, inner);
+        lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), M(f.color, { emissive: f.color, emissiveIntensity: 0.2, roughness: 0.3 }));
+        lamp.position.set(0, 1.48, 0.6); inner.add(lamp);
+      }
+      const av = makeAvatar(f.color, f.g);
+      av.g.scale.set(k, k, k);
+      scene.add(av.g);
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 360;
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+      const ls = L.k ? Math.min(1, L.k * 1.0) : 1;
+      spr.scale.set(2.3 * ls, 1.55 * ls, 1); spr.position.set(0, 2.25, 0); spr.renderOrder = 10;
+      av.g.add(spr);
+      const hits = [zone, top, lamp, spr, ...av.parts];
+      hits.forEach((m) => { m.userData.id = f.id; m.userData.type = 'desk'; });
+      scene.add(g);
+      desks.push({ f, L, k, zoneMat, scr, lamp, cv, tex, spr, hits, busyPulse: false, avatar: av, slot: null, atDesk: true, phase: (hashId(f.id) % 1000) / 160 });
+    });
+
+    function drawBar(c, x, y, w, h, value, color) {
+      c.save();
+      c.beginPath(); c.roundRect(x, y, w, h, 8); c.clip();
+      if (value == null) {
+        c.fillStyle = '#2a3a5a'; c.fillRect(x, y, w, h);
+        c.fillStyle = '#4a5d80';
+        for (let i = -h; i < w + h; i += 16) {
+          c.beginPath(); c.moveTo(x + i, y); c.lineTo(x + i + 8, y); c.lineTo(x + i + 8 - h, y + h); c.lineTo(x + i - h, y + h); c.fill();
+        }
+      } else {
+        c.fillStyle = '#1a2438'; c.fillRect(x, y, w, h);
+        c.fillStyle = color || '#5aa9ff'; c.fillRect(x, y, w * Math.max(0, Math.min(1, value / 100)), h);
+      }
+      c.restore();
+      c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 2;
+      c.beginPath(); c.roundRect(x, y, w, h, 8); c.stroke();
+    }
+    function labelKind(d) {
+      const id = d.f.id, p = person(id), meet = meetingOf(id);
+      const bar = showProgressBar(id, p);
+      let status = '';
+      if (meet) status = '會議中';
+      else if (id === 'louis') {
+        const st = louisState();
+        status = st === 'active' ? '工作中' : st === 'idle' ? '休息中' : NO_DATA;
+      } else if (hasRecord(id) && !isWorking(p)) status = '休息中';
+      else if (!isWorking(p)) status = NO_DATA;
+      const compact = !bar && (status === '休息中' || status === '工作中' || status === '會議中');
+      return { p, meet, bar, status, compact };
+    }
+    function applyLabelScale(d) {
+      const k = labelKind(d);
+      const w = k.compact ? 1.52 : 1.72;
+      const h = k.compact ? 0.86 : 1.18;
+      const s = (d.avatar && d.avatar.g.scale.x) || 1;
+      d.spr.scale.set(w / s, h / s, 1);
+    }
+    function drawLabel(d, selected) {
+      const { p, bar, status, compact } = labelKind(d);
+      const c = d.cv.getContext('2d');
+      c.clearRect(0, 0, 512, 360);
+      c.fillStyle = selected ? 'rgba(90,169,255,.96)' : 'rgba(11,18,32,.88)';
+      c.beginPath();
+      if (compact) c.roundRect(28, 88, 456, 184, 24);
+      else c.roundRect(4, 4, 504, 352, 26);
+      c.fill();
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      const m = d.f.name.match(/^(.*?)（(.*)）$/);
+      const name = m ? m[1] : d.f.name, role = m ? m[2] : '';
+      c.fillStyle = selected ? '#04121f' : '#ffffff';
+      if (compact) {
+        fitText(c, name, 480, 72, 'bold'); c.fillText(name, 256, 140);
+        c.fillStyle = selected ? '#04121f' : (status === '會議中' ? '#f5d76e' : status === '工作中' ? '#cfe0ff' : '#c5d0e0');
+        fitText(c, status, 480, 52, 'bold'); c.fillText(status, 256, 210);
+      } else if (bar) {
+        fitText(c, name, 480, 72, 'bold'); c.fillText(name, 256, role || status ? 58 : 90);
+        if (status === '會議中' || status === '工作中') {
+          c.fillStyle = selected ? '#04121f' : '#f5d76e';
+          fitText(c, status, 480, 40, 'bold'); c.fillText(status, 256, 118);
+        } else if (role) {
+          c.fillStyle = selected ? '#04121f' : '#cfe0ff'; fitText(c, role, 480, 44, 'normal'); c.fillText(role, 256, 118);
+        }
+        const pr = progressOf(p);
+        drawBar(c, 48, 168, 416, 36, pr.value, freshness(p) === 'old' ? '#8a93a3' : null);
+        c.fillStyle = selected ? '#04121f' : (pr.value == null ? '#c5d0e0' : '#f5d76e');
+        const txt = pr.value == null ? '進度暫無數據' : (pr.source === 'tasks' ? `${pr.value}%（任務 ${pr.done}／${pr.total}）` : `${pr.value}%`);
+        fitText(c, txt, 400, 36, 'bold'); c.fillText(txt, 256, 248);
+        const ut = p && p._ts ? `${fmtTaipei(p._ts, false)}${p._src === 'data' ? ' 底稿・非即時' : ' 更新'}` : '';
+        if (ut) { c.fillStyle = selected ? '#04121f' : (freshness(p) === 'fresh' ? '#5ee08f' : freshness(p) === 'warm' ? '#f5b544' : '#9aa5b5'); fitText(c, ut, 440, 32, 'normal'); c.fillText(ut, 256, 316); }
+      } else {
+        fitText(c, name, 480, 72, 'bold'); c.fillText(name, 256, role ? 58 : 90);
+        if (role) { c.fillStyle = selected ? '#04121f' : '#cfe0ff'; fitText(c, role, 480, 48, 'normal'); c.fillText(role, 256, 128); }
+        c.fillStyle = selected ? '#04121f' : '#8fa1bf';
+        fitText(c, status || NO_DATA, 480, 46, 'normal'); c.fillText(status || NO_DATA, 256, 240);
+      }
+      d.tex.needsUpdate = true;
+      applyLabelScale(d);
+    }
+
+    function assignActivities() {
+      const idle = FLOORS.map((f) => f.id).filter((id) => {
+        if (meetingOf(id)) return false;
+        if (id === 'louis') return louisState() === 'idle';
+        return hasRecord(id) && !isWorking(person(id));
+      }).sort();
+      const taken = new Set(), map = {};
+      for (const id of idle) {
+        let i = hashId(id) % SLOTS.length;
+        for (let n = 0; n < SLOTS.length; n++) {
+          const s = SLOTS[(i + n) % SLOTS.length];
+          if (!taken.has(s.id)) { taken.add(s.id); map[id] = s; break; }
+        }
+      }
+      return map;
+    }
+    function assignMeetSeats() {
+      const map = {}, used = { left: 0, right: 0 };
+      for (const m of meetings) {
+        const pod = m.pod === 'left' || m.pod === 'right' ? m.pod : 'right';
+        const seats = PODS[pod].seats;
+        for (const id of m.members) {
+          if (map[id]) continue;
+          const i = used[pod];
+          const seat = seats[i % seats.length];
+          const side = (i % 2 === 0) ? -0.55 : 0.55;
+          map[id] = { ...seat, lx: side };
+          used[pod]++;
+        }
+      }
+      return map;
+    }
+
+    let selected = null;
+    function update() {
+      const act = assignActivities();
+      const meetSeat = assignMeetSeats();
+      for (const d of desks) {
+        const id = d.f.id;
+        const p = person(id);
+        const working = isWorking(p);
+        const waiting = p && arr(p, 'waiting_on_louis').length;
+        const on = id === selected;
+        const meet = meetingOf(id);
+        const louisOn = id === 'louis' && louisState() === 'active';
+        if (meet) { d.atDesk = false; d.slot = meetSeat[id] || null; }
+        else if (id === 'louis') { d.atDesk = louisState() !== 'idle'; d.slot = d.atDesk ? null : (act[id] || null); }
+        else { d.atDesk = working || !hasRecord(id); d.slot = d.atDesk ? null : (act[id] || null); }
+        const occupied = d.atDesk && (working || louisOn);
+        d.zoneMat.emissiveIntensity = on ? 0.9 : waiting && d.atDesk ? 0.5 : (occupied || meet) ? 0.3 : 0.05;
+        d.zoneMat.opacity = on ? 0.6 : (occupied || meet) ? 0.35 : hasRecord(id) || id === 'louis' ? 0.18 : 0.15;
+        d.scr.emissiveIntensity = occupied ? 0.8 : 0.1;
+        d.busyPulse = !!occupied;
+        d.lamp.material.emissiveIntensity = occupied ? 0.7 : 0.18;
+        d.avatar.g.visible = true;
+        drawLabel(d, on);
+      }
+      drawPodLabel(PODS.left.label, meetings.length > 0, meetings.map((x) => x.title).join('／'));
+      drawBigBoard();
+      for (const o of officeFloors) {
+        o.mat.opacity = o.baseOp;
+        o.mat.emissiveIntensity = 0.04;
+      }
+    }
+    function select(id) { selected = id; update(); }
+
+    function poseAvatar(d, sec) {
+      const a = d.avatar;
+      a.cup.visible = a.book.visible = a.paddle.visible = false;
+      a.leftArm.rotation.set(0, 0, 0); a.rightArm.rotation.set(0, 0, 0);
+      a.head.rotation.set(0, 0, 0);
+      a.body.position.y = 0.8; a.head.position.y = 1.24;
+      a.g.scale.set(d.k, d.k, d.k);
+      d.spr.position.set(0, 2.25, 0);
+      if (d.atDesk || !d.slot) {
+        if (d.L.gm) {
+          a.g.position.set(d.L.x, 0, d.L.z);
+          a.g.rotation.y = d.L.rot || Math.PI;
+          a.body.position.y = 0.62; a.head.position.y = 1.06;
+        } else {
+          a.g.position.set(d.L.x, 0, d.L.z - 0.45 * d.k);
+          a.g.rotation.y = 0;
+        }
+        applyLabelScale(d);
+        return;
+      }
+      if (d.slot.type === 'meet') {
+        const s = d.slot;
+        a.g.scale.set(0.92, 0.92, 0.92);
+        a.g.position.set(s.x, 0, s.z);
+        a.g.rotation.y = s.yaw;
+        a.body.position.y = 0.52; a.head.position.y = 0.96;
+        a.leftArm.rotation.x = -0.55; a.rightArm.rotation.x = -0.55;
+        d.spr.position.set(d.slot.lx || 0, 2.7, 0);
+        applyLabelScale(d);
+        return;
+      }
+      a.g.scale.set(1, 1, 1);
+      applyLabelScale(d);
+      const s = d.slot, ph = d.phase;
+      if (s.type === 'walk') {
+        const pos = atPath(s.path, sec * 0.9 + ph * 4);
+        a.g.position.set(pos.x, 0, pos.z);
+        a.g.rotation.y = pos.yaw;
+        const bob = Math.sin(sec * 8 + ph) * 0.04;
+        a.body.position.y = 0.8 + bob; a.head.position.y = 1.24 + bob;
+        a.leftArm.rotation.x = Math.sin(sec * 8 + ph) * 0.55;
+        a.rightArm.rotation.x = -Math.sin(sec * 8 + ph) * 0.55;
+      } else if (s.type === 'coffee') {
+        a.g.position.set(s.x, 0.18, s.z + 0.12);
+        a.g.rotation.y = Math.PI;
+        a.body.position.y = 0.58; a.head.position.y = 1.02;
+        a.cup.visible = true;
+        a.rightArm.rotation.x = -0.85 + Math.sin(sec * 1.15 + ph) * 0.28;
+      } else if (s.type === 'read') {
+        a.g.position.set(s.x, 0.1, s.z);
+        a.g.rotation.y = s.rot;
+        a.body.position.y = 0.46; a.head.position.y = 0.9;
+        a.book.visible = true;
+        a.leftArm.rotation.x = -0.75; a.rightArm.rotation.x = -0.75;
+        a.head.rotation.x = 0.22 + Math.sin(sec * 0.6 + ph) * 0.04;
+      } else if (s.type === 'treadmill') {
+        a.g.position.set(s.x, 0.14, s.z);
+        a.g.rotation.y = 0;
+        const bob = Math.abs(Math.sin(sec * 10 + ph)) * 0.06;
+        a.body.position.y = 0.84 + bob; a.head.position.y = 1.28 + bob;
+        a.leftArm.rotation.x = Math.sin(sec * 10 + ph) * 0.7;
+        a.rightArm.rotation.x = -Math.sin(sec * 10 + ph) * 0.7;
+      } else if (s.type === 'yoga') {
+        a.g.position.set(s.x, 0.02, s.z);
+        a.g.rotation.y = s.rot || 0;
+        a.body.position.y = 0.4; a.head.position.y = 0.84;
+        a.leftArm.rotation.z = 0.85 + Math.sin(sec * 0.8 + ph) * 0.1;
+        a.rightArm.rotation.z = -0.85 - Math.sin(sec * 0.8 + ph) * 0.1;
+      } else if (s.type === 'pingpong') {
+        a.g.position.set(s.x, 0, s.z);
+        a.g.rotation.y = s.rot;
+        a.paddle.visible = true;
+        a.rightArm.rotation.x = -0.25 + Math.sin(sec * 6 + ph) * 0.85;
+        a.body.position.y = 0.8 + Math.sin(sec * 6 + ph) * 0.03;
+        a.head.position.y = 1.24 + Math.sin(sec * 6 + ph) * 0.03;
+        const tt = sec * 3.2 + ph;
+        pingBall.position.set(pingX, 1.05 + Math.abs(Math.sin(tt)) * 0.35, pingZ + Math.cos(tt) * 0.72);
+      }
+    }
+
+    controls.target.set(0, 0.5, -0.8);
+    function resize() {
+      const w = el.clientWidth, h = el.clientHeight;
+      renderer.setSize(w, h, false);
+      renderer.domElement.style.width = '100%'; renderer.domElement.style.height = '100%';
+      camera.aspect = w / h;
+      if (!resize.done) {
+        const narrow = w / h < 1;
+        if (narrow) camera.position.set(0, 19.5, 18.2); else camera.position.set(0, 13.6, 18.2);
+        resize.done = true;
+      }
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(el); resize();
+    const look = new URLSearchParams(location.search).get('look');
+    if (look === 'leftpod') { camera.position.set(-12.2, 5.8, 3.8); controls.target.set(-8.15, 0.55, -1.0); camera.updateProjectionMatrix(); }
+    else if (look === 'board') { camera.position.set(6.75, 1.75, 1.2); controls.target.set(8.235, 1.42, -1.746); camera.updateProjectionMatrix(); }
+    else if (look === 'rightpod') { camera.position.set(12.2, 5.8, 3.8); controls.target.set(8.15, 0.55, -1.0); camera.updateProjectionMatrix(); }
+
+
+    let userMoved = false;
+    const stopSpin = () => { userMoved = true; controls.autoRotate = false; };
+    renderer.domElement.addEventListener('pointerdown', stopSpin);
+    renderer.domElement.addEventListener('wheel', stopSpin, { passive: true });
+    renderer.domElement.addEventListener('touchstart', stopSpin, { passive: true });
+    setTimeout(() => { if (!userMoved) controls.autoRotate = true; }, 5000);
+
+    const ray = new THREE.Raycaster(), v = new THREE.Vector2();
+    const targets = desks.flatMap((d) => d.hits);
+    let down = null;
+    renderer.domElement.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) { down = null; return; }
+      down = null;
+      const r = renderer.domElement.getBoundingClientRect();
+      v.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(v, camera);
+      const hit = ray.intersectObjects(targets)[0];
+      if (hit) showDetail(hit.object.userData.id);
+    });
+    (function loop(t) {
+      if (building && building.flyStep) building.flyStep(performance.now());
+      controls.update();
+      const sec = t * 0.001;
+      for (const p of plants) p.g.rotation.z = Math.sin(sec * 1.15 + p.phase) * p.amp;
+      for (const d of desks) {
+        d.lamp.material.emissiveIntensity = d.busyPulse ? 0.5 + Math.sin(sec * 3.2) * 0.4 : 0.18;
+        poseAvatar(d, sec);
+      }
+      renderer.render(scene, camera);
+      requestAnimationFrame(loop);
+    })(0);
+    let fly = null;
+    function focusBoard() {
+      fly = { t0: performance.now(), from: camera.position.clone(), to: new THREE.Vector3(6.75, 1.75, 1.2), tf: controls.target.clone(), tt: new THREE.Vector3(8.235, 1.42, -1.746) };
+      stopSpin();
+    }
+    function focusAll() {
+      fly = { t0: performance.now(), from: camera.position.clone(), to: new THREE.Vector3(0, 13.6, 18.2), tf: controls.target.clone(), tt: new THREE.Vector3(0, 0.5, -0.8) };
+    }
+    building = { update, select, focusBoard, focusAll, flyStep: (now) => {
+      if (!fly) return; const k = Math.min(1, (now - fly.t0) / 1200), e = k * k * (3 - 2 * k);
+      camera.position.lerpVectors(fly.from, fly.to, e); controls.target.lerpVectors(fly.tf, fly.tt, e); if (k >= 1) fly = null;
+    } };
+    update();
+  } catch (e) {
+    el.innerHTML = '<p class="empty" style="padding:24px;text-align:center">三維畫面無法載入，下方清單仍可正常查看</p>';
+  }
+}
+
+render();
+initBuilding();
+load();
