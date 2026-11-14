@@ -7,30 +7,51 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>AI 辦公樓看板</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="style.css?v=261115002840">
-<script type="importmap">
-{ "imports": {
-  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-} }
-</script>
+<link rel="stylesheet" href="style.css?v=261115050528">
 </head>
 <body>
 <header class="top">
-  <h1>AI 辦公樓看板</h1>
-  <div class="meta">
-    <span id="updated">資料更新於：暫無數據</span>
-    <button id="refresh" type="button">重新整理</button>
-    <button id="lock" type="button" hidden>登出本機</button>
+  <div class="top-row">
+    <h1>AI 辦公樓看板 <small>同一層・開放辦公區</small></h1>
+    <div class="meta">
+      <span id="live" class="live off" title="每 30 秒自動檢查一次加密資料"><i></i><b id="live-text">尚未連線</b></span>
+      <button id="refresh" type="button">立即更新</button>
+      <button id="lock" type="button" hidden>登出本機</button>
+    </div>
   </div>
   <div id="status" class="status" role="status"></div>
 </header>
 
-<section id="building-wrap">
-  <div id="building" aria-label="三維開放式辦公區總覽"></div>
-  <p class="hint">拖曳可旋轉、雙指可縮放，點選座位或成員查看內容</p>
-  <p class="legend">左前：個人幕僚區｜左後：特殊小組區<br>右前：公司幕僚區｜右後：公司專業區<br>實線：直屬｜虛線：審核</p>
-</section>
+<main>
+  <section id="floor" class="floor" aria-label="同一層辦公室平面圖">
+    <svg id="org-lines" class="org-lines" aria-hidden="true"></svg>
+    <div class="wing-title wt-personal">個人側｜Sr. PA Ai 帶領</div>
+    <div class="wing-title wt-company">公司側｜CoS Ai 帶領</div>
+    <div class="slot s-pa" data-office="pa"></div>
+    <div class="suite s-special" data-suite="special"><div class="suite-name">特殊小組辦公室（Air）</div><div class="suite-grid g3"><div class="slot" data-office="admin"></div><div class="slot" data-office="kobe"></div><div class="slot" data-office="fly"></div></div></div>
+    <div class="slot s-ia" data-office="ia"></div>
+    <div class="slot s-cos" data-office="cos"></div>
+    <div class="suite s-pro" data-suite="pro"><div class="suite-name">公司專業辦公室</div><div class="suite-grid g2"><div class="slot" data-office="clo"></div><div class="slot" data-office="cto"></div><div class="slot" data-office="cpo"></div><div class="slot" data-office="fpa"></div></div></div>
+    <section class="room board-room" aria-label="大型看板會議室">
+      <div class="room-name">大型看板會議室<small>原第一會議室改裝</small></div>
+      <div class="screen">
+        <div class="screen-head"><b>全員即時看板</b><span id="board-clock"></span></div>
+        <div id="board-rows" class="board-rows"></div>
+        <div class="screen-split">
+          <div><h4>警示</h4><div id="alerts"></div></div>
+          <div><h4>累計用量</h4><div id="usage" class="usage"></div></div>
+        </div>
+      </div>
+    </section>
+    <section class="room meet-room" aria-label="第二會議室">
+      <div class="room-name">第二會議室</div>
+      <div id="meetings"></div>
+    </section>
+    <div class="slot s-louis" data-office="louis"></div>
+    <div class="room lounge"><div class="room-name">茶水間</div><p class="muted">休息中的同事會在這裡</p><div id="lounge" class="lounge-list"></div></div>
+  </section>
+  <p class="legend"><span class="ln solid"></span>直屬　<span class="ln dash"></span>稽核　<span class="ln dot"></span>平行協作｜綠點：15 分鐘內更新；灰：較舊或夜間底稿；斜紋進度條：進度暫無數據</p>
+</main>
 
 <section id="detail" class="card" hidden>
   <div class="detail-head">
@@ -39,25 +60,6 @@
   </div>
   <div id="detail-body"></div>
 </section>
-
-<main>
-  <section class="card">
-    <h2>每個人在做什麼</h2>
-    <div id="doing" class="grid"></div>
-  </section>
-  <section class="card">
-    <h2>誰在等我</h2>
-    <div id="waiting"></div>
-  </section>
-  <section class="card">
-    <h2>每個人的任務流</h2>
-    <div id="flow" class="grid"></div>
-  </section>
-  <details class="card usage-card" open>
-    <summary><h2>累計用量</h2></summary>
-    <div id="usage" class="usage"></div>
-  </details>
-</main>
 
 <div id="gate" class="gate" hidden>
   <form id="gate-form" class="gate-box">
@@ -69,6 +71,6 @@
   </form>
 </div>
 
-<script type="module" src="app.js?v=261115002840"></script>
+<script type="module" src="app.js?v=261115050528"></script>
 </body>
 </html>
