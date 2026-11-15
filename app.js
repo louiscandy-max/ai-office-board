@@ -460,7 +460,7 @@ for (const [btnId, t] of [['#theme-a', 'A'], ['#theme-b', 'B']]) {
 }
 if (IS_B) {
   const lg = $('.legend');
-  if (lg) lg.innerHTML = 'AI 科技同層：<b>中央主位</b> Louis 最後來訊時間（一小時內有來訊即發光）<br><b>左側</b> 個人側：PA、IA、Admin、Kobe、Fly｜<b>右側</b> 公司側：CoS、CLO、CTO、CPO、FP&amp;A<br>後牆 嵌入式全員即時看板｜四隅 全像會議室・機房・咖啡吧・休息區｜青線：直屬｜橘色虛線：PA 稽核 IA';
+  if (lg) lg.innerHTML = 'AI 科技開放式辦公：<b>中央走道</b> 直通後牆嵌入式全員看板，盡頭是 <b>總經理指揮台</b>（Louis 最後來訊時間，一小時內有來訊即發光）<br><b>左側長桌</b> 個人側：PA、IA、Admin、Kobe、Fly｜<b>右側長桌</b> 公司側：CoS、CLO、CTO、CPO、FP&amp;A<br>兩側玻璃會議室（左＝個人側、右＝公司側）・機房・專注艙・咖啡吧・休息區｜青線：直屬｜橘色虛線：PA 稽核 IA';
   const bw = $('#building'); if (bw) bw.setAttribute('aria-label', '三維 AI 科技公司辦公區總覽');
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && pass) poll(false); });
@@ -480,8 +480,6 @@ const PERSONAL = new Set(['pa', 'ia', 'admin', 'kobe', 'fly']);
 const INK = 0x2f2d2a, PAPER = 0xf1ede4, GOLD = 0xb8995a, JADE = 0x5f9e8a, CINNABAR = 0xb5443a;
 const BOARD = { x: 0, y: 2.95, z: -9.25, w: 7.6, h: 4.75 };
 const DS = 1.22; // 工位與人物放大倍率
-// 模板 B：工位排成圓角方形（超橢圓），仍全部面向中央主位
-function superR(deg) { const a = deg * Math.PI / 180, n = 3; return Math.pow(Math.pow(Math.abs(Math.sin(a)) / 6.4, n) + Math.pow(Math.abs(Math.cos(a)) / 5.0, n), -1 / n); }
 const ACT = IS_B ? 0x38c8ff : JADE, ACT_E = IS_B ? 0x5fdcff : 0x6fd0ae, IDLE = IS_B ? 0x4a5a72 : 0x8a8478;
 const PAL = IS_B
   ? { bg0: '#0b1426', bg1: '#060b16', ink: '#eaf4ff', muted: '#8ea3bf', dim: '#6c7f99', faint: '#3d4c63', foot: '#4f6079', acc: '#38c8ff', accA: 'rgba(56,200,255,.5)', dotP: '#38c8ff', dotC: '#a78bfa', sub2: '#b9c9de', alertTxt: '#dde8f5', bar: '#38c8ff', active: '#5fe3c0',
@@ -529,7 +527,7 @@ async function initBuilding() {
       do { c.font = `${weight} ${s}px ${font}`; s -= 2; } while (c.measureText(text).width > max && s > 14);
     }
     const P = (deg, r = RING_R) => { const a = deg * Math.PI / 180; return { x: r * Math.sin(a), z: CZ + r * Math.cos(a) }; };
-    const ringPt = (deg, dr = 0) => P(deg, (IS_B ? superR(deg) : RING_R) + dr);
+    const ringPt = (deg, dr = 0) => P(deg, RING_R + dr);
 
     // 太極圖（canvas）：左白右黑，上方白魚頭、下方黑魚頭
     function drawTaiji(c, cx, cy, r, light, dark) {
@@ -595,91 +593,108 @@ async function initBuilding() {
     }
     const TOP = IS_B ? 0.02 : 0.14; // 平台頂面高度（模板 B 為整片架高地板）
 
-    // ---------- 模板 B：AI 科技公司（深藍石墨地板、青色電路格線、玻璃隔間、機房、全像會議桌） ----------
+    // ---------- 模板 B：AI 科技公司（矩形開放式辦公：中央走道直通後牆看板、兩側長桌工作區、玻璃會議室、機房、專注艙、咖啡吧、休息區） ----------
     function buildThemeB() {
       const T0 = 0.02; // 架高地板頂面（與 TOP 相同）
       const CY = 0x38c8ff, VI = 0x8b7bff;
       const glow = (color, k = 1) => new THREE.MeshStandardMaterial({ color: 0x0a0f18, emissive: color, emissiveIntensity: k, roughness: 0.4 });
       const glass = (op = 0.14, color = 0x9fdcff) => new THREE.MeshStandardMaterial({ color, transparent: true, opacity: op, roughness: 0.08, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide });
-      const seatPos = (id, dr = 0) => P(SEAT_DEG[id], superR(SEAT_DEG[id]) + dr);
+      const metal = M(0x9aa6b8, { metalness: 0.7, roughness: 0.3 });
       const blink = [], spin = [];
       let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+      // 兩側長桌：後排面向前方（朝鏡頭）、前排背對，桌面相接，中間低矮玻璃隔板
+      const Z1 = 0.6, Z2 = 2.12, PI = Math.PI;
+      const SEATS = {
+        admin: { x: -7.1, z: Z1, yaw: 0 }, pa: { x: -5.15, z: Z1, yaw: 0 }, ia: { x: -3.2, z: Z1, yaw: 0 }, kobe: { x: -6.125, z: Z2, yaw: PI }, fly: { x: -4.175, z: Z2, yaw: PI },
+        cto: { x: 7.1, z: Z1, yaw: 0 }, cos: { x: 5.15, z: Z1, yaw: 0 }, clo: { x: 3.2, z: Z1, yaw: 0 }, fpa: { x: 6.125, z: Z2, yaw: PI }, cpo: { x: 4.175, z: Z2, yaw: PI },
+      };
+      const CORE = { x: 0, z: -5.3 };                      // 總經理指揮台：走道盡頭、看板正前方
+      const ROOMS = { left: { x: -9.7, z: -3.7, name: '個人側會議室' }, right: { x: 9.7, z: -3.7, name: '公司側會議室' } };
+      const zOut = (s) => (s.z === Z1 ? Z1 - 1.2 : Z2 + 1.2);
+      let linkN = 0;
+      function route(a, b) {
+        const A = SEATS[a], Bq = SEATS[b], sg = Math.sign(A.x), o = (linkN++ % 4) * 0.08, y = T0 + 0.03;
+        const za = zOut(A) + (A.z === Z1 ? -o : o), zb = zOut(Bq) + (Bq.z === Z1 ? -o : o), xi = sg * (2.2 - o);
+        const pts = A.z === Bq.z ? [[A.x, za], [Bq.x, za]] : [[A.x, za], [xi, za], [xi, zb], [Bq.x, zb]];
+        return pts.map(([x, z]) => new THREE.Vector3(x, y, z));
+      }
 
-      // 地板：深藍石墨＋青色電路格線（整片一張貼圖，電路從主位連到各工位）
+      // 地板：深藍石墨、沿走道方向的直線格線與電路（無圓環）
       {
         const S = 2048, cv = document.createElement('canvas'); cv.width = cv.height = S;
         const c = cv.getContext('2d');
         const X = (x) => (x + 11.5) / 23 * S, Y = (z) => (z + 10.9) / 21.4 * S, U = S / 23;
-        const bg = c.createRadialGradient(X(0), Y(CZ), 0, X(0), Y(CZ), S * 0.7); bg.addColorStop(0, '#101c33'); bg.addColorStop(1, '#070c17');
+        const bg = c.createLinearGradient(0, 0, 0, S); bg.addColorStop(0, '#0c1830'); bg.addColorStop(1, '#070c17');
         c.fillStyle = bg; c.fillRect(0, 0, S, S);
-        c.lineWidth = 1; c.strokeStyle = 'rgba(56,200,255,.07)';
+        c.lineWidth = 1; c.strokeStyle = 'rgba(56,200,255,.06)';
         for (let x = -11.5; x <= 11.5; x += 0.5) { c.beginPath(); c.moveTo(X(x), 0); c.lineTo(X(x), S); c.stroke(); }
         for (let z = -10.9; z <= 10.5; z += 0.5) { c.beginPath(); c.moveTo(0, Y(z)); c.lineTo(S, Y(z)); c.stroke(); }
-        c.lineWidth = 2; c.strokeStyle = 'rgba(56,200,255,.16)';
-        for (let x = -10; x <= 10; x += 2) { c.beginPath(); c.moveTo(X(x), 0); c.lineTo(X(x), S); c.stroke(); }
-        for (let z = -10; z <= 10; z += 2) { c.beginPath(); c.moveTo(0, Y(z)); c.lineTo(S, Y(z)); c.stroke(); }
+        const rect = (x0, z0, x1, z1, fill, stroke, lw = 3) => { c.fillStyle = fill; c.fillRect(X(x0), Y(z0), X(x1) - X(x0), Y(z1) - Y(z0)); if (stroke) { c.strokeStyle = stroke; c.lineWidth = lw; c.strokeRect(X(x0), Y(z0), X(x1) - X(x0), Y(z1) - Y(z0)); } };
+        // 工作區地毯、四隅區塊
+        rect(-8.4, -0.95, -2.0, 3.75, '#0e1a33', 'rgba(56,200,255,.55)'); rect(2.0, -0.95, 8.4, 3.75, '#11163a', 'rgba(139,123,255,.6)');
+        rect(-11.3, 4.9, -6.4, 9.5, '#121c30', 'rgba(56,200,255,.35)', 2); rect(6.4, 4.9, 11.3, 9.5, '#16193a', 'rgba(139,123,255,.35)', 2);
+        // 中央走道：較亮的面板、兩側光條、指向看板的箭頭
+        rect(-1.6, -4.4, 1.6, 10.4, '#13233f');
+        c.fillStyle = 'rgba(56,200,255,.10)'; for (let z = -4; z < 10.4; z += 1.4) { c.beginPath(); c.moveTo(X(-0.7), Y(z + 0.55)); c.lineTo(X(0), Y(z)); c.lineTo(X(0.7), Y(z + 0.55)); c.lineTo(X(0.7), Y(z + 0.85)); c.lineTo(X(0), Y(z + 0.3)); c.lineTo(X(-0.7), Y(z + 0.85)); c.closePath(); c.fill(); }
         const trace = (pts, col, w) => {
-          c.lineJoin = 'round'; c.lineCap = 'round';
-          for (const [lw, a] of [[w * 5, 0.12], [w * 2.2, 0.35], [w, 1]]) {
+          c.lineJoin = 'miter'; c.lineCap = 'square';
+          for (const [lw, a] of [[w * 5, 0.1], [w * 2.2, 0.32], [w, 1]]) {
             c.strokeStyle = col.replace('A', a); c.lineWidth = lw; c.beginPath();
             pts.forEach(([x, z], i) => (i ? c.lineTo(X(x), Y(z)) : c.moveTo(X(x), Y(z)))); c.stroke();
           }
-          const [ex, ez] = pts[pts.length - 1]; c.fillStyle = col.replace('A', 1); c.beginPath(); c.arc(X(ex), Y(ez), w * 2.6, 0, Math.PI * 2); c.fill();
-          c.fillStyle = '#070c17'; c.beginPath(); c.arc(X(ex), Y(ez), w * 1.2, 0, Math.PI * 2); c.fill();
+          const [ex, ez] = pts[pts.length - 1]; c.fillStyle = col.replace('A', 1); c.fillRect(X(ex) - w * 2.4, Y(ez) - w * 2.4, w * 4.8, w * 4.8);
         };
-        // 主位到每個工位的電路（直角＋45 度轉折）
-        for (const id of Object.keys(SEAT_DEG)) {
-          const e = seatPos(id, -1.55), a = SEAT_DEG[id] * Math.PI / 180;
-          const s0 = { x: 2.25 * Math.sin(a), z: CZ + 2.25 * Math.cos(a) };
-          const dx = e.x - s0.x, dz = e.z - s0.z, m = Math.min(Math.abs(dx), Math.abs(dz)) * 0.6;
-          const mid = Math.abs(dx) > Math.abs(dz) ? [[s0.x + Math.sign(dx) * (Math.abs(dx) - m), s0.z], [s0.x + dx, s0.z + Math.sign(dz) * m]] : [[s0.x, s0.z + Math.sign(dz) * (Math.abs(dz) - m)], [s0.x + Math.sign(dx) * m, s0.z + dz]];
-          trace([[s0.x, s0.z], ...mid, [e.x, e.z]], PERSONAL.has(id) ? 'rgba(56,200,255,A)' : 'rgba(139,123,255,A)', 3);
+        // 走道兩側主幹，分支到每張桌子
+        trace([[-1.75, 10.3], [-1.75, -4.75], [-0.9, -4.75]], 'rgba(56,200,255,A)', 3.2); trace([[1.75, 10.3], [1.75, -4.75], [0.9, -4.75]], 'rgba(139,123,255,A)', 3.2);
+        for (const [id, s] of Object.entries(SEATS)) {
+          const sg = Math.sign(s.x), zz = zOut(s) + (s.z === Z1 ? -0.35 : 0.35), col = sg < 0 ? 'rgba(56,200,255,A)' : 'rgba(139,123,255,A)';
+          trace([[sg * 1.75, zz], [s.x, zz], [s.x, zz + (s.z === Z1 ? 0.3 : -0.3)]], col, 2);
         }
-        // 外圍細電路紋
-        for (let i = 0; i < 70; i++) {
+        // 主幹延伸到會議室與機房
+        trace([[-1.75, -4.1], [-7.9, -4.1]], 'rgba(56,200,255,A)', 2); trace([[1.75, -4.1], [7.9, -4.1]], 'rgba(139,123,255,A)', 2);
+        trace([[-1.75, -5.6], [-6.7, -5.6], [-6.7, -6.4]], 'rgba(56,200,255,A)', 2); trace([[1.75, -5.6], [6.9, -5.6], [6.9, -6.8]], 'rgba(139,123,255,A)', 2);
+        // 外圍細電路（直角）
+        for (let i = 0; i < 80; i++) {
           let x = -11 + rnd() * 22, z = -10.4 + rnd() * 20.4;
-          if (Math.hypot(x / 7.9, (z - CZ) / 6.6) < 1) continue;
+          if (Math.abs(x) < 2.1 || (Math.abs(x) < 8.6 && z > -1.2 && z < 4.0) || (Math.abs(x) > 6.2 && z > 4.7)) continue;
           const pts = [[x, z]];
-          for (let k = 0; k < 3; k++) { const d = 0.6 + rnd() * 1.6; if (rnd() < 0.5) x += (rnd() < 0.5 ? -d : d); else z += (rnd() < 0.5 ? -d : d); pts.push([x, z]); }
-          trace(pts, 'rgba(56,200,255,A)', 1.2 + rnd());
+          for (let k = 0; k < 3; k++) { const d = 0.5 + rnd() * 1.4; if (k % 2) x += (rnd() < 0.5 ? -d : d); else z += (rnd() < 0.5 ? -d : d); pts.push([x, z]); }
+          trace(pts, 'rgba(56,200,255,A)', 1.1 + rnd());
         }
-        // 主位外圈光環
-        c.strokeStyle = 'rgba(56,200,255,.55)'; c.lineWidth = 4; c.beginPath(); c.arc(X(0), Y(CZ), 2.25 * U, 0, Math.PI * 2); c.stroke();
-        c.setLineDash([18, 14]); c.strokeStyle = 'rgba(56,200,255,.35)'; c.lineWidth = 3; c.beginPath(); c.arc(X(0), Y(CZ), 2.7 * U, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
+        // 地面分區字樣
+        c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `bold ${Math.round(U * 0.62)}px ${SANS}`;
+        c.fillStyle = 'rgba(127,224,255,.85)'; c.fillText('個人側', X(-5.15), Y(4.55));
+        c.fillStyle = 'rgba(176,160,255,.9)'; c.fillText('公司側', X(5.15), Y(4.55));
+        c.font = `${Math.round(U * 0.26)}px ${SANS}`; c.fillStyle = 'rgba(159,179,204,.75)';
+        c.fillText('PA・IA・Admin・Kobe・Fly', X(-5.15), Y(5.15)); c.fillText('CoS・CLO・CTO・CPO・FP&A', X(5.15), Y(5.15));
         const tex = canvasTex(cv);
         const fl = new THREE.Mesh(new THREE.PlaneGeometry(23, 21.4), new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.85, roughness: 0.35, metalness: 0.35 }));
         flat(fl, T0 + 0.001); fl.position.z = -0.2; scene.add(fl);
         box(23.2, 0.3, 21.6, M(0x0b1120, { roughness: 0.6 }), 0, T0 - 0.151, -0.2, scene);
         box(23.2, 0.03, 0.04, glow(CY, 1.2), 0, T0, 10.52, scene);
+        // 走道嵌燈條
+        for (const sx of [-1.6, 1.6]) box(0.05, 0.02, 14.8, glow(sx < 0 ? CY : VI, 1.4), sx, T0 + 0.01, 3.0, scene);
       }
-      // 兩側低矮玻璃牆（頂端青色光條）
-      for (const sx of [-11.45, 11.45]) {
-        const g = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.1, 19.6), glass(0.12)); g.position.set(sx, T0 + 0.55, 0.65); scene.add(g);
-        box(0.06, 0.04, 19.6, glow(CY, 1.1), sx, T0 + 1.12, 0.65, scene);
-      }
-
-      function drawChip(c, S) {
-        const h = S / 2;
-        const g = c.createRadialGradient(h, h, 0, h, h, h); g.addColorStop(0, '#13284a'); g.addColorStop(1, '#070d1a');
-        c.fillStyle = g; c.beginPath(); c.arc(h, h, h, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = 'rgba(56,200,255,.9)'; c.lineWidth = S * 0.012; c.beginPath(); c.arc(h, h, h * 0.96, 0, Math.PI * 2); c.stroke();
-        c.lineWidth = S * 0.004; c.strokeStyle = 'rgba(56,200,255,.4)'; for (const r of [0.82, 0.7]) { c.beginPath(); c.arc(h, h, h * r, 0, Math.PI * 2); c.stroke(); }
-        // 放射電路
-        c.strokeStyle = 'rgba(56,200,255,.75)'; c.fillStyle = '#5fdcff'; c.lineWidth = S * 0.006;
-        for (let i = 0; i < 16; i++) {
-          const a = i * Math.PI / 8, r0 = h * 0.36, r1 = h * (i % 2 ? 0.66 : 0.8);
-          c.beginPath(); c.moveTo(h + Math.cos(a) * r0, h + Math.sin(a) * r0); c.lineTo(h + Math.cos(a) * r1, h + Math.sin(a) * r1); c.stroke();
-          c.beginPath(); c.arc(h + Math.cos(a) * r1, h + Math.sin(a) * r1, S * 0.012, 0, Math.PI * 2); c.fill();
+      // 兩側落地窗：夜景天際線
+      {
+        const cv = document.createElement('canvas'); cv.width = 2048; cv.height = 356;
+        const c = cv.getContext('2d'), W = cv.width, H = cv.height;
+        const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#050a18'); g.addColorStop(0.7, '#0e1d3c'); g.addColorStop(1, '#1b2c55'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+        for (let x = 0; x < W;) {
+          const bw = 40 + rnd() * 90, bh = H * (0.25 + rnd() * 0.6);
+          c.fillStyle = rnd() < 0.5 ? '#0a1328' : '#0d1830'; c.fillRect(x, H - bh, bw, bh);
+          for (let wy = H - bh + 8; wy < H - 6; wy += 12) for (let wx = x + 6; wx < x + bw - 6; wx += 10) if (rnd() < 0.32) { c.fillStyle = rnd() < 0.7 ? 'rgba(255,220,150,.75)' : 'rgba(120,210,255,.8)'; c.fillRect(wx, wy, 4, 5); }
+          x += bw + 4;
         }
-        // 晶片
-        const w = S * 0.34;
-        c.fillStyle = '#0c1a30'; c.strokeStyle = '#5fdcff'; c.lineWidth = S * 0.01;
-        c.beginPath(); c.roundRect(h - w / 2, h - w / 2, w, w, S * 0.03); c.fill(); c.stroke();
-        c.fillStyle = '#5fdcff';
-        for (let k = 0; k < 6; k++) { const o = -w / 2 + w * (k + 0.75) / 6.5; for (const [x, y, ww, hh] of [[h + o, h - w / 2 - S * 0.035, S * 0.012, S * 0.03], [h + o, h + w / 2 + S * 0.005, S * 0.012, S * 0.03], [h - w / 2 - S * 0.035, h + o, S * 0.03, S * 0.012], [h + w / 2 + S * 0.005, h + o, S * 0.03, S * 0.012]]) c.fillRect(x - (ww < hh ? ww / 2 : 0), y - (hh < ww ? hh / 2 : 0), ww, hh); }
-        c.fillStyle = '#eaf4ff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `bold ${Math.round(S * 0.13)}px ${SANS}`; c.fillText('AI', h, h + S * 0.006);
+        c.fillStyle = '#1b2436'; for (let x = 0; x <= W; x += W / 16) c.fillRect(x - 3, 0, 6, H);
+        const tex = canvasTex(cv);
+        for (const sx of [-1, 1]) {
+          const m = new THREE.Mesh(new THREE.PlaneGeometry(19.6, 3.4), new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.8, roughness: 0.2 }));
+          m.position.set(sx * 11.44, T0 + 1.7, 0.65); m.rotation.y = -sx * PI / 2; scene.add(m);
+          box(0.08, 0.06, 19.6, glow(CY, 1.0), sx * 11.44, T0 + 3.42, 0.65, scene);
+          box(0.12, 0.1, 19.6, M(0x1b2436), sx * 11.46, T0 + 0.05, 0.65, scene);
+        }
       }
-
       // 後牆：嵌入式平面看板（與牆面齊平、正對前方）＋神經網路圖樣
       function wall(bigTex) {
         const wf = BOARD.z; // 牆面正面
@@ -726,166 +741,183 @@ async function initBuilding() {
         box(WW, 0.04, 0.04, glow(VI, 0.9), 0, T0 + WH - 0.05, wf + 0.02, scene);
       }
 
-      function coreHolo(core) {
-        const g = new THREE.Group(); g.position.y = 1.05; core.add(g);
-        const mat = new THREE.MeshBasicMaterial({ color: 0x5fdcff, wireframe: true, transparent: true, opacity: 0.55 });
-        const ico = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 1), mat); g.add(ico);
-        const inner = new THREE.Mesh(new THREE.SphereGeometry(0.16, 18, 12), new THREE.MeshBasicMaterial({ color: 0x9feaff, transparent: true, opacity: 0.8 })); g.add(inner);
-        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.95, 0.8, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0x38c8ff, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false }));
-        beam.position.y = -0.45; g.add(beam);
-        ico.userData.id = inner.userData.id = 'louis';
-        return { g, ico, mat, inner };
+      // 總經理指揮台（矩形）：檯面顯示幕、兩端光柱；有來訊時檯緣與地面光框發光
+      function core(grp) {
+        box(3.0, 0.92, 0.95, M(0x121a2a, { metalness: 0.5, roughness: 0.35 }), 0, 0.46, 0, grp);
+        box(3.1, 0.05, 1.05, M(0x1d2a40, { metalness: 0.6, roughness: 0.3 }), 0, 0.945, 0, grp);
+        const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 340;
+        const c = cv.getContext('2d');
+        c.fillStyle = '#071226'; c.fillRect(0, 0, 1024, 340);
+        c.strokeStyle = 'rgba(56,200,255,.25)'; c.lineWidth = 1; for (let x = 0; x < 1024; x += 32) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 340); c.stroke(); }
+        for (let i = 0; i < 18; i++) { const h = 40 + rnd() * 170; c.fillStyle = i % 3 ? 'rgba(56,200,255,.75)' : 'rgba(139,123,255,.8)'; c.fillRect(560 + i * 24, 300 - h, 14, h); }
+        c.strokeStyle = '#5fe3c0'; c.lineWidth = 4; c.beginPath(); for (let i = 0; i <= 20; i++) { const x = 40 + i * 24, y = 230 - Math.sin(i * 0.7) * 50 - i * 4; i ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke();
+        c.fillStyle = '#eaf4ff'; c.font = `bold 54px ${SANS}`; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText('總經理指揮台', 40, 60);
+        const ct = canvasTex(cv);
+        const coreTop = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 0.85), new THREE.MeshStandardMaterial({ map: ct, emissiveMap: ct, emissive: 0xffffff, emissiveIntensity: 0.7, roughness: 0.3 }));
+        flat(coreTop, 0.975); grp.add(coreTop);
+        const haloMat = new THREE.MeshStandardMaterial({ color: ACT, emissive: ACT_E, emissiveIntensity: 0.0, roughness: 0.3, metalness: 0.2 });
+        const halo = box(3.12, 0.04, 0.04, haloMat, 0, 0.95, 0.53, grp);
+        box(3.02, 0.04, 0.03, haloMat, 0, 0.08, 0.49, grp);
+        // 地面光框（矩形）
+        const sh = new THREE.Shape(); sh.moveTo(-2.1, -1.0); sh.lineTo(2.1, -1.0); sh.lineTo(2.1, 1.0); sh.lineTo(-2.1, 1.0); sh.closePath();
+        const hole = new THREE.Path(); hole.moveTo(-1.85, -0.78); hole.lineTo(-1.85, 0.78); hole.lineTo(1.85, 0.78); hole.lineTo(1.85, -0.78); hole.closePath(); sh.holes.push(hole);
+        const glowMat = new THREE.MeshBasicMaterial({ color: CY, transparent: true, opacity: 0.0, depthWrite: false });
+        const glowM = new THREE.Mesh(new THREE.ShapeGeometry(sh), glowMat); flat(glowM, 0.012); grp.add(glowM);
+        // 兩端光柱
+        const bladeMat = new THREE.MeshStandardMaterial({ color: 0x0a0f18, emissive: CY, emissiveIntensity: 0.6, transparent: true, opacity: 0.9 });
+        for (const sx of [-1.62, 1.62]) { box(0.12, 1.5, 0.12, M(0x121a2a, { metalness: 0.6 }), sx, 0.75, -0.2, grp); box(0.05, 1.42, 0.13, bladeMat, sx, 0.75, -0.2, grp); }
+        const om = new THREE.MeshBasicMaterial({ color: 0x5fdcff, wireframe: true, transparent: true, opacity: 0.5 });
+        const octa = new THREE.Mesh(new THREE.OctahedronGeometry(0.22, 0), om); octa.position.set(0, 1.35, -0.1); grp.add(octa);
+        return { coreTop, glowMat, glow: glowM, haloMat, halo, holo: { octa, om, bladeMat } };
       }
 
-      function roundRectShape(w, d, r) {
-        const s = new THREE.Shape(), x = -w / 2, y = -d / 2;
-        s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + d - r); s.quadraticCurveTo(x + w, y + d, x + w - r, y + d);
-        s.lineTo(x + r, y + d); s.quadraticCurveTo(x, y + d, x, y + d - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y); return s;
-      }
-      // 工位：直線科技桌、雙螢幕、人體工學椅、兩側玻璃隔板（局部座標：人朝 +z，桌在前方）
+      // 工位（長桌模組；局部座標：人朝 +z，桌在前方，前緣為低矮玻璃隔板）
       function desk(g, yang, lead) {
         const side = yang ? CY : VI;
-        const pw = lead ? 2.35 : 2.15, pd = lead ? 2.05 : 1.9;
-        const sh = roundRectShape(pw, pd, 0.28);
-        const matMat = new THREE.MeshStandardMaterial({ color: yang ? 0x0f1a2e : 0x161a30, roughness: 0.6, emissive: ACT, emissiveIntensity: 0 });
-        const mat = new THREE.Mesh(new THREE.ShapeGeometry(sh), matMat); flat(mat, 0.012); mat.position.z = 0.05; g.add(mat);
-        const rim = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(sh.getPoints(12).map((p) => new THREE.Vector3(p.x, 0.016, 0.05 - p.y))), new THREE.LineBasicMaterial({ color: side, transparent: true, opacity: 0.9 }));
-        g.add(rim);
-        const topMat = M(yang ? 0x1c2638 : 0xe6ebf2, { roughness: 0.35, metalness: 0.2 });
-        const top = box(1.5, 0.05, 0.62, topMat, 0, 0.77, 0.3, g);
-        const front = box(1.42, 0.4, 0.03, M(yang ? 0x141c2b : 0xcdd5df, { roughness: 0.5 }), 0, 0.5, 0.58, g);
-        for (const sx of [-0.72, 0.72]) box(0.04, 0.74, 0.58, M(0x9aa6b8, { metalness: 0.7, roughness: 0.3 }), sx, 0.37, 0.3, g);
-        const lamp = box(1.5, 0.014, 0.014, new THREE.MeshStandardMaterial({ color: 0x0a0f18, emissive: side, emissiveIntensity: 0.1 }), 0, 0.775, -0.012, g);
+        const sh = new THREE.Shape(); sh.moveTo(-0.78, -1.0); sh.lineTo(0.78, -1.0); sh.lineTo(0.78, 0.6); sh.lineTo(-0.78, 0.6); sh.closePath();
+        const matMat = new THREE.MeshStandardMaterial({ color: yang ? 0x10203a : 0x191c3c, roughness: 0.6, emissive: ACT, emissiveIntensity: 0 });
+        const mat = new THREE.Mesh(new THREE.ShapeGeometry(sh), matMat); flat(mat, 0.012); g.add(mat);
+        if (lead) { const r = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(sh.getPoints().map((p) => new THREE.Vector3(p.x, 0.016, -p.y))), new THREE.LineBasicMaterial({ color: side })); g.add(r); }
+        const top = box(1.5, 0.045, 0.62, M(yang ? 0x1c2638 : 0xe6ebf2, { roughness: 0.35, metalness: 0.2 }), 0, 0.77, 0.3, g);
+        const front = box(1.42, 0.36, 0.03, M(yang ? 0x141c2b : 0xcdd5df, { roughness: 0.5 }), 0, 0.53, 0.55, g);
+        for (const sx of [-0.72, 0.72]) { box(0.05, 0.74, 0.05, metal, sx, 0.37, 0.06, g); box(0.05, 0.74, 0.05, metal, sx, 0.37, 0.56, g); }
+        // 前緣低矮玻璃隔板（頂端光條）
+        const p = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 0.015), glass(0.18)); p.position.set(0, 1.0, 0.6); g.add(p);
+        box(1.5, 0.018, 0.03, glow(side, 1.1), 0, 1.21, 0.6, g);
         // 雙螢幕
         const scrMat = new THREE.MeshStandardMaterial({ color: 0x05080f, emissive: 0x5fd0ff, emissiveIntensity: 0.05, roughness: 0.25 });
         for (const sx of [-1, 1]) {
-          const mg = new THREE.Group(); mg.position.set(sx * 0.34, 1.08, 0.5); mg.rotation.y = -sx * 0.22; g.add(mg);
-          box(0.64, 0.38, 0.025, M(0x111725, { metalness: 0.5, roughness: 0.3 }), 0, 0, 0, mg);
-          box(0.6, 0.34, 0.006, scrMat, 0, 0, -0.015, mg);
-          box(0.04, 0.24, 0.04, M(0x9aa6b8, { metalness: 0.7 }), 0, -0.22, 0.02, mg);
+          const mg = new THREE.Group(); mg.position.set(sx * 0.3, 1.07, 0.44); mg.rotation.y = -sx * 0.18; g.add(mg);
+          box(0.56, 0.34, 0.025, M(0x111725, { metalness: 0.5, roughness: 0.3 }), 0, 0, 0, mg);
+          box(0.52, 0.3, 0.006, scrMat, 0, 0, -0.015, mg);
+          box(0.035, 0.22, 0.035, metal, 0, -0.2, 0.02, mg);
         }
-        box(0.4, 0.015, 0.14, M(0x2a3346), 0, 0.805, 0.2, g); // 鍵盤
+        box(0.4, 0.015, 0.14, M(0x2a3346), 0, 0.8, 0.18, g);
+        // 檯燈（工作中亮起）
+        cyl(0.06, 0.07, 0.02, metal, 0.62, 0.8, 0.42, g, 12);
+        box(0.02, 0.42, 0.02, metal, 0.62, 1.0, 0.42, g);
+        box(0.02, 0.02, 0.26, metal, 0.62, 1.2, 0.3, g);
+        const lamp = box(0.12, 0.025, 0.07, new THREE.MeshStandardMaterial({ color: 0xeef6ff, emissive: 0xdff4ff, emissiveIntensity: 0.1 }), 0.62, 1.185, 0.17, g);
         // 人體工學椅
         const chair = M(yang ? 0x1b2436 : 0xb7c1cf, { roughness: 0.6 });
         box(0.48, 0.07, 0.46, chair, 0, 0.46, -0.42, g);
         box(0.44, 0.52, 0.06, chair, 0, 0.8, -0.68, g);
         box(0.3, 0.03, 0.03, glow(side, 0.8), 0, 1.04, -0.66, g);
-        cyl(0.035, 0.035, 0.4, M(0x9aa6b8, { metalness: 0.7 }), 0, 0.23, -0.42, g, 8);
+        cyl(0.035, 0.035, 0.4, metal, 0, 0.23, -0.42, g, 8);
         cyl(0.26, 0.26, 0.03, M(0x2a3346), 0, 0.04, -0.42, g, 5);
-        // 兩側玻璃隔板（頂端光條）
-        for (const sx of [-0.98, 0.98]) {
-          const p = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.62, 0.72), glass(0.16)); p.position.set(sx, 1.1, 0.28); g.add(p);
-          box(0.03, 0.02, 0.72, glow(side, 1.0), sx, 1.42, 0.28, g);
-          box(0.03, 0.8, 0.03, M(0x9aa6b8, { metalness: 0.7 }), sx, 0.8, 0.64, g);
-        }
         return { matMat, mat, top, front, scrMat, lamp, outfit: yang ? 0x24324a : 0xdfe5ec };
       }
 
-      // 全像會議室（左後）：玻璃桌面、中央全像投影、弧形玻璃隔間
-      function meetRoom(MEET) {
-        const g = new THREE.Group(); g.position.set(MEET.x, T0, MEET.z); scene.add(g);
-        const rug = new THREE.Mesh(new THREE.CircleGeometry(1.85, 64), M(0x0e1830, { roughness: 0.8 })); flat(rug, 0.008); g.add(rug);
-        const ring = new THREE.Mesh(new THREE.RingGeometry(1.8, 1.86, 96), new THREE.MeshBasicMaterial({ color: CY })); flat(ring, 0.012); g.add(ring);
-        cyl(0.95, 0.95, 0.04, glass(0.32, 0x7fd8ff), 0, 0.74, 0, g, 48);
-        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.02, 8, 96), glow(CY, 1.3)); rim.rotation.x = Math.PI / 2; rim.position.y = 0.76; g.add(rim);
-        cyl(0.12, 0.3, 0.72, M(0x1b2436, { metalness: 0.6, roughness: 0.3 }), 0, 0.36, 0, g, 16);
-        cyl(0.18, 0.2, 0.05, glow(CY, 1.2), 0, 0.785, 0, g, 24);
-        const hg = new THREE.Group(); hg.position.y = 1.2; g.add(hg);
-        const hm = new THREE.MeshBasicMaterial({ color: 0x5fdcff, wireframe: true, transparent: true, opacity: 0.6 });
-        hg.add(new THREE.Mesh(new THREE.TorusKnotGeometry(0.2, 0.06, 64, 8), hm));
-        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.17, 0.42, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0x38c8ff, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }));
-        beam.position.y = -0.22; hg.add(beam);
-        spin.push(hg);
-        for (let i = 0; i < 6; i++) {
-          const a = i * Math.PI / 3 + Math.PI / 6, ch = new THREE.Group(); ch.position.set(Math.sin(a) * 1.2, 0, Math.cos(a) * 1.2); ch.rotation.y = a + Math.PI; g.add(ch);
-          box(0.42, 0.06, 0.42, M(0x22304a), 0, 0.46, 0, ch); box(0.4, 0.42, 0.05, M(0x22304a), 0, 0.72, -0.24, ch);
-          cyl(0.03, 0.03, 0.42, M(0x9aa6b8, { metalness: 0.7 }), 0, 0.22, 0, ch, 8);
+      // 玻璃會議室（左＝個人側、右＝公司側）：長桌、六張椅、桌上全像投影、內牆螢幕
+      const MEET_SEATS = { left: [], right: [] };
+      function glassRoom(x0, z0, x1, z1, openSide) {
+        const h = 2.4, edges = [['b', x0, z0, x1, z0], ['f', x0, z1, x1, z1], ['l', x0, z0, x0, z1], ['r', x1, z0, x1, z1]];
+        for (const [k, ax, az, bx, bz] of edges) {
+          if (k === openSide) continue;
+          const len = Math.hypot(bx - ax, bz - az), alongX = az === bz;
+          const pn = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.04, h, alongX ? 0.04 : len), glass(0.12)); pn.position.set((ax + bx) / 2, T0 + h / 2, (az + bz) / 2); scene.add(pn);
+          box(alongX ? len : 0.05, 0.04, alongX ? 0.05 : len, glow(CY, 1.0), (ax + bx) / 2, T0 + h, (az + bz) / 2, scene);
+          box(alongX ? len : 0.06, 0.06, alongX ? 0.06 : len, M(0x1b2436), (ax + bx) / 2, T0 + 0.03, (az + bz) / 2, scene);
         }
-        const arc = new THREE.Mesh(new THREE.CylinderGeometry(2.15, 2.15, 2.3, 48, 1, true, Math.PI * 1.0, Math.PI * 0.62), glass(0.1)); arc.position.y = 1.15; g.add(arc);
-        const arcTop = new THREE.Mesh(new THREE.TorusGeometry(2.15, 0.02, 6, 48, Math.PI * 0.62), glow(CY, 1.0));
-        // CylinderGeometry 角度 θ 對應 (sinθ, cosθ)；圓環弧 φ＝π/2−θ，故起點為 −1.12π
-        arcTop.rotation.set(Math.PI / 2, 0, -Math.PI * 1.12); arcTop.position.y = 2.3; g.add(arcTop);
+      }
+      for (const [pod, R] of Object.entries(ROOMS)) {
+        const sg = Math.sign(R.x), x0 = R.x - 1.6, x1 = R.x + 1.6, z0 = R.z - 2.0, z1 = R.z + 2.0;
+        const zone = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 4.0), M(0x0f1a30, { roughness: 0.8 })); flat(zone, T0 + 0.005); zone.position.set(R.x, T0 + 0.005, R.z); scene.add(zone);
+        glassRoom(x0, z0, x1, z1, sg < 0 ? 'l' : 'r'); // 靠窗那面不另做玻璃
+        box(1.0, 0.05, 2.5, M(0xe6ebf2, { roughness: 0.3, metalness: 0.2 }), R.x, T0 + 0.75, R.z, scene);
+        box(1.02, 0.015, 2.52, glow(CY, 0.9), R.x, T0 + 0.72, R.z, scene);
+        box(0.3, 0.7, 1.6, M(0x1b2436, { metalness: 0.5 }), R.x, T0 + 0.37, R.z, scene);
+        const hg = new THREE.Group(); hg.position.set(R.x, T0 + 1.15, R.z); scene.add(hg);
+        hg.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), new THREE.MeshBasicMaterial({ color: 0x5fdcff, wireframe: true, transparent: true, opacity: 0.6 })));
+        spin.push(hg);
+        for (const s of [-1, 1]) for (const dz of [-0.85, 0, 0.85]) {
+          const cx = R.x + s * 0.85, ch = new THREE.Group(); ch.position.set(cx, T0, R.z + dz); ch.rotation.y = -s * PI / 2; scene.add(ch);
+          box(0.44, 0.06, 0.44, M(0x22304a), 0, 0.46, 0, ch); box(0.42, 0.42, 0.05, M(0x22304a), 0, 0.72, -0.24, ch);
+          cyl(0.03, 0.03, 0.42, metal, 0, 0.22, 0, ch, 8);
+          MEET_SEATS[pod].push({ type: 'meet', x: cx, z: R.z + dz, yaw: -s * PI / 2, y: T0 });
+        }
+        // 內牆（背面玻璃上）小螢幕
+        box(1.4, 0.8, 0.03, M(0x0a1222, { emissive: 0x38c8ff, emissiveIntensity: 0.25 }), R.x, T0 + 1.5, z0 + 0.06, scene);
       }
 
-      // 四隅其餘三區：機房（右後）、咖啡吧（左前）、休息區（右前）；回傳休息／活動位置
+      // 機房（左後）、專注艙（右後）、咖啡吧（左前）、休息區（右前）；回傳休息／活動位置
       function corners(cornerSign) {
-        // 機房
-        const SV = { x: 9.15, z: -6.75 };
         const ledCv = document.createElement('canvas'); ledCv.width = 128; ledCv.height = 512;
         { const c = ledCv.getContext('2d'); c.fillStyle = '#070b13'; c.fillRect(0, 0, 128, 512);
           for (let r = 0; r < 14; r++) { c.fillStyle = '#121a28'; c.fillRect(6, 8 + r * 36, 116, 30);
             for (let k = 0; k < 6; k++) { const v = rnd(); c.fillStyle = v < 0.55 ? '#38c8ff' : v < 0.8 ? '#5fe3c0' : v < 0.93 ? '#8b7bff' : '#ffb347'; c.fillRect(14 + k * 12, 18 + r * 36, 6, 6); }
             c.fillStyle = 'rgba(56,200,255,.35)'; c.fillRect(92, 20 + r * 36, 22, 4); } }
         const ledTex = canvasTex(ledCv);
-        for (const [rz, face] of [[SV.z - 1.0, 1], [SV.z + 1.0, -1]]) {
-          for (let i = 0; i < 5; i++) {
-            const x = 7.75 + i * 0.66;
-            box(0.62, 2.1, 0.9, M(0x0f1522, { metalness: 0.6, roughness: 0.35 }), x, T0 + 1.05, rz, scene);
-            const fm = new THREE.MeshStandardMaterial({ map: ledTex, emissiveMap: ledTex, emissive: 0xffffff, emissiveIntensity: 0.9, roughness: 0.4 });
-            for (const sd of [face, -face]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 1.96), fm); f.position.set(x, T0 + 1.05, rz + sd * 0.452); if (sd < 0) f.rotation.y = Math.PI; scene.add(f); }
-            box(0.62, 0.03, 0.9, glow(CY, 1.0), x, T0 + 2.11, rz, scene);
-            blink.push({ m: fm, ph: rnd() * 6, sp: 1.5 + rnd() * 2 });
-          }
+        // 機房：兩排機櫃，中間冷通道
+        for (const rz of [-8.55, -6.95]) for (let i = 0; i < 5; i++) {
+          const x = -10.6 + i * 0.66;
+          box(0.62, 2.1, 0.9, M(0x0f1522, { metalness: 0.6, roughness: 0.35 }), x, T0 + 1.05, rz, scene);
+          const fm = new THREE.MeshStandardMaterial({ map: ledTex, emissiveMap: ledTex, emissive: 0xffffff, emissiveIntensity: 0.9, roughness: 0.4 });
+          for (const sd of [1, -1]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 1.96), fm); f.position.set(x, T0 + 1.05, rz + sd * 0.452); if (sd < 0) f.rotation.y = PI; scene.add(f); }
+          box(0.62, 0.03, 0.9, glow(CY, 1.0), x, T0 + 2.11, rz, scene);
+          blink.push({ m: fm, ph: rnd() * 6, sp: 1.5 + rnd() * 2 });
         }
-        const aisle = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.5), new THREE.MeshBasicMaterial({ color: CY, transparent: true, opacity: 0.18 })); flat(aisle, T0 + 0.006); aisle.position.set(9.0, T0 + 0.006, SV.z); scene.add(aisle);
-        // 玻璃隔間（左、前）
-        { const L = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.5, 4.6), glass(0.12)); L.position.set(7.05, T0 + 1.25, -6.85); scene.add(L);
-          box(0.06, 0.04, 4.6, glow(CY, 1.0), 7.05, T0 + 2.5, -6.85, scene);
-          const F = new THREE.Mesh(new THREE.BoxGeometry(4.4, 2.5, 0.04), glass(0.1)); F.position.set(9.25, T0 + 1.25, -4.55); scene.add(F);
-          box(4.4, 0.04, 0.06, glow(CY, 1.0), 9.25, T0 + 2.5, -4.55, scene); }
-        // 咖啡吧（左前）
-        const CF = { x: -8.6, z: 6.4 };
-        { const zone = new THREE.Mesh(new THREE.ShapeGeometry(roundRectShape(4.2, 3.2, 0.4)), M(0x162033, { roughness: 0.8 })); flat(zone, T0 + 0.006); zone.position.set(CF.x, T0 + 0.006, CF.z + 0.2); scene.add(zone);
-          box(3.6, 0.92, 0.6, M(0x1c2638, { roughness: 0.5 }), CF.x, T0 + 0.46, CF.z - 1.15, scene);
-          box(3.7, 0.05, 0.66, M(0xeef2f7, { roughness: 0.3 }), CF.x, T0 + 0.945, CF.z - 1.15, scene);
-          box(3.6, 0.03, 0.03, glow(CY, 1.1), CF.x, T0 + 0.9, CF.z - 0.84, scene);
-          box(0.5, 0.48, 0.42, M(0x9aa6b8, { metalness: 0.8, roughness: 0.25 }), CF.x - 1.0, T0 + 1.21, CF.z - 1.2, scene);
-          box(0.2, 0.1, 0.01, glow(CY, 1.4), CF.x - 1.0, T0 + 1.3, CF.z - 0.985, scene);
-          for (const dx of [0.2, 0.42, 0.64]) cyl(0.04, 0.035, 0.09, M(0xf4f6f8), CF.x + dx, T0 + 1.015, CF.z - 1.1, scene, 10);
-          // 菜單螢幕
+        { const aisle = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.5), new THREE.MeshBasicMaterial({ color: CY, transparent: true, opacity: 0.2 })); flat(aisle, T0 + 0.006); aisle.position.set(-9.3, T0 + 0.006, -7.75); scene.add(aisle); }
+        glassRoom(-11.3, -9.15, -6.8, -6.2, 'l');
+        // 專注艙：兩個玻璃小艙
+        const BOOTH = [8.2, 10.25];
+        for (const bx of BOOTH) {
+          glassRoom(bx - 0.9, -9.1, bx + 0.9, -6.7, null);
+          box(1.8, 0.05, 2.4, M(0x1b2436), bx, T0 + 2.42, -7.9, scene);
+          box(1.2, 0.02, 0.06, glow(0xeef6ff, 0.8), bx, T0 + 2.39, -7.9, scene);
+          box(0.6, 0.44, 0.5, M(0x2b3a5c, { roughness: 0.85 }), bx, T0 + 0.22, -8.3, scene); box(0.6, 0.5, 0.12, M(0x2b3a5c), bx, T0 + 0.65, -8.55, scene);
+          box(0.9, 0.04, 0.4, M(0xe6ebf2), bx, T0 + 0.72, -7.45, scene); box(0.04, 0.7, 0.04, metal, bx, T0 + 0.36, -7.45, scene);
+        }
+        // 咖啡吧（左前）：靠窗吧檯＋兩張高桌
+        const CF = { x: -8.6, z: 6.9 };
+        { box(0.62, 0.92, 3.4, M(0x1c2638, { roughness: 0.5 }), -10.85, T0 + 0.46, CF.z, scene);
+          box(0.7, 0.05, 3.5, M(0xeef2f7, { roughness: 0.3 }), -10.85, T0 + 0.945, CF.z, scene);
+          box(0.03, 0.03, 3.4, glow(CY, 1.1), -10.53, T0 + 0.9, CF.z, scene);
+          box(0.42, 0.48, 0.5, M(0x9aa6b8, { metalness: 0.8, roughness: 0.25 }), -10.9, T0 + 1.21, CF.z - 0.9, scene);
+          box(0.01, 0.1, 0.2, glow(CY, 1.4), -10.68, T0 + 1.3, CF.z - 0.9, scene);
+          for (const dz of [0.1, 0.32, 0.54]) cyl(0.04, 0.035, 0.09, M(0xf4f6f8), -10.8, T0 + 1.015, CF.z + dz, scene, 10);
           const mc = document.createElement('canvas'); mc.width = 512; mc.height = 256; const c = mc.getContext('2d');
           c.fillStyle = '#071226'; c.fillRect(0, 0, 512, 256); c.strokeStyle = '#38c8ff'; c.lineWidth = 6; c.strokeRect(6, 6, 500, 244);
           c.fillStyle = '#eaf4ff'; c.textAlign = 'center'; c.font = `bold 64px ${SANS}`; c.fillText('咖啡吧', 256, 100); c.font = `38px ${SANS}`; c.fillStyle = '#7fe0ff'; c.fillText('美式・拿鐵・冷萃', 256, 180);
-          const mt = canvasTex(mc); const ms = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.65), new THREE.MeshStandardMaterial({ map: mt, emissiveMap: mt, emissive: 0xffffff, emissiveIntensity: 0.8 }));
-          box(1.36, 0.71, 0.05, M(0x111725), CF.x + 0.6, T0 + 1.75, CF.z - 1.48, scene); ms.position.set(CF.x + 0.6, T0 + 1.75, CF.z - 1.45); scene.add(ms);
-          for (const [x, z] of [[CF.x - 0.6, CF.z + 0.35], [CF.x + 1.05, CF.z + 0.8]]) {
-            cyl(0.36, 0.36, 0.04, M(0xeef2f7, { roughness: 0.3 }), x, T0 + 1.05, z, scene, 32);
-            cyl(0.37, 0.37, 0.012, glow(CY, 0.9), x, T0 + 1.03, z, scene, 32);
-            cyl(0.03, 0.03, 1.03, M(0x9aa6b8, { metalness: 0.7 }), x, T0 + 0.52, z, scene, 8); cyl(0.22, 0.22, 0.03, M(0x2a3346), x, T0 + 0.015, z, scene, 20);
-            cyl(0.035, 0.03, 0.09, M(0xf4f6f8), x + 0.1, T0 + 1.115, z, scene, 10);
+          const mt = canvasTex(mc); const ms = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.65), new THREE.MeshStandardMaterial({ map: mt, emissiveMap: mt, emissive: 0xffffff, emissiveIntensity: 0.85 }));
+          ms.position.set(-11.36, T0 + 1.9, CF.z + 0.6); ms.rotation.y = PI / 2; scene.add(ms);
+          for (const [x, z] of [[-8.9, 6.3], [-7.4, 7.9]]) {
+            box(0.9, 0.04, 0.6, M(0xeef2f7, { roughness: 0.3 }), x, T0 + 1.05, z, scene);
+            box(0.92, 0.012, 0.62, glow(CY, 0.9), x, T0 + 1.03, z, scene);
+            box(0.05, 1.03, 0.05, metal, x, T0 + 0.52, z, scene); box(0.5, 0.03, 0.4, M(0x2a3346), x, T0 + 0.015, z, scene);
+            cyl(0.035, 0.03, 0.09, M(0xf4f6f8), x + 0.15, T0 + 1.115, z, scene, 10);
           } }
         // 休息區（右前）
-        const LG = { x: 8.6, z: 6.4 };
-        { const zone = new THREE.Mesh(new THREE.ShapeGeometry(roundRectShape(4.2, 3.2, 0.4)), M(0x1a1f36, { roughness: 0.9 })); flat(zone, T0 + 0.006); zone.position.set(LG.x, T0 + 0.006, LG.z + 0.3); scene.add(zone);
-          const sofa = M(0x2b3a5c, { roughness: 0.85 }), cush = M(0x3a4d75, { roughness: 0.9 });
-          box(2.6, 0.38, 0.8, sofa, LG.x - 0.1, T0 + 0.19, LG.z - 0.6, scene); box(2.6, 0.56, 0.2, sofa, LG.x - 0.1, T0 + 0.6, LG.z - 0.95, scene);
-          for (const dx of [-0.75, 0.45]) box(1.1, 0.08, 0.66, cush, LG.x + dx - 0.1, T0 + 0.42, LG.z - 0.55, scene);
-          box(0.8, 0.38, 1.9, sofa, LG.x + 1.75, T0 + 0.19, LG.z + 0.55, scene); box(0.2, 0.56, 1.9, sofa, LG.x + 2.1, T0 + 0.6, LG.z + 0.55, scene);
-          box(0.66, 0.08, 1.7, cush, LG.x + 1.72, T0 + 0.42, LG.z + 0.55, scene);
-          box(1.1, 0.04, 0.62, glass(0.4, 0xbfe9ff), LG.x - 0.2, T0 + 0.38, LG.z + 0.55, scene); box(1.0, 0.36, 0.5, M(0x111725), LG.x - 0.2, T0 + 0.18, LG.z + 0.55, scene);
-          box(1.12, 0.012, 0.64, glow(VI, 0.8), LG.x - 0.2, T0 + 0.355, LG.z + 0.55, scene);
-          for (const [x, z] of [[LG.x - 1.85, LG.z - 1.0], [LG.x + 2.0, LG.z - 1.0]]) {
-            cyl(0.22, 0.17, 0.42, M(0xe6ebf2, { roughness: 0.4 }), x, T0 + 0.21, z, scene, 18);
+        const LG = { x: 8.6, z: 6.9 };
+        { const sofa = M(0x2b3a5c, { roughness: 0.85 }), cush = M(0x3a4d75, { roughness: 0.9 });
+          box(2.6, 0.38, 0.8, sofa, LG.x - 0.1, T0 + 0.19, LG.z - 1.2, scene); box(2.6, 0.56, 0.2, sofa, LG.x - 0.1, T0 + 0.6, LG.z - 1.55, scene);
+          for (const dx of [-0.75, 0.45]) box(1.1, 0.08, 0.66, cush, LG.x + dx - 0.1, T0 + 0.42, LG.z - 1.15, scene);
+          box(0.8, 0.38, 2.0, sofa, LG.x + 2.15, T0 + 0.19, LG.z + 0.2, scene); box(0.2, 0.56, 2.0, sofa, LG.x + 2.5, T0 + 0.6, LG.z + 0.2, scene);
+          box(0.66, 0.08, 1.8, cush, LG.x + 2.12, T0 + 0.42, LG.z + 0.2, scene);
+          box(1.2, 0.04, 0.66, glass(0.4, 0xbfe9ff), LG.x - 0.1, T0 + 0.38, LG.z + 0.05, scene); box(1.1, 0.36, 0.54, M(0x111725), LG.x - 0.1, T0 + 0.18, LG.z + 0.05, scene);
+          box(1.22, 0.012, 0.68, glow(VI, 0.8), LG.x - 0.1, T0 + 0.355, LG.z + 0.05, scene);
+          for (const [x, z] of [[LG.x - 1.9, LG.z - 1.6], [LG.x + 2.4, LG.z - 1.6], [LG.x - 1.9, LG.z + 2.1]]) {
+            box(0.4, 0.42, 0.4, M(0xe6ebf2, { roughness: 0.4 }), x, T0 + 0.21, z, scene);
             const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 1), M(0x2f8a6a, { roughness: 0.8, flatShading: true })); f.position.set(x, T0 + 0.85, z); scene.add(f);
           } }
-        cornerSign('全像會議室', MEET_POS.x, MEET_POS.z - 1.6, 1.25); cornerSign('機房', SV.x, -4.55, 2.85); cornerSign('咖啡吧', CF.x, CF.z + 1.75, 0.95); cornerSign('休息區', LG.x, LG.z + 1.85, 0.95);
-        const y = T0;
+        cornerSign('機房', -8.8, -6.2, 2.8); cornerSign('專注艙', 9.2, -6.7, 2.8); cornerSign('咖啡吧', CF.x, 9.1, 0.95); cornerSign('休息區', LG.x - 0.4, 9.1, 0.95);
+        const y = T0, P2 = (x, z) => ({ x, z });
         return [
-          { id: 'walk-in-a', type: 'walk', label: '散步', r: 3.1, sp: 0.22, off: 0, y },
-          { id: 'coffee-1', type: 'coffee', x: CF.x - 1.12, z: CF.z + 0.35, yaw: Math.PI / 2, y, label: '喝咖啡' },
-          { id: 'lounge-1', type: 'read', x: LG.x - 0.85, z: LG.z - 0.5, yaw: 0, y, label: '休息區小憩' },
-          { id: 'server-1', type: 'patrol', x0: 7.6, x1: 10.6, z: SV.z, sp: 0.35, off: 0, y, label: '巡視機房' },
-          { id: 'walk-out-a', type: 'walk', label: '散步', r: 8.4, rz: 7.6, sp: -0.1, off: 0, y },
-          { id: 'coffee-2', type: 'coffee', x: CF.x - 0.08, z: CF.z + 0.35, yaw: -Math.PI / 2, y, label: '喝咖啡' },
-          { id: 'lounge-2', type: 'read', x: LG.x + 0.35, z: LG.z - 0.5, yaw: 0, y, label: '休息區小憩' },
-          { id: 'server-2', type: 'patrol', x0: 7.6, x1: 10.6, z: SV.z, sp: 0.35, off: Math.PI, y, label: '巡視機房' },
-          { id: 'walk-in-b', type: 'walk', label: '散步', r: 3.1, sp: 0.22, off: Math.PI, y },
-          { id: 'coffee-3', type: 'coffee', x: CF.x + 1.05, z: CF.z + 1.32, yaw: Math.PI, y, label: '喝咖啡' },
-          { id: 'lounge-3', type: 'read', x: LG.x + 1.72, z: LG.z + 0.9, yaw: -Math.PI / 2, y, label: '休息區小憩' },
-          { id: 'walk-out-b', type: 'walk', label: '散步', r: 8.4, rz: 7.6, sp: -0.1, off: Math.PI, y },
+          { id: 'walk-aisle-a', type: 'patrol', label: '散步', p0: P2(-0.55, 8.6), p1: P2(-0.55, -3.4), sp: 0.16, off: 0, y },
+          { id: 'coffee-1', type: 'coffee', x: -9.45, z: 6.3, yaw: PI / 2, y, label: '喝咖啡' },
+          { id: 'lounge-1', type: 'read', x: LG.x - 0.85, z: LG.z - 1.1, yaw: 0, y, label: '休息區小憩' },
+          { id: 'server-1', type: 'patrol', label: '巡視機房', p0: P2(-10.6, -7.75), p1: P2(-7.6, -7.75), sp: 0.35, off: 0, y },
+          { id: 'booth-1', type: 'read', x: BOOTH[0], z: -8.25, yaw: 0, y, label: '專注艙' },
+          { id: 'coffee-2', type: 'coffee', x: -8.35, z: 6.3, yaw: -PI / 2, y, label: '喝咖啡' },
+          { id: 'lounge-2', type: 'read', x: LG.x + 0.35, z: LG.z - 1.1, yaw: 0, y, label: '休息區小憩' },
+          { id: 'walk-front', type: 'patrol', label: '散步', p0: P2(-5.2, 4.95), p1: P2(5.2, 4.95), sp: 0.12, off: 0, y },
+          { id: 'walk-aisle-b', type: 'patrol', label: '散步', p0: P2(0.55, -3.4), p1: P2(0.55, 8.6), sp: 0.16, off: PI * 0.6, y },
+          { id: 'coffee-3', type: 'coffee', x: -6.85, z: 7.9, yaw: -PI / 2, y, label: '喝咖啡' },
+          { id: 'lounge-3', type: 'read', x: LG.x + 2.12, z: LG.z + 0.55, yaw: -PI / 2, y, label: '休息區小憩' },
+          { id: 'booth-2', type: 'read', x: BOOTH[1], z: -8.25, yaw: 0, y, label: '專注艙' },
+          { id: 'server-2', type: 'patrol', label: '巡視機房', p0: P2(-10.6, -7.75), p1: P2(-7.6, -7.75), sp: 0.35, off: PI, y },
         ];
       }
-      const MEET_POS = { x: -8.6, z: -6.4 };
 
       function boardLogo(c, x, y) {
         c.save(); c.strokeStyle = '#38c8ff'; c.fillStyle = '#0c1a30'; c.lineWidth = 4;
@@ -897,15 +929,15 @@ async function initBuilding() {
 
       function tick(sec, st, holo) {
         if (holo) {
-          holo.ico.rotation.y = sec * 0.6; holo.ico.rotation.x = sec * 0.25;
-          holo.mat.opacity = st === 'active' ? 0.65 + Math.sin(sec * 2.2) * 0.25 : 0.28;
-          holo.inner.material.opacity = st === 'active' ? 0.9 : 0.35;
-          holo.g.position.y = 1.05 + Math.sin(sec * 1.3) * 0.05;
+          const on = st === 'active', pulse = 0.5 + Math.sin(sec * 2.2) * 0.5;
+          holo.octa.rotation.y = sec * 0.8; holo.octa.position.y = 1.35 + Math.sin(sec * 1.3) * 0.05;
+          holo.om.opacity = on ? 0.6 + pulse * 0.35 : 0.22;
+          holo.bladeMat.emissiveIntensity = on ? 0.9 + pulse * 0.9 : 0.25;
         }
         for (const s of spin) s.rotation.y = sec * 0.7;
         for (const b of blink) b.m.emissiveIntensity = 0.75 + Math.sin(sec * b.sp + b.ph) * 0.3;
       }
-      return { wall, drawChip, coreHolo, desk, meetRoom, corners, boardLogo, tick };
+      return { SEATS, CORE, ROOMS, MEET_SEATS, route, wall, core, desk, corners, boardLogo, tick };
     }
 
     // 竹林（四周點綴）
@@ -969,33 +1001,32 @@ async function initBuilding() {
     }
 
     // ---------- 中央主位：太極核心（Louis） ----------
-    const core = new THREE.Group(); core.position.set(0, TOP, CZ); scene.add(core);
-    if (IS_B) {
-      cyl(1.66, 1.76, 0.16, M(0x141c2c, { roughness: 0.4, metalness: 0.5 }), 0, 0.08, 0, core, 6);
-      cyl(1.5, 1.58, 0.12, M(0x1d2a40, { metalness: 0.7, roughness: 0.3, emissive: 0x38c8ff, emissiveIntensity: 0.25 }), 0, 0.2, 0, core, 64);
-    } else {
-      cyl(1.62, 1.72, 0.16, M(0x2a2825, { roughness: 0.6 }), 0, 0.08, 0, core, 64);
-      cyl(1.5, 1.58, 0.12, M(GOLD, { metalness: 0.55, roughness: 0.35 }), 0, 0.2, 0, core, 64);
-    }
-    const coreTop = (() => {
+    // 模板 B 改為走道盡頭的矩形「總經理指揮台」
+    const CORE_P = IS_B ? B.CORE : { x: 0, z: CZ };
+    const core = new THREE.Group(); core.position.set(CORE_P.x, TOP, CORE_P.z); scene.add(core);
+    let coreTop, glowMat, glow, haloMat, halo, coreHolo = null;
+    if (IS_B) ({ coreTop, glowMat, glow, haloMat, halo, holo: coreHolo } = B.core(core));
+    else {
+    cyl(1.62, 1.72, 0.16, M(0x2a2825, { roughness: 0.6 }), 0, 0.08, 0, core, 64);
+    cyl(1.5, 1.58, 0.12, M(GOLD, { metalness: 0.55, roughness: 0.35 }), 0, 0.2, 0, core, 64);
+    coreTop = (() => {
       const cv = document.createElement('canvas'); cv.width = cv.height = 1024;
       const c = cv.getContext('2d');
-      if (IS_B) B.drawChip(c, 1024); else drawTaiji(c, 512, 512, 506, '#f7f4ec', '#1c1b19');
-      const ct = canvasTex(cv);
-      const m = new THREE.Mesh(new THREE.CircleGeometry(1.46, 64), IS_B ? new THREE.MeshStandardMaterial({ map: ct, emissiveMap: ct, emissive: 0xffffff, emissiveIntensity: 0.55, roughness: 0.3, metalness: 0.3 }) : new THREE.MeshStandardMaterial({ map: ct, roughness: 0.35, metalness: 0.05 }));
+      drawTaiji(c, 512, 512, 506, '#f7f4ec', '#1c1b19');
+      const m = new THREE.Mesh(new THREE.CircleGeometry(1.46, 64), new THREE.MeshStandardMaterial({ map: canvasTex(cv), roughness: 0.35, metalness: 0.05 }));
       flat(m, 0.265); core.add(m); return m;
     })();
-    const glowMat = new THREE.MeshBasicMaterial({ color: IS_B ? 0x38c8ff : 0x7fd1b5, transparent: true, opacity: 0.0, depthWrite: false });
-    const glow = new THREE.Mesh(new THREE.RingGeometry(1.78, 2.2, 96), glowMat); flat(glow, 0.03); core.add(glow);
-    const haloMat = new THREE.MeshStandardMaterial({ color: ACT, emissive: ACT_E, emissiveIntensity: 0.0, roughness: 0.3, metalness: 0.2 });
-    const halo = new THREE.Mesh(new THREE.TorusGeometry(1.67, 0.035, 10, 120), haloMat); halo.rotation.x = Math.PI / 2; halo.position.y = 0.28; core.add(halo);
+    glowMat = new THREE.MeshBasicMaterial({ color: 0x7fd1b5, transparent: true, opacity: 0.0, depthWrite: false });
+    glow = new THREE.Mesh(new THREE.RingGeometry(1.78, 2.2, 96), glowMat); flat(glow, 0.03); core.add(glow);
+    haloMat = new THREE.MeshStandardMaterial({ color: ACT, emissive: ACT_E, emissiveIntensity: 0.0, roughness: 0.3, metalness: 0.2 });
+    halo = new THREE.Mesh(new THREE.TorusGeometry(1.67, 0.035, 10, 120), haloMat); halo.rotation.x = Math.PI / 2; halo.position.y = 0.28; core.add(halo);
+    }
     // 主位名牌
     const coreCv = document.createElement('canvas'); coreCv.width = 640; coreCv.height = 260;
     const coreTex = canvasTex(coreCv);
     const coreSpr = new THREE.Sprite(new THREE.SpriteMaterial({ map: coreTex, depthTest: false, transparent: true }));
-    coreSpr.scale.set(2.7, 1.1, 1); coreSpr.position.set(0, TOP + 1.7, CZ); coreSpr.renderOrder = 11; scene.add(coreSpr);
+    coreSpr.scale.set(2.7, 1.1, 1); coreSpr.position.set(CORE_P.x, TOP + (IS_B ? 2.05 : 1.7), CORE_P.z); coreSpr.renderOrder = 11; scene.add(coreSpr);
     for (const m of [coreTop, glow, halo, coreSpr]) m.userData.id = 'louis';
-    const coreHolo = IS_B ? B.coreHolo(core) : null;
 
     // ---------- 工位（面向中央主位） ----------
     // 弧形桌面（環形扇面擠出）
@@ -1083,7 +1114,7 @@ async function initBuilding() {
     const desks = [];
     for (const f of FLOORS) {
       if (f.id === 'louis' || SEAT_DEG[f.id] == null) continue;
-      const deg = SEAT_DEG[f.id], pos = ringPt(deg), yaw = IS_B ? Math.atan2(-pos.x, CZ - pos.z) : deg * Math.PI / 180 + Math.PI;
+      const deg = SEAT_DEG[f.id], pos = IS_B ? { x: B.SEATS[f.id].x, z: B.SEATS[f.id].z } : ringPt(deg), yaw = IS_B ? B.SEATS[f.id].yaw : deg * Math.PI / 180 + Math.PI;
       const yang = PERSONAL.has(f.id); // 左半陽：深色家具；右半陰：淺色家具
       const g = new THREE.Group(); g.position.set(pos.x, TOP, pos.z); g.rotation.y = yaw; g.scale.setScalar(DS); scene.add(g);
       const lead = f.id === 'pa' || f.id === 'cos';
@@ -1130,9 +1161,8 @@ async function initBuilding() {
     const seatWorld = (d) => { const a = d.yaw; const lx = 0, lz = -0.42 * DS; return { x: d.pos.x + lx * Math.cos(a) + lz * Math.sin(a), z: d.pos.z - lx * Math.sin(a) + lz * Math.cos(a) }; };
 
     // ---------- 四隅：圓桌會議（左後）、書房（右後）、茶席（左前）、太極場（右前） ----------
-    const MEET = { x: -8.6, z: -6.4 };
-    if (IS_B) B.meetRoom(MEET);
-    else {
+    const MEET = IS_B ? B.ROOMS.left : { x: -8.6, z: -6.4 };
+    if (!IS_B) {
       const g = new THREE.Group(); g.position.set(MEET.x, 0, MEET.z); scene.add(g);
       const rug = new THREE.Mesh(new THREE.CircleGeometry(1.75, 48), M(0xcfc6b4, { roughness: 0.95 })); flat(rug, 0.012); g.add(rug);
       cyl(0.85, 0.85, 0.07, M(0x2b2825, { roughness: 0.4 }), 0, 0.74, 0, g, 40);
@@ -1140,11 +1170,16 @@ async function initBuilding() {
       const yy = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32), new THREE.MeshStandardMaterial({ map: coreTop.material.map, roughness: 0.4 })); flat(yy, 0.78); g.add(yy);
       for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; cyl(0.2, 0.2, 0.08, M(0x6b6255), Math.sin(a) * 1.2, 0.46, Math.cos(a) * 1.2, g, 16); cyl(0.04, 0.05, 0.42, M(0x3a3632), Math.sin(a) * 1.2, 0.21, Math.cos(a) * 1.2, g, 8); }
     }
-    const MEET_SEATS = Array.from({ length: 6 }, (_, i) => { const a = i * Math.PI / 3 + Math.PI / 6; return { type: 'meet', x: MEET.x + Math.sin(a) * 1.2, z: MEET.z + Math.cos(a) * 1.2, yaw: a + Math.PI, ...(IS_B ? { y: TOP } : {}) }; });
+    const MEET_SEATS = Array.from({ length: 6 }, (_, i) => { const a = i * Math.PI / 3 + Math.PI / 6; return { type: 'meet', x: MEET.x + Math.sin(a) * 1.2, z: MEET.z + Math.cos(a) * 1.2, yaw: a + Math.PI }; });
     const meetCv = document.createElement('canvas'); meetCv.width = 560; meetCv.height = 220;
     const meetTex = canvasTex(meetCv);
     const meetSpr = new THREE.Sprite(new THREE.SpriteMaterial({ map: meetTex, depthTest: false, transparent: true }));
-    meetSpr.scale.set(2.3, 0.9, 1); meetSpr.position.set(MEET.x, 2.3, MEET.z); meetSpr.renderOrder = 9; scene.add(meetSpr);
+    meetSpr.scale.set(2.3, 0.9, 1); meetSpr.position.set(MEET.x, IS_B ? 2.75 : 2.3, MEET.z); meetSpr.renderOrder = 9; scene.add(meetSpr);
+    // 模板 B：右側公司側會議室另有一塊名牌（左艙／右艙依資料的 pod）
+    const meetCv2 = document.createElement('canvas'); meetCv2.width = 560; meetCv2.height = 220;
+    const meetTex2 = canvasTex(meetCv2);
+    const meetSpr2 = IS_B ? new THREE.Sprite(new THREE.SpriteMaterial({ map: meetTex2, depthTest: false, transparent: true })) : null;
+    if (meetSpr2) { meetSpr2.scale.set(2.3, 0.9, 1); meetSpr2.position.set(B.ROOMS.right.x, 2.75, B.ROOMS.right.z); meetSpr2.renderOrder = 9; scene.add(meetSpr2); }
     const signs = [];
     function cornerSign(text, x, z, y = 1.7) {
       const cv = document.createElement('canvas'); cv.width = 420; cv.height = 140;
@@ -1224,6 +1259,7 @@ async function initBuilding() {
     const lineMat = new THREE.LineBasicMaterial({ color: IS_B ? 0x5fd8ff : GOLD, transparent: true, opacity: 0.85 });
     const dashMat = new THREE.LineDashedMaterial({ color: IS_B ? 0xff9a3c : CINNABAR, dashSize: 0.22, gapSize: 0.16, transparent: true, opacity: 0.95 });
     const link = (a, b, mat) => {
+      if (IS_B) { const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(B.route(a, b)), mat); ln.computeLineDistances(); scene.add(ln); return; }
       const A = ringPt(SEAT_DEG[a], -0.6), Bp = ringPt(SEAT_DEG[b], -0.6);
       const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24; const k = 1 - Math.sin(Math.PI * t) * 0.12; pts.push(new THREE.Vector3((A.x + (Bp.x - A.x) * t) * k, TOP + 0.02, CZ + (A.z - CZ + (Bp.z - A.z) * t) * k)); }
       const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat); ln.computeLineDistances(); scene.add(ln);
@@ -1301,29 +1337,36 @@ async function initBuilding() {
       c.beginPath(); c.roundRect(10, 10, W - 20, H - 20, 30); c.fill();
       c.strokeStyle = st === 'active' ? PAL.coreAct : PAL.coreIdle; c.lineWidth = st === 'active' || sel ? 10 : 5; c.stroke();
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = PAL.coreTitle; fitText(c, 'Louis・總經理主位', W - 70, 62, 'bold', IS_B ? SANS : SERIF); c.fillText('Louis・總經理主位', W / 2, 74);
+      const ttl = IS_B ? 'Louis・總經理指揮台' : 'Louis・總經理主位';
+      c.fillStyle = PAL.coreTitle; fitText(c, ttl, W - 70, 62, 'bold', IS_B ? SANS : SERIF); c.fillText(ttl, W / 2, 74);
       let line;
       if (!louisActive || !has(louisActive.last_seen)) line = `最後來訊：${NO_DATA}`;
       else line = `最後來訊 ${fmtTaipei(louisActive.last_seen, false)}（${ago(louisActive.last_seen)}）`;
       c.fillStyle = st === 'active' ? PAL.coreLineAct : PAL.coreLine; fitText(c, line, W - 70, 44, 'bold'); c.fillText(line, W / 2, 150);
-      const tip = st === 'active' ? '一小時內有來訊・主位發光' : st === 'idle' ? '超過一小時未來訊' : '只記時間、不記內容';
+      const tip = st === 'active' ? (IS_B ? '一小時內有來訊・指揮台發光' : '一小時內有來訊・主位發光') : st === 'idle' ? '超過一小時未來訊' : '只記時間、不記內容';
       c.fillStyle = PAL.coreTip; fitText(c, tip, W - 70, 32, 'normal'); c.fillText(tip, W / 2, 206);
       coreTex.needsUpdate = true;
-      const s = narrow ? 1.4 : 1.15; coreSpr.scale.set(2.7 * s, 1.1 * s, 1); meetSpr.scale.set(2.3 * s, 0.9 * s, 1);
+      const s = narrow ? 1.4 : 1.15; coreSpr.scale.set(2.7 * s, 1.1 * s, 1); meetSpr.scale.set(2.3 * s, 0.9 * s, 1); if (meetSpr2) meetSpr2.scale.set(2.3 * s, 0.9 * s, 1);
     }
     function drawMeet() {
-      const c = meetCv.getContext('2d'), W = 560, H = 220;
+      if (!IS_B) { drawMeetCard(meetCv, meetTex, meetings, PAL.meetFree); return; }
+      const isLeft = (m) => m.pod === 'left';
+      drawMeetCard(meetCv, meetTex, meetings.filter(isLeft), `${B.ROOMS.left.name}・空閒`);
+      drawMeetCard(meetCv2, meetTex2, meetings.filter((m) => !isLeft(m)), `${B.ROOMS.right.name}・空閒`);
+    }
+    function drawMeetCard(cv, tex, list, freeText) {
+      const c = cv.getContext('2d'), W = 560, H = 220;
       c.clearRect(0, 0, W, H);
-      const busy = meetings.length > 0;
+      const busy = list.length > 0;
       c.fillStyle = PAL.meetBg; c.beginPath(); c.roundRect(8, 8, W - 16, H - 16, 26); c.fill();
       c.strokeStyle = busy ? '#e0b25c' : PAL.meetIdle; c.lineWidth = busy ? 8 : 4; c.stroke();
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      if (!busy) { c.fillStyle = PAL.meetIdleTxt; fitText(c, PAL.meetFree, W - 60, 64, 'bold'); c.fillText(PAL.meetFree, W / 2, H / 2); }
+      if (!busy) { c.fillStyle = PAL.meetIdleTxt; fitText(c, freeText, W - 60, 64, 'bold'); c.fillText(freeText, W / 2, H / 2); }
       else {
-        let t = meetings.map((x) => x.title).join('／'); c.fillStyle = PAL.meetTitle; fitText(c, t, W - 60, 54, 'bold'); while (c.measureText(t).width > W - 60 && t.length > 2) t = t.slice(0, -2) + '…'; c.fillText(t, W / 2, 80);
+        let t = list.map((x) => x.title).join('／'); c.fillStyle = PAL.meetTitle; fitText(c, t, W - 60, 54, 'bold'); while (c.measureText(t).width > W - 60 && t.length > 2) t = t.slice(0, -2) + '…'; c.fillText(t, W / 2, 80);
         c.fillStyle = '#e0b25c'; fitText(c, '會議中', W - 60, 48, 'bold'); c.fillText('會議中', W / 2, 150);
       }
-      meetTex.needsUpdate = true;
+      tex.needsUpdate = true;
     }
 
     // ---------- 大型看板內容 ----------
@@ -1377,7 +1420,7 @@ async function initBuilding() {
       c.fillStyle = 'rgba(255,255,255,.04)'; c.fillRect(x2 - 24, 172, w2 + 48, H - 230);
       let yy = 220;
       // 主位
-      c.fillStyle = PAL.acc; c.font = `bold 40px ${IS_B ? SANS : SERIF}`; c.fillText('主位', x2, yy); yy += 56;
+      c.fillStyle = PAL.acc; c.font = `bold 40px ${IS_B ? SANS : SERIF}`; c.fillText(IS_B ? '總經理指揮台' : '主位', x2, yy); yy += 56;
       const st = louisState();
       c.fillStyle = st === 'active' ? PAL.active : PAL.sub2; c.font = `32px ${SANS}`;
       c.fillText(louisActive && has(louisActive.last_seen) ? `Louis 最後來訊 ${fmtTaipei(louisActive.last_seen, false)}（${ago(louisActive.last_seen)}）` : `Louis 最後來訊：${NO_DATA}`, x2, yy); yy += 74;
@@ -1425,6 +1468,11 @@ async function initBuilding() {
     }
     function assignMeetSeats() {
       const map = {}; let n = 0;
+      if (IS_B) {
+        const cnt = { left: 0, right: 0 };
+        for (const m of meetings) { const pod = m.pod === 'left' ? 'left' : 'right', seats = B.MEET_SEATS[pod]; for (const id of m.members) { if (map[id] || id === 'louis') continue; map[id] = seats[cnt[pod]++ % seats.length]; } }
+        return map;
+      }
       for (const m of meetings) for (const id of m.members) { if (map[id] || id === 'louis') continue; map[id] = MEET_SEATS[n % MEET_SEATS.length]; n++; }
       return map;
     }
@@ -1509,14 +1557,14 @@ async function initBuilding() {
           a.head.rotation.y = Math.sin(sec * 0.5 + ph) * 0.25;
         } else if (s.type === 'patrol') {
           // 模板 B：在機房走道來回巡視
-          const t = sec * s.sp + ph * 0.3 + (s.off || 0), u = (1 - Math.cos(t)) / 2;
-          a.g.position.set(s.x0 + (s.x1 - s.x0) * u, s.y ?? 0, s.z);
-          a.g.rotation.y = Math.sin(t) >= 0 ? Math.PI / 2 : -Math.PI / 2;
+          const t = sec * s.sp + ph * 0.3 + (s.off || 0), u = (1 - Math.cos(t)) / 2, dx = s.p1.x - s.p0.x, dz = s.p1.z - s.p0.z;
+          a.g.position.set(s.p0.x + dx * u, s.y ?? 0, s.p0.z + dz * u);
+          a.g.rotation.y = Math.sin(t) >= 0 ? Math.atan2(dx, dz) : Math.atan2(-dx, -dz);
           const w = Math.sin(sec * 6 + ph) * Math.min(1, Math.abs(Math.sin(t)) * 3);
           a.legs[0].thigh.rotation.x = w * 0.45; a.legs[1].thigh.rotation.x = -w * 0.45;
           a.legs[0].knee.rotation.x = Math.max(0, -w) * 0.5; a.legs[1].knee.rotation.x = Math.max(0, w) * 0.5;
           a.arms[0].sh.rotation.x = -w * 0.4; a.arms[1].sh.rotation.x = w * 0.4;
-          a.head.rotation.y = 0.5;
+          a.head.rotation.y = s.label === '巡視機房' ? 0.5 : 0;
         } else if (s.type === 'taichi') {
           a.g.position.set(s.x, 0.015, s.z); a.g.rotation.y = s.yaw + Math.sin(sec * 0.35) * 0.5;
           const t = sec * 0.6;
@@ -1533,6 +1581,7 @@ async function initBuilding() {
     // ---------- 鏡頭 ----------
     const camQ = (new URLSearchParams(location.search).get('cam') || '').split(',').map(Number);
     const VIEW_ALL = () => (camQ.length === 6 && camQ.every(Number.isFinite) ? { pos: camQ.slice(0, 3), tgt: camQ.slice(3) }
+      : IS_B ? (narrow ? { pos: [0, 29.5, 15.5], tgt: [0, 0, -0.6] } : { pos: [0, 15.2, 21.2], tgt: [0, 0.2, 0.1] })
       : narrow ? { pos: [0, 28.5, 16], tgt: [0, 0, -0.9] } : { pos: [0, 14.2, 19.8], tgt: [0, 0.4, -0.9] });
     function boardView() {
       // 正對看板，依畫面比例自動決定距離，讓整面螢幕完整入鏡
@@ -1592,13 +1641,13 @@ async function initBuilding() {
     function showSprites(on) {
       if (on === spritesShown) return; spritesShown = on;
       for (const d of desks) d.label.spr.visible = on;
-      coreSpr.visible = meetSpr.visible = on; for (const sg of signs) sg.visible = on;
+      coreSpr.visible = meetSpr.visible = on; if (meetSpr2) meetSpr2.visible = on; for (const sg of signs) sg.visible = on;
     }
     function declutter() {
       // 看板模式：隱藏所有名牌，避免擋住正面螢幕
       showSprites(!(mode === 'board' && (!fly || performance.now() - fly.t0 > 500)));
       if (!spritesShown) return;
-      const fixed = [rectOf(coreSpr, 0.85), rectOf(meetSpr, 0.85), ...signs.map((sg) => rectOf(sg, 0.9))];
+      const fixed = [rectOf(coreSpr, 0.85), rectOf(meetSpr, 0.85), ...(meetSpr2 ? [rectOf(meetSpr2, 0.85)] : []), ...signs.map((sg) => rectOf(sg, 0.9))];
       // 拉近時名牌不無限放大：螢幕寬度上限約 300 像素
       for (const d of desks) {
         const b = d.label.base; if (!b) continue;
@@ -1636,7 +1685,7 @@ async function initBuilding() {
       // 看板模式：把近裁切面推到看板前，前景桌椅不會擋住螢幕（手機直式距離較遠時特別需要）
       const nearWant = mode === 'board' && !fly ? Math.max(0.1, camera.position.distanceTo(boardCenter) - 0.9) : 0.1;
       if (Math.abs(camera.near - nearWant) > 0.01) { camera.near = nearWant; camera.updateProjectionMatrix(); }
-      coreTop.rotation.z = sec * 0.12;
+      if (!IS_B) coreTop.rotation.z = sec * 0.12;
       const st = louisState();
       const pulse = 0.5 + Math.sin(sec * 2.2) * 0.5;
       glowMat.opacity = st === 'active' ? 0.35 + pulse * 0.4 : 0;
