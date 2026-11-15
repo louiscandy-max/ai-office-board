@@ -7,7 +7,8 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>AI 辦公樓看板</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="style.css?v=261115054451">
+<script>(function(){var t='A';try{var q=(new URLSearchParams(location.search).get('theme')||'').toUpperCase();t=(q==='A'||q==='B')?q:(localStorage.getItem('aiOfficeBoard.theme')==='B'?'B':'A');}catch(e){}document.documentElement.dataset.theme=t;})();</script>
+<link rel="stylesheet" href="style.css?v=2611160451">
 <script type="importmap">
 { "imports": {
   "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -24,6 +25,7 @@
     <button id="refresh" type="button">立即更新</button>
     <button id="to-board" type="button" class="ghost">看大型看板</button>
     <button id="to-all" type="button" class="ghost">看全景</button>
+    <span class="theme-sw" role="group" aria-label="切換模板"><button id="theme-a" type="button">模板 A 太極</button><button id="theme-b" type="button">模板 B 科技</button></span>
     <button id="lock" type="button" hidden>登出本機</button>
   </div>
   <div id="status" class="status" role="status"></div>
@@ -76,6 +78,6 @@
   </form>
 </div>
 
-<script type="module" src="app.js?v=261115054451"></script>
+<script type="module" src="app.js?v=2611160451"></script>
 </body>
 </html>

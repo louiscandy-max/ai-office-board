@@ -14,6 +14,16 @@ const FLOORS = [
   { id: 'kobe', g: 'f', name: 'Ai Kobe（特殊小組・個人事務）', color: 0xa0524a },
   { id: 'fly', g: 'f', name: 'Ai Fly（特殊小組・碳酸鋰預測）', color: 0xc9a13a },
 ];
+// 模板：A＝太極（預設）、B＝AI 科技公司。網址 ?theme=A|B 優先，其次本機記住的選擇。
+const THEME_KEY = 'aiOfficeBoard.theme';
+const THEME = (() => {
+  const q = (new URLSearchParams(location.search).get('theme') || '').toUpperCase();
+  if (q === 'A' || q === 'B') return q;
+  try { const s = localStorage.getItem(THEME_KEY); if (s === 'A' || s === 'B') return s; } catch (e) { /* 無法讀取時用預設 */ }
+  return 'A';
+})();
+const IS_B = THEME === 'B';
+document.documentElement.dataset.theme = THEME;
 const NO_DATA = '暫無數據';
 const STATUS_TEXT = { done: '已完成', in_progress: '進行中', pending: '待處理' };
 const LS_KEY = 'aiOfficeBoard.pass';
@@ -439,6 +449,20 @@ $('#refresh').addEventListener('click', () => (pass ? poll(true) : load()));
 $('#lock').addEventListener('click', () => { lockOut(''); location.reload(); });
 $('#to-board').addEventListener('click', () => { if (building && building.focusBoard) { building.focusBoard(); $('#building').scrollIntoView({ behavior: 'smooth', block: 'center' }); } });
 $('#to-all').addEventListener('click', () => { if (building && building.focusAll) building.focusAll(); });
+for (const [btnId, t] of [['#theme-a', 'A'], ['#theme-b', 'B']]) {
+  const btn = $(btnId); if (!btn) continue;
+  btn.classList.toggle('on', THEME === t); btn.setAttribute('aria-pressed', THEME === t ? 'true' : 'false');
+  btn.addEventListener('click', () => {
+    if (THEME === t) return;
+    try { localStorage.setItem(THEME_KEY, t); } catch (e) { /* 無法記住時仍以網址切換 */ }
+    const u = new URL(location.href); u.searchParams.set('theme', t); location.href = u.toString();
+  });
+}
+if (IS_B) {
+  const lg = $('.legend');
+  if (lg) lg.innerHTML = 'AI 科技同層：<b>中央主位</b> Louis 最後來訊時間（一小時內有來訊即發光）<br><b>左側</b> 個人側：PA、IA、Admin、Kobe、Fly｜<b>右側</b> 公司側：CoS、CLO、CTO、CPO、FP&amp;A<br>後牆 嵌入式全員即時看板｜四隅 全像會議室・機房・咖啡吧・休息區｜青線：直屬｜橘色虛線：PA 稽核 IA';
+  const bw = $('#building'); if (bw) bw.setAttribute('aria-label', '三維 AI 科技公司辦公區總覽');
+}
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && pass) poll(false); });
 setInterval(() => { if (pass && people) render(); }, 60000);
 
@@ -456,6 +480,20 @@ const PERSONAL = new Set(['pa', 'ia', 'admin', 'kobe', 'fly']);
 const INK = 0x2f2d2a, PAPER = 0xf1ede4, GOLD = 0xb8995a, JADE = 0x5f9e8a, CINNABAR = 0xb5443a;
 const BOARD = { x: 0, y: 2.95, z: -9.25, w: 7.6, h: 4.75 };
 const DS = 1.22; // 工位與人物放大倍率
+// 模板 B：工位排成圓角方形（超橢圓），仍全部面向中央主位
+function superR(deg) { const a = deg * Math.PI / 180, n = 3; return Math.pow(Math.pow(Math.abs(Math.sin(a)) / 6.4, n) + Math.pow(Math.abs(Math.cos(a)) / 5.0, n), -1 / n); }
+const ACT = IS_B ? 0x38c8ff : JADE, ACT_E = IS_B ? 0x5fdcff : 0x6fd0ae, IDLE = IS_B ? 0x4a5a72 : 0x8a8478;
+const PAL = IS_B
+  ? { bg0: '#0b1426', bg1: '#060b16', ink: '#eaf4ff', muted: '#8ea3bf', dim: '#6c7f99', faint: '#3d4c63', foot: '#4f6079', acc: '#38c8ff', accA: 'rgba(56,200,255,.5)', dotP: '#38c8ff', dotC: '#a78bfa', sub2: '#b9c9de', alertTxt: '#dde8f5', bar: '#38c8ff', active: '#5fe3c0',
+      lblBg: 'rgba(8,16,32,.9)', lblSelBg: 'rgba(225,246,255,.97)', lblBorder: '#38c8ff', lblSelBorder: '#0e8fc4', lblFg: '#eaf4ff', lblSelFg: '#0b1426', lblSub: '#9fb3cc', lblSelSub: '#2a3a52',
+      coreBg: 'rgba(8,16,32,.92)', coreSelBg: 'rgba(20,40,70,.96)', coreAct: '#38c8ff', coreIdle: '#3a5a80', coreTitle: '#eaf4ff', coreLineAct: '#5fe3c0', coreLine: '#9fb3cc', coreTip: '#6c7f99',
+      meetBg: 'rgba(8,16,32,.9)', meetIdle: '#38c8ff', meetIdleTxt: '#9fb3cc', meetTitle: '#eaf4ff', meetFree: '全像會議室・空閒',
+      signBg: 'rgba(8,16,32,.92)', signBorder: '#38c8ff', signTxt: '#eaf4ff' }
+  : { bg0: '#191816', bg1: '#100f0e', ink: '#f4f1ea', muted: '#a49d90', dim: '#8a8478', faint: '#5a554d', foot: '#6a655c', acc: '#b8995a', accA: 'rgba(184,153,90,.5)', dotP: '#f2eee5', dotC: '#4a4640', sub2: '#c9c2b4', alertTxt: '#e8e3d8', bar: '#7fc4a8', active: '#6fd0ae',
+      lblBg: 'rgba(28,27,25,.9)', lblSelBg: 'rgba(234,246,240,.97)', lblBorder: '#b8995a', lblSelBorder: '#5f9e8a', lblFg: '#f4f1ea', lblSelFg: '#1c1b19', lblSub: '#c9c2b4', lblSelSub: '#3a3632',
+      coreBg: 'rgba(247,244,236,.94)', coreSelBg: 'rgba(234,246,240,.97)', coreAct: '#5f9e8a', coreIdle: '#b8995a', coreTitle: '#1c1b19', coreLineAct: '#2f7a63', coreLine: '#5a554d', coreTip: '#8a8478',
+      meetBg: 'rgba(28,27,25,.9)', meetIdle: '#b8995a', meetIdleTxt: '#c9c2b4', meetTitle: '#f4f1ea', meetFree: '會議室・空閒',
+      signBg: 'rgba(242,238,229,.95)', signBorder: '#b8995a', signTxt: '#2a2723' };
 
 async function initBuilding() {
   const el = $('#building');
@@ -467,17 +505,17 @@ async function initBuilding() {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xe9e5dc);
-    scene.fog = new THREE.Fog(0xe9e5dc, 34, 70);
+    scene.background = new THREE.Color(IS_B ? 0x060b16 : 0xe9e5dc);
+    scene.fog = new THREE.Fog(IS_B ? 0x060b16 : 0xe9e5dc, 34, 70);
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.enablePan = false;
     controls.minDistance = 3; controls.maxDistance = 46;
     controls.maxPolarAngle = Math.PI * 0.5; // 允許水平視角，看板模式才能正對不變形
     controls.autoRotateSpeed = 0.4;
-    scene.add(new THREE.HemisphereLight(0xfffdf6, 0x8a8478, 1.25));
-    const sun = new THREE.DirectionalLight(0xfff8ec, 1.1); sun.position.set(5, 16, 12); scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xe6eef0, 0.45); fill.position.set(-9, 8, -6); scene.add(fill);
+    scene.add(IS_B ? new THREE.HemisphereLight(0xd6e8ff, 0x1b2436, 1.05) : new THREE.HemisphereLight(0xfffdf6, 0x8a8478, 1.25));
+    const sun = new THREE.DirectionalLight(IS_B ? 0xeef5ff : 0xfff8ec, IS_B ? 0.95 : 1.1); sun.position.set(5, 16, 12); scene.add(sun);
+    const fill = new THREE.DirectionalLight(IS_B ? 0x7fd8ff : 0xe6eef0, IS_B ? 0.55 : 0.45); fill.position.set(-9, 8, -6); scene.add(fill);
 
     const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, ...extra });
     const box = (w, h, d, mat, x, y, z, parent) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); parent.add(m); return m; };
@@ -491,6 +529,7 @@ async function initBuilding() {
       do { c.font = `${weight} ${s}px ${font}`; s -= 2; } while (c.measureText(text).width > max && s > 14);
     }
     const P = (deg, r = RING_R) => { const a = deg * Math.PI / 180; return { x: r * Math.sin(a), z: CZ + r * Math.cos(a) }; };
+    const ringPt = (deg, dr = 0) => P(deg, (IS_B ? superR(deg) : RING_R) + dr);
 
     // 太極圖（canvas）：左白右黑，上方白魚頭、下方黑魚頭
     function drawTaiji(c, cx, cy, r, light, dark) {
@@ -511,8 +550,9 @@ async function initBuilding() {
     }
     const flat = (mesh, y) => { mesh.rotation.x = -Math.PI / 2; mesh.position.y = y; return mesh; };
 
+    const B = IS_B ? buildThemeB() : null; // 模板 B 的共用素材與場景（見下方）
     // 外圍石板地
-    {
+    if (!IS_B) {
       const cv = document.createElement('canvas'); cv.width = 512; cv.height = 512;
       const c = cv.getContext('2d');
       c.fillStyle = '#dedad0'; c.fillRect(0, 0, 512, 512);
@@ -525,7 +565,7 @@ async function initBuilding() {
       box(23.2, 0.12, 21.6, M(0x4a443c), 0, -0.3, -0.2, scene);
     }
     // 圓形太極平台
-    {
+    if (!IS_B) {
       const S = 2048, cv = document.createElement('canvas'); cv.width = cv.height = S;
       const c = cv.getContext('2d');
       drawTaiji(c, S / 2, S / 2, S / 2 - 4, '#f2eee5', '#383531');
@@ -553,7 +593,320 @@ async function initBuilding() {
       const plat = cyl(PLAT_R, PLAT_R + 0.08, 0.14, [M(0x6b6255), M(0xffffff, { map: tex, roughness: 0.82 }), M(0x6b6255)], 0, 0.07, CZ, scene, 96);
       plat.material = [M(0x7a7062, { roughness: 0.8 }), M(0xffffff, { map: tex, roughness: 0.82 }), M(0x7a7062)];
     }
-    const TOP = 0.14; // 平台頂面高度
+    const TOP = IS_B ? 0.02 : 0.14; // 平台頂面高度（模板 B 為整片架高地板）
+
+    // ---------- 模板 B：AI 科技公司（深藍石墨地板、青色電路格線、玻璃隔間、機房、全像會議桌） ----------
+    function buildThemeB() {
+      const T0 = 0.02; // 架高地板頂面（與 TOP 相同）
+      const CY = 0x38c8ff, VI = 0x8b7bff;
+      const glow = (color, k = 1) => new THREE.MeshStandardMaterial({ color: 0x0a0f18, emissive: color, emissiveIntensity: k, roughness: 0.4 });
+      const glass = (op = 0.14, color = 0x9fdcff) => new THREE.MeshStandardMaterial({ color, transparent: true, opacity: op, roughness: 0.08, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide });
+      const seatPos = (id, dr = 0) => P(SEAT_DEG[id], superR(SEAT_DEG[id]) + dr);
+      const blink = [], spin = [];
+      let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+
+      // 地板：深藍石墨＋青色電路格線（整片一張貼圖，電路從主位連到各工位）
+      {
+        const S = 2048, cv = document.createElement('canvas'); cv.width = cv.height = S;
+        const c = cv.getContext('2d');
+        const X = (x) => (x + 11.5) / 23 * S, Y = (z) => (z + 10.9) / 21.4 * S, U = S / 23;
+        const bg = c.createRadialGradient(X(0), Y(CZ), 0, X(0), Y(CZ), S * 0.7); bg.addColorStop(0, '#101c33'); bg.addColorStop(1, '#070c17');
+        c.fillStyle = bg; c.fillRect(0, 0, S, S);
+        c.lineWidth = 1; c.strokeStyle = 'rgba(56,200,255,.07)';
+        for (let x = -11.5; x <= 11.5; x += 0.5) { c.beginPath(); c.moveTo(X(x), 0); c.lineTo(X(x), S); c.stroke(); }
+        for (let z = -10.9; z <= 10.5; z += 0.5) { c.beginPath(); c.moveTo(0, Y(z)); c.lineTo(S, Y(z)); c.stroke(); }
+        c.lineWidth = 2; c.strokeStyle = 'rgba(56,200,255,.16)';
+        for (let x = -10; x <= 10; x += 2) { c.beginPath(); c.moveTo(X(x), 0); c.lineTo(X(x), S); c.stroke(); }
+        for (let z = -10; z <= 10; z += 2) { c.beginPath(); c.moveTo(0, Y(z)); c.lineTo(S, Y(z)); c.stroke(); }
+        const trace = (pts, col, w) => {
+          c.lineJoin = 'round'; c.lineCap = 'round';
+          for (const [lw, a] of [[w * 5, 0.12], [w * 2.2, 0.35], [w, 1]]) {
+            c.strokeStyle = col.replace('A', a); c.lineWidth = lw; c.beginPath();
+            pts.forEach(([x, z], i) => (i ? c.lineTo(X(x), Y(z)) : c.moveTo(X(x), Y(z)))); c.stroke();
+          }
+          const [ex, ez] = pts[pts.length - 1]; c.fillStyle = col.replace('A', 1); c.beginPath(); c.arc(X(ex), Y(ez), w * 2.6, 0, Math.PI * 2); c.fill();
+          c.fillStyle = '#070c17'; c.beginPath(); c.arc(X(ex), Y(ez), w * 1.2, 0, Math.PI * 2); c.fill();
+        };
+        // 主位到每個工位的電路（直角＋45 度轉折）
+        for (const id of Object.keys(SEAT_DEG)) {
+          const e = seatPos(id, -1.55), a = SEAT_DEG[id] * Math.PI / 180;
+          const s0 = { x: 2.25 * Math.sin(a), z: CZ + 2.25 * Math.cos(a) };
+          const dx = e.x - s0.x, dz = e.z - s0.z, m = Math.min(Math.abs(dx), Math.abs(dz)) * 0.6;
+          const mid = Math.abs(dx) > Math.abs(dz) ? [[s0.x + Math.sign(dx) * (Math.abs(dx) - m), s0.z], [s0.x + dx, s0.z + Math.sign(dz) * m]] : [[s0.x, s0.z + Math.sign(dz) * (Math.abs(dz) - m)], [s0.x + Math.sign(dx) * m, s0.z + dz]];
+          trace([[s0.x, s0.z], ...mid, [e.x, e.z]], PERSONAL.has(id) ? 'rgba(56,200,255,A)' : 'rgba(139,123,255,A)', 3);
+        }
+        // 外圍細電路紋
+        for (let i = 0; i < 70; i++) {
+          let x = -11 + rnd() * 22, z = -10.4 + rnd() * 20.4;
+          if (Math.hypot(x / 7.9, (z - CZ) / 6.6) < 1) continue;
+          const pts = [[x, z]];
+          for (let k = 0; k < 3; k++) { const d = 0.6 + rnd() * 1.6; if (rnd() < 0.5) x += (rnd() < 0.5 ? -d : d); else z += (rnd() < 0.5 ? -d : d); pts.push([x, z]); }
+          trace(pts, 'rgba(56,200,255,A)', 1.2 + rnd());
+        }
+        // 主位外圈光環
+        c.strokeStyle = 'rgba(56,200,255,.55)'; c.lineWidth = 4; c.beginPath(); c.arc(X(0), Y(CZ), 2.25 * U, 0, Math.PI * 2); c.stroke();
+        c.setLineDash([18, 14]); c.strokeStyle = 'rgba(56,200,255,.35)'; c.lineWidth = 3; c.beginPath(); c.arc(X(0), Y(CZ), 2.7 * U, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
+        const tex = canvasTex(cv);
+        const fl = new THREE.Mesh(new THREE.PlaneGeometry(23, 21.4), new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.85, roughness: 0.35, metalness: 0.35 }));
+        flat(fl, T0 + 0.001); fl.position.z = -0.2; scene.add(fl);
+        box(23.2, 0.3, 21.6, M(0x0b1120, { roughness: 0.6 }), 0, T0 - 0.151, -0.2, scene);
+        box(23.2, 0.03, 0.04, glow(CY, 1.2), 0, T0, 10.52, scene);
+      }
+      // 兩側低矮玻璃牆（頂端青色光條）
+      for (const sx of [-11.45, 11.45]) {
+        const g = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.1, 19.6), glass(0.12)); g.position.set(sx, T0 + 0.55, 0.65); scene.add(g);
+        box(0.06, 0.04, 19.6, glow(CY, 1.1), sx, T0 + 1.12, 0.65, scene);
+      }
+
+      function drawChip(c, S) {
+        const h = S / 2;
+        const g = c.createRadialGradient(h, h, 0, h, h, h); g.addColorStop(0, '#13284a'); g.addColorStop(1, '#070d1a');
+        c.fillStyle = g; c.beginPath(); c.arc(h, h, h, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = 'rgba(56,200,255,.9)'; c.lineWidth = S * 0.012; c.beginPath(); c.arc(h, h, h * 0.96, 0, Math.PI * 2); c.stroke();
+        c.lineWidth = S * 0.004; c.strokeStyle = 'rgba(56,200,255,.4)'; for (const r of [0.82, 0.7]) { c.beginPath(); c.arc(h, h, h * r, 0, Math.PI * 2); c.stroke(); }
+        // 放射電路
+        c.strokeStyle = 'rgba(56,200,255,.75)'; c.fillStyle = '#5fdcff'; c.lineWidth = S * 0.006;
+        for (let i = 0; i < 16; i++) {
+          const a = i * Math.PI / 8, r0 = h * 0.36, r1 = h * (i % 2 ? 0.66 : 0.8);
+          c.beginPath(); c.moveTo(h + Math.cos(a) * r0, h + Math.sin(a) * r0); c.lineTo(h + Math.cos(a) * r1, h + Math.sin(a) * r1); c.stroke();
+          c.beginPath(); c.arc(h + Math.cos(a) * r1, h + Math.sin(a) * r1, S * 0.012, 0, Math.PI * 2); c.fill();
+        }
+        // 晶片
+        const w = S * 0.34;
+        c.fillStyle = '#0c1a30'; c.strokeStyle = '#5fdcff'; c.lineWidth = S * 0.01;
+        c.beginPath(); c.roundRect(h - w / 2, h - w / 2, w, w, S * 0.03); c.fill(); c.stroke();
+        c.fillStyle = '#5fdcff';
+        for (let k = 0; k < 6; k++) { const o = -w / 2 + w * (k + 0.75) / 6.5; for (const [x, y, ww, hh] of [[h + o, h - w / 2 - S * 0.035, S * 0.012, S * 0.03], [h + o, h + w / 2 + S * 0.005, S * 0.012, S * 0.03], [h - w / 2 - S * 0.035, h + o, S * 0.03, S * 0.012], [h + w / 2 + S * 0.005, h + o, S * 0.03, S * 0.012]]) c.fillRect(x - (ww < hh ? ww / 2 : 0), y - (hh < ww ? hh / 2 : 0), ww, hh); }
+        c.fillStyle = '#eaf4ff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `bold ${Math.round(S * 0.13)}px ${SANS}`; c.fillText('AI', h, h + S * 0.006);
+      }
+
+      // 後牆：嵌入式平面看板（與牆面齊平、正對前方）＋神經網路圖樣
+      function wall(bigTex) {
+        const wf = BOARD.z; // 牆面正面
+        const WW = 23.2, WH = 6.9;
+        box(WW, WH, 0.3, M(0x0c1322, { roughness: 0.6, metalness: 0.2 }), 0, T0 + WH / 2, wf - 0.15, scene);
+        const cv = document.createElement('canvas'); cv.width = 3072; cv.height = Math.round(3072 * WH / WW);
+        const c = cv.getContext('2d'), W = cv.width, H = cv.height;
+        const X = (x) => (x + WW / 2) / WW * W, Yy = (y) => (1 - (y - T0) / WH) * H;
+        const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0a1222'); g.addColorStop(1, '#0d182c'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+        // 細網格
+        c.strokeStyle = 'rgba(56,200,255,.06)'; c.lineWidth = 1;
+        for (let x = 0; x < W; x += 34) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, H); c.stroke(); }
+        for (let y = 0; y < H; y += 34) { c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+        // 神經網路（左右兩區）
+        const net = (x0, x1, flip) => {
+          const layers = [4, 6, 6, 3], y0 = Yy(5.6), y1 = Yy(0.9), nodes = layers.map((n, li) => Array.from({ length: n }, (_, k) => ({ x: x0 + (x1 - x0) * (flip ? 1 - li / (layers.length - 1) : li / (layers.length - 1)), y: y0 + (y1 - y0) * (k + 0.5) / n })));
+          for (let li = 0; li < nodes.length - 1; li++) for (const a of nodes[li]) for (const b2 of nodes[li + 1]) {
+            c.strokeStyle = `rgba(${rnd() < 0.5 ? '56,200,255' : '139,123,255'},${0.12 + rnd() * 0.3})`; c.lineWidth = 2; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b2.x, b2.y); c.stroke();
+          }
+          for (const L of nodes) for (const n of L) {
+            const gg = c.createRadialGradient(n.x, n.y, 0, n.x, n.y, 30); gg.addColorStop(0, 'rgba(95,220,255,.9)'); gg.addColorStop(1, 'rgba(95,220,255,0)');
+            c.fillStyle = gg; c.beginPath(); c.arc(n.x, n.y, 30, 0, Math.PI * 2); c.fill();
+            c.fillStyle = '#dff6ff'; c.beginPath(); c.arc(n.x, n.y, 9, 0, Math.PI * 2); c.fill();
+          }
+        };
+        net(X(-10.6), X(-5.0), false); net(X(5.0), X(10.6), true);
+        // 螢幕周圍深色嵌入框
+        c.fillStyle = '#05080f'; c.fillRect(X(BOARD.x - BOARD.w / 2 - 0.12), Yy(BOARD.y + BOARD.h / 2 + 0.12), (BOARD.w + 0.24) / WW * W, (BOARD.h + 0.24) / WH * H);
+        c.fillStyle = '#7fe0ff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `bold 72px ${SANS}`;
+        c.fillText('智慧協作・數據驅動', X(0), Yy(6.05));
+        c.font = `40px ${SANS}`; c.fillStyle = 'rgba(159,179,204,.9)';
+        c.fillText('左側 個人側', X(-7.8), Yy(6.2)); c.fillText('右側 公司側', X(7.8), Yy(6.2));
+        const tex = canvasTex(cv);
+        const panel = new THREE.Mesh(new THREE.PlaneGeometry(WW, WH), new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.75, roughness: 0.5 }));
+        panel.position.set(0, T0 + WH / 2, wf + 0.003); scene.add(panel);
+        // 螢幕（與牆面齊平）與細光框
+        const screen = new THREE.Mesh(new THREE.PlaneGeometry(BOARD.w, BOARD.h), new THREE.MeshBasicMaterial({ map: bigTex, toneMapped: false }));
+        screen.position.set(BOARD.x, BOARD.y, wf + 0.012); scene.add(screen);
+        const fm = glow(CY, 1.4), t = 0.045, hw = BOARD.w / 2 + t / 2 + 0.03, hh = BOARD.h / 2 + t / 2 + 0.03;
+        box(BOARD.w + 0.15, t, 0.02, fm, BOARD.x, BOARD.y + hh, wf + 0.012, scene); box(BOARD.w + 0.15, t, 0.02, fm, BOARD.x, BOARD.y - hh, wf + 0.012, scene);
+        box(t, BOARD.h + 0.06, 0.02, fm, BOARD.x - hw, BOARD.y, wf + 0.012, scene); box(t, BOARD.h + 0.06, 0.02, fm, BOARD.x + hw, BOARD.y, wf + 0.012, scene);
+        // 牆腳與牆頂光條
+        box(WW, 0.05, 0.04, glow(CY, 1.0), 0, T0 + 0.06, wf + 0.02, scene);
+        box(WW, 0.04, 0.04, glow(VI, 0.9), 0, T0 + WH - 0.05, wf + 0.02, scene);
+      }
+
+      function coreHolo(core) {
+        const g = new THREE.Group(); g.position.y = 1.05; core.add(g);
+        const mat = new THREE.MeshBasicMaterial({ color: 0x5fdcff, wireframe: true, transparent: true, opacity: 0.55 });
+        const ico = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 1), mat); g.add(ico);
+        const inner = new THREE.Mesh(new THREE.SphereGeometry(0.16, 18, 12), new THREE.MeshBasicMaterial({ color: 0x9feaff, transparent: true, opacity: 0.8 })); g.add(inner);
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.95, 0.8, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0x38c8ff, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false }));
+        beam.position.y = -0.45; g.add(beam);
+        ico.userData.id = inner.userData.id = 'louis';
+        return { g, ico, mat, inner };
+      }
+
+      function roundRectShape(w, d, r) {
+        const s = new THREE.Shape(), x = -w / 2, y = -d / 2;
+        s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + d - r); s.quadraticCurveTo(x + w, y + d, x + w - r, y + d);
+        s.lineTo(x + r, y + d); s.quadraticCurveTo(x, y + d, x, y + d - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y); return s;
+      }
+      // 工位：直線科技桌、雙螢幕、人體工學椅、兩側玻璃隔板（局部座標：人朝 +z，桌在前方）
+      function desk(g, yang, lead) {
+        const side = yang ? CY : VI;
+        const pw = lead ? 2.35 : 2.15, pd = lead ? 2.05 : 1.9;
+        const sh = roundRectShape(pw, pd, 0.28);
+        const matMat = new THREE.MeshStandardMaterial({ color: yang ? 0x0f1a2e : 0x161a30, roughness: 0.6, emissive: ACT, emissiveIntensity: 0 });
+        const mat = new THREE.Mesh(new THREE.ShapeGeometry(sh), matMat); flat(mat, 0.012); mat.position.z = 0.05; g.add(mat);
+        const rim = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(sh.getPoints(12).map((p) => new THREE.Vector3(p.x, 0.016, 0.05 - p.y))), new THREE.LineBasicMaterial({ color: side, transparent: true, opacity: 0.9 }));
+        g.add(rim);
+        const topMat = M(yang ? 0x1c2638 : 0xe6ebf2, { roughness: 0.35, metalness: 0.2 });
+        const top = box(1.5, 0.05, 0.62, topMat, 0, 0.77, 0.3, g);
+        const front = box(1.42, 0.4, 0.03, M(yang ? 0x141c2b : 0xcdd5df, { roughness: 0.5 }), 0, 0.5, 0.58, g);
+        for (const sx of [-0.72, 0.72]) box(0.04, 0.74, 0.58, M(0x9aa6b8, { metalness: 0.7, roughness: 0.3 }), sx, 0.37, 0.3, g);
+        const lamp = box(1.5, 0.014, 0.014, new THREE.MeshStandardMaterial({ color: 0x0a0f18, emissive: side, emissiveIntensity: 0.1 }), 0, 0.775, -0.012, g);
+        // 雙螢幕
+        const scrMat = new THREE.MeshStandardMaterial({ color: 0x05080f, emissive: 0x5fd0ff, emissiveIntensity: 0.05, roughness: 0.25 });
+        for (const sx of [-1, 1]) {
+          const mg = new THREE.Group(); mg.position.set(sx * 0.34, 1.08, 0.5); mg.rotation.y = -sx * 0.22; g.add(mg);
+          box(0.64, 0.38, 0.025, M(0x111725, { metalness: 0.5, roughness: 0.3 }), 0, 0, 0, mg);
+          box(0.6, 0.34, 0.006, scrMat, 0, 0, -0.015, mg);
+          box(0.04, 0.24, 0.04, M(0x9aa6b8, { metalness: 0.7 }), 0, -0.22, 0.02, mg);
+        }
+        box(0.4, 0.015, 0.14, M(0x2a3346), 0, 0.805, 0.2, g); // 鍵盤
+        // 人體工學椅
+        const chair = M(yang ? 0x1b2436 : 0xb7c1cf, { roughness: 0.6 });
+        box(0.48, 0.07, 0.46, chair, 0, 0.46, -0.42, g);
+        box(0.44, 0.52, 0.06, chair, 0, 0.8, -0.68, g);
+        box(0.3, 0.03, 0.03, glow(side, 0.8), 0, 1.04, -0.66, g);
+        cyl(0.035, 0.035, 0.4, M(0x9aa6b8, { metalness: 0.7 }), 0, 0.23, -0.42, g, 8);
+        cyl(0.26, 0.26, 0.03, M(0x2a3346), 0, 0.04, -0.42, g, 5);
+        // 兩側玻璃隔板（頂端光條）
+        for (const sx of [-0.98, 0.98]) {
+          const p = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.62, 0.72), glass(0.16)); p.position.set(sx, 1.1, 0.28); g.add(p);
+          box(0.03, 0.02, 0.72, glow(side, 1.0), sx, 1.42, 0.28, g);
+          box(0.03, 0.8, 0.03, M(0x9aa6b8, { metalness: 0.7 }), sx, 0.8, 0.64, g);
+        }
+        return { matMat, mat, top, front, scrMat, lamp, outfit: yang ? 0x24324a : 0xdfe5ec };
+      }
+
+      // 全像會議室（左後）：玻璃桌面、中央全像投影、弧形玻璃隔間
+      function meetRoom(MEET) {
+        const g = new THREE.Group(); g.position.set(MEET.x, T0, MEET.z); scene.add(g);
+        const rug = new THREE.Mesh(new THREE.CircleGeometry(1.85, 64), M(0x0e1830, { roughness: 0.8 })); flat(rug, 0.008); g.add(rug);
+        const ring = new THREE.Mesh(new THREE.RingGeometry(1.8, 1.86, 96), new THREE.MeshBasicMaterial({ color: CY })); flat(ring, 0.012); g.add(ring);
+        cyl(0.95, 0.95, 0.04, glass(0.32, 0x7fd8ff), 0, 0.74, 0, g, 48);
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.02, 8, 96), glow(CY, 1.3)); rim.rotation.x = Math.PI / 2; rim.position.y = 0.76; g.add(rim);
+        cyl(0.12, 0.3, 0.72, M(0x1b2436, { metalness: 0.6, roughness: 0.3 }), 0, 0.36, 0, g, 16);
+        cyl(0.18, 0.2, 0.05, glow(CY, 1.2), 0, 0.785, 0, g, 24);
+        const hg = new THREE.Group(); hg.position.y = 1.2; g.add(hg);
+        const hm = new THREE.MeshBasicMaterial({ color: 0x5fdcff, wireframe: true, transparent: true, opacity: 0.6 });
+        hg.add(new THREE.Mesh(new THREE.TorusKnotGeometry(0.2, 0.06, 64, 8), hm));
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.17, 0.42, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0x38c8ff, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }));
+        beam.position.y = -0.22; hg.add(beam);
+        spin.push(hg);
+        for (let i = 0; i < 6; i++) {
+          const a = i * Math.PI / 3 + Math.PI / 6, ch = new THREE.Group(); ch.position.set(Math.sin(a) * 1.2, 0, Math.cos(a) * 1.2); ch.rotation.y = a + Math.PI; g.add(ch);
+          box(0.42, 0.06, 0.42, M(0x22304a), 0, 0.46, 0, ch); box(0.4, 0.42, 0.05, M(0x22304a), 0, 0.72, -0.24, ch);
+          cyl(0.03, 0.03, 0.42, M(0x9aa6b8, { metalness: 0.7 }), 0, 0.22, 0, ch, 8);
+        }
+        const arc = new THREE.Mesh(new THREE.CylinderGeometry(2.15, 2.15, 2.3, 48, 1, true, Math.PI * 1.0, Math.PI * 0.62), glass(0.1)); arc.position.y = 1.15; g.add(arc);
+        const arcTop = new THREE.Mesh(new THREE.TorusGeometry(2.15, 0.02, 6, 48, Math.PI * 0.62), glow(CY, 1.0));
+        // CylinderGeometry 角度 θ 對應 (sinθ, cosθ)；圓環弧 φ＝π/2−θ，故起點為 −1.12π
+        arcTop.rotation.set(Math.PI / 2, 0, -Math.PI * 1.12); arcTop.position.y = 2.3; g.add(arcTop);
+      }
+
+      // 四隅其餘三區：機房（右後）、咖啡吧（左前）、休息區（右前）；回傳休息／活動位置
+      function corners(cornerSign) {
+        // 機房
+        const SV = { x: 9.15, z: -6.75 };
+        const ledCv = document.createElement('canvas'); ledCv.width = 128; ledCv.height = 512;
+        { const c = ledCv.getContext('2d'); c.fillStyle = '#070b13'; c.fillRect(0, 0, 128, 512);
+          for (let r = 0; r < 14; r++) { c.fillStyle = '#121a28'; c.fillRect(6, 8 + r * 36, 116, 30);
+            for (let k = 0; k < 6; k++) { const v = rnd(); c.fillStyle = v < 0.55 ? '#38c8ff' : v < 0.8 ? '#5fe3c0' : v < 0.93 ? '#8b7bff' : '#ffb347'; c.fillRect(14 + k * 12, 18 + r * 36, 6, 6); }
+            c.fillStyle = 'rgba(56,200,255,.35)'; c.fillRect(92, 20 + r * 36, 22, 4); } }
+        const ledTex = canvasTex(ledCv);
+        for (const [rz, face] of [[SV.z - 1.0, 1], [SV.z + 1.0, -1]]) {
+          for (let i = 0; i < 5; i++) {
+            const x = 7.75 + i * 0.66;
+            box(0.62, 2.1, 0.9, M(0x0f1522, { metalness: 0.6, roughness: 0.35 }), x, T0 + 1.05, rz, scene);
+            const fm = new THREE.MeshStandardMaterial({ map: ledTex, emissiveMap: ledTex, emissive: 0xffffff, emissiveIntensity: 0.9, roughness: 0.4 });
+            for (const sd of [face, -face]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 1.96), fm); f.position.set(x, T0 + 1.05, rz + sd * 0.452); if (sd < 0) f.rotation.y = Math.PI; scene.add(f); }
+            box(0.62, 0.03, 0.9, glow(CY, 1.0), x, T0 + 2.11, rz, scene);
+            blink.push({ m: fm, ph: rnd() * 6, sp: 1.5 + rnd() * 2 });
+          }
+        }
+        const aisle = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.5), new THREE.MeshBasicMaterial({ color: CY, transparent: true, opacity: 0.18 })); flat(aisle, T0 + 0.006); aisle.position.set(9.0, T0 + 0.006, SV.z); scene.add(aisle);
+        // 玻璃隔間（左、前）
+        { const L = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.5, 4.6), glass(0.12)); L.position.set(7.05, T0 + 1.25, -6.85); scene.add(L);
+          box(0.06, 0.04, 4.6, glow(CY, 1.0), 7.05, T0 + 2.5, -6.85, scene);
+          const F = new THREE.Mesh(new THREE.BoxGeometry(4.4, 2.5, 0.04), glass(0.1)); F.position.set(9.25, T0 + 1.25, -4.55); scene.add(F);
+          box(4.4, 0.04, 0.06, glow(CY, 1.0), 9.25, T0 + 2.5, -4.55, scene); }
+        // 咖啡吧（左前）
+        const CF = { x: -8.6, z: 6.4 };
+        { const zone = new THREE.Mesh(new THREE.ShapeGeometry(roundRectShape(4.2, 3.2, 0.4)), M(0x162033, { roughness: 0.8 })); flat(zone, T0 + 0.006); zone.position.set(CF.x, T0 + 0.006, CF.z + 0.2); scene.add(zone);
+          box(3.6, 0.92, 0.6, M(0x1c2638, { roughness: 0.5 }), CF.x, T0 + 0.46, CF.z - 1.15, scene);
+          box(3.7, 0.05, 0.66, M(0xeef2f7, { roughness: 0.3 }), CF.x, T0 + 0.945, CF.z - 1.15, scene);
+          box(3.6, 0.03, 0.03, glow(CY, 1.1), CF.x, T0 + 0.9, CF.z - 0.84, scene);
+          box(0.5, 0.48, 0.42, M(0x9aa6b8, { metalness: 0.8, roughness: 0.25 }), CF.x - 1.0, T0 + 1.21, CF.z - 1.2, scene);
+          box(0.2, 0.1, 0.01, glow(CY, 1.4), CF.x - 1.0, T0 + 1.3, CF.z - 0.985, scene);
+          for (const dx of [0.2, 0.42, 0.64]) cyl(0.04, 0.035, 0.09, M(0xf4f6f8), CF.x + dx, T0 + 1.015, CF.z - 1.1, scene, 10);
+          // 菜單螢幕
+          const mc = document.createElement('canvas'); mc.width = 512; mc.height = 256; const c = mc.getContext('2d');
+          c.fillStyle = '#071226'; c.fillRect(0, 0, 512, 256); c.strokeStyle = '#38c8ff'; c.lineWidth = 6; c.strokeRect(6, 6, 500, 244);
+          c.fillStyle = '#eaf4ff'; c.textAlign = 'center'; c.font = `bold 64px ${SANS}`; c.fillText('咖啡吧', 256, 100); c.font = `38px ${SANS}`; c.fillStyle = '#7fe0ff'; c.fillText('美式・拿鐵・冷萃', 256, 180);
+          const mt = canvasTex(mc); const ms = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.65), new THREE.MeshStandardMaterial({ map: mt, emissiveMap: mt, emissive: 0xffffff, emissiveIntensity: 0.8 }));
+          box(1.36, 0.71, 0.05, M(0x111725), CF.x + 0.6, T0 + 1.75, CF.z - 1.48, scene); ms.position.set(CF.x + 0.6, T0 + 1.75, CF.z - 1.45); scene.add(ms);
+          for (const [x, z] of [[CF.x - 0.6, CF.z + 0.35], [CF.x + 1.05, CF.z + 0.8]]) {
+            cyl(0.36, 0.36, 0.04, M(0xeef2f7, { roughness: 0.3 }), x, T0 + 1.05, z, scene, 32);
+            cyl(0.37, 0.37, 0.012, glow(CY, 0.9), x, T0 + 1.03, z, scene, 32);
+            cyl(0.03, 0.03, 1.03, M(0x9aa6b8, { metalness: 0.7 }), x, T0 + 0.52, z, scene, 8); cyl(0.22, 0.22, 0.03, M(0x2a3346), x, T0 + 0.015, z, scene, 20);
+            cyl(0.035, 0.03, 0.09, M(0xf4f6f8), x + 0.1, T0 + 1.115, z, scene, 10);
+          } }
+        // 休息區（右前）
+        const LG = { x: 8.6, z: 6.4 };
+        { const zone = new THREE.Mesh(new THREE.ShapeGeometry(roundRectShape(4.2, 3.2, 0.4)), M(0x1a1f36, { roughness: 0.9 })); flat(zone, T0 + 0.006); zone.position.set(LG.x, T0 + 0.006, LG.z + 0.3); scene.add(zone);
+          const sofa = M(0x2b3a5c, { roughness: 0.85 }), cush = M(0x3a4d75, { roughness: 0.9 });
+          box(2.6, 0.38, 0.8, sofa, LG.x - 0.1, T0 + 0.19, LG.z - 0.6, scene); box(2.6, 0.56, 0.2, sofa, LG.x - 0.1, T0 + 0.6, LG.z - 0.95, scene);
+          for (const dx of [-0.75, 0.45]) box(1.1, 0.08, 0.66, cush, LG.x + dx - 0.1, T0 + 0.42, LG.z - 0.55, scene);
+          box(0.8, 0.38, 1.9, sofa, LG.x + 1.75, T0 + 0.19, LG.z + 0.55, scene); box(0.2, 0.56, 1.9, sofa, LG.x + 2.1, T0 + 0.6, LG.z + 0.55, scene);
+          box(0.66, 0.08, 1.7, cush, LG.x + 1.72, T0 + 0.42, LG.z + 0.55, scene);
+          box(1.1, 0.04, 0.62, glass(0.4, 0xbfe9ff), LG.x - 0.2, T0 + 0.38, LG.z + 0.55, scene); box(1.0, 0.36, 0.5, M(0x111725), LG.x - 0.2, T0 + 0.18, LG.z + 0.55, scene);
+          box(1.12, 0.012, 0.64, glow(VI, 0.8), LG.x - 0.2, T0 + 0.355, LG.z + 0.55, scene);
+          for (const [x, z] of [[LG.x - 1.85, LG.z - 1.0], [LG.x + 2.0, LG.z - 1.0]]) {
+            cyl(0.22, 0.17, 0.42, M(0xe6ebf2, { roughness: 0.4 }), x, T0 + 0.21, z, scene, 18);
+            const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 1), M(0x2f8a6a, { roughness: 0.8, flatShading: true })); f.position.set(x, T0 + 0.85, z); scene.add(f);
+          } }
+        cornerSign('全像會議室', MEET_POS.x, MEET_POS.z - 1.6, 1.25); cornerSign('機房', SV.x, -4.55, 2.85); cornerSign('咖啡吧', CF.x, CF.z + 1.75, 0.95); cornerSign('休息區', LG.x, LG.z + 1.85, 0.95);
+        const y = T0;
+        return [
+          { id: 'walk-in-a', type: 'walk', label: '散步', r: 3.1, sp: 0.22, off: 0, y },
+          { id: 'coffee-1', type: 'coffee', x: CF.x - 1.12, z: CF.z + 0.35, yaw: Math.PI / 2, y, label: '喝咖啡' },
+          { id: 'lounge-1', type: 'read', x: LG.x - 0.85, z: LG.z - 0.5, yaw: 0, y, label: '休息區小憩' },
+          { id: 'server-1', type: 'patrol', x0: 7.6, x1: 10.6, z: SV.z, sp: 0.35, off: 0, y, label: '巡視機房' },
+          { id: 'walk-out-a', type: 'walk', label: '散步', r: 8.4, rz: 7.6, sp: -0.1, off: 0, y },
+          { id: 'coffee-2', type: 'coffee', x: CF.x - 0.08, z: CF.z + 0.35, yaw: -Math.PI / 2, y, label: '喝咖啡' },
+          { id: 'lounge-2', type: 'read', x: LG.x + 0.35, z: LG.z - 0.5, yaw: 0, y, label: '休息區小憩' },
+          { id: 'server-2', type: 'patrol', x0: 7.6, x1: 10.6, z: SV.z, sp: 0.35, off: Math.PI, y, label: '巡視機房' },
+          { id: 'walk-in-b', type: 'walk', label: '散步', r: 3.1, sp: 0.22, off: Math.PI, y },
+          { id: 'coffee-3', type: 'coffee', x: CF.x + 1.05, z: CF.z + 1.32, yaw: Math.PI, y, label: '喝咖啡' },
+          { id: 'lounge-3', type: 'read', x: LG.x + 1.72, z: LG.z + 0.9, yaw: -Math.PI / 2, y, label: '休息區小憩' },
+          { id: 'walk-out-b', type: 'walk', label: '散步', r: 8.4, rz: 7.6, sp: -0.1, off: Math.PI, y },
+        ];
+      }
+      const MEET_POS = { x: -8.6, z: -6.4 };
+
+      function boardLogo(c, x, y) {
+        c.save(); c.strokeStyle = '#38c8ff'; c.fillStyle = '#0c1a30'; c.lineWidth = 4;
+        c.beginPath(); c.roundRect(x - 34, y - 34, 68, 68, 10); c.fill(); c.stroke();
+        c.fillStyle = '#38c8ff'; for (let k = 0; k < 4; k++) { const o = -24 + k * 16; c.fillRect(x + o - 2, y - 46, 4, 10); c.fillRect(x + o - 2, y + 36, 4, 10); c.fillRect(x - 46, y + o - 2, 10, 4); c.fillRect(x + 36, y + o - 2, 10, 4); }
+        c.fillStyle = '#eaf4ff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `bold 32px ${SANS}`; c.fillText('AI', x, y + 1); c.restore();
+        c.textAlign = 'left';
+      }
+
+      function tick(sec, st, holo) {
+        if (holo) {
+          holo.ico.rotation.y = sec * 0.6; holo.ico.rotation.x = sec * 0.25;
+          holo.mat.opacity = st === 'active' ? 0.65 + Math.sin(sec * 2.2) * 0.25 : 0.28;
+          holo.inner.material.opacity = st === 'active' ? 0.9 : 0.35;
+          holo.g.position.y = 1.05 + Math.sin(sec * 1.3) * 0.05;
+        }
+        for (const s of spin) s.rotation.y = sec * 0.7;
+        for (const b of blink) b.m.emissiveIntensity = 0.75 + Math.sin(sec * b.sp + b.ph) * 0.3;
+      }
+      return { wall, drawChip, coreHolo, desk, meetRoom, corners, boardLogo, tick };
+    }
 
     // 竹林（四周點綴）
     const bamboos = [];
@@ -588,7 +941,8 @@ async function initBuilding() {
     // ---------- 全員即時看板牆（正面平放，不傾斜） ----------
     const bigCv = document.createElement('canvas'); bigCv.width = 2048; bigCv.height = 1280;
     const bigTex = canvasTex(bigCv);
-    {
+    if (IS_B) B.wall(bigTex);
+    else {
       const wz = BOARD.z - 0.14;
       box(11.6, 0.3, 0.9, M(0x3a3632), 0, 0.15, wz, scene);
       box(11.2, 6.1, 0.22, M(0x22201d, { roughness: 0.85 }), 0, 3.35, wz, scene);
@@ -616,18 +970,24 @@ async function initBuilding() {
 
     // ---------- 中央主位：太極核心（Louis） ----------
     const core = new THREE.Group(); core.position.set(0, TOP, CZ); scene.add(core);
-    cyl(1.62, 1.72, 0.16, M(0x2a2825, { roughness: 0.6 }), 0, 0.08, 0, core, 64);
-    cyl(1.5, 1.58, 0.12, M(GOLD, { metalness: 0.55, roughness: 0.35 }), 0, 0.2, 0, core, 64);
+    if (IS_B) {
+      cyl(1.66, 1.76, 0.16, M(0x141c2c, { roughness: 0.4, metalness: 0.5 }), 0, 0.08, 0, core, 6);
+      cyl(1.5, 1.58, 0.12, M(0x1d2a40, { metalness: 0.7, roughness: 0.3, emissive: 0x38c8ff, emissiveIntensity: 0.25 }), 0, 0.2, 0, core, 64);
+    } else {
+      cyl(1.62, 1.72, 0.16, M(0x2a2825, { roughness: 0.6 }), 0, 0.08, 0, core, 64);
+      cyl(1.5, 1.58, 0.12, M(GOLD, { metalness: 0.55, roughness: 0.35 }), 0, 0.2, 0, core, 64);
+    }
     const coreTop = (() => {
       const cv = document.createElement('canvas'); cv.width = cv.height = 1024;
       const c = cv.getContext('2d');
-      drawTaiji(c, 512, 512, 506, '#f7f4ec', '#1c1b19');
-      const m = new THREE.Mesh(new THREE.CircleGeometry(1.46, 64), new THREE.MeshStandardMaterial({ map: canvasTex(cv), roughness: 0.35, metalness: 0.05 }));
+      if (IS_B) B.drawChip(c, 1024); else drawTaiji(c, 512, 512, 506, '#f7f4ec', '#1c1b19');
+      const ct = canvasTex(cv);
+      const m = new THREE.Mesh(new THREE.CircleGeometry(1.46, 64), IS_B ? new THREE.MeshStandardMaterial({ map: ct, emissiveMap: ct, emissive: 0xffffff, emissiveIntensity: 0.55, roughness: 0.3, metalness: 0.3 }) : new THREE.MeshStandardMaterial({ map: ct, roughness: 0.35, metalness: 0.05 }));
       flat(m, 0.265); core.add(m); return m;
     })();
-    const glowMat = new THREE.MeshBasicMaterial({ color: 0x7fd1b5, transparent: true, opacity: 0.0, depthWrite: false });
+    const glowMat = new THREE.MeshBasicMaterial({ color: IS_B ? 0x38c8ff : 0x7fd1b5, transparent: true, opacity: 0.0, depthWrite: false });
     const glow = new THREE.Mesh(new THREE.RingGeometry(1.78, 2.2, 96), glowMat); flat(glow, 0.03); core.add(glow);
-    const haloMat = new THREE.MeshStandardMaterial({ color: JADE, emissive: 0x6fd0ae, emissiveIntensity: 0.0, roughness: 0.3, metalness: 0.2 });
+    const haloMat = new THREE.MeshStandardMaterial({ color: ACT, emissive: ACT_E, emissiveIntensity: 0.0, roughness: 0.3, metalness: 0.2 });
     const halo = new THREE.Mesh(new THREE.TorusGeometry(1.67, 0.035, 10, 120), haloMat); halo.rotation.x = Math.PI / 2; halo.position.y = 0.28; core.add(halo);
     // 主位名牌
     const coreCv = document.createElement('canvas'); coreCv.width = 640; coreCv.height = 260;
@@ -635,6 +995,7 @@ async function initBuilding() {
     const coreSpr = new THREE.Sprite(new THREE.SpriteMaterial({ map: coreTex, depthTest: false, transparent: true }));
     coreSpr.scale.set(2.7, 1.1, 1); coreSpr.position.set(0, TOP + 1.7, CZ); coreSpr.renderOrder = 11; scene.add(coreSpr);
     for (const m of [coreTop, glow, halo, coreSpr]) m.userData.id = 'louis';
+    const coreHolo = IS_B ? B.coreHolo(core) : null;
 
     // ---------- 工位（面向中央主位） ----------
     // 弧形桌面（環形扇面擠出）
@@ -722,28 +1083,31 @@ async function initBuilding() {
     const desks = [];
     for (const f of FLOORS) {
       if (f.id === 'louis' || SEAT_DEG[f.id] == null) continue;
-      const deg = SEAT_DEG[f.id], pos = P(deg), yaw = deg * Math.PI / 180 + Math.PI;
+      const deg = SEAT_DEG[f.id], pos = ringPt(deg), yaw = IS_B ? Math.atan2(-pos.x, CZ - pos.z) : deg * Math.PI / 180 + Math.PI;
       const yang = PERSONAL.has(f.id); // 左半陽：深色家具；右半陰：淺色家具
       const g = new THREE.Group(); g.position.set(pos.x, TOP, pos.z); g.rotation.y = yaw; g.scale.setScalar(DS); scene.add(g);
       const lead = f.id === 'pa' || f.id === 'cos';
+      let matMat, mat, top, front, scrMat, lamp, outfit;
+      if (IS_B) ({ matMat, mat, top, front, scrMat, lamp, outfit } = B.desk(g, yang, lead));
+      else {
       // 圓形座席墊
-      const matMat = new THREE.MeshStandardMaterial({ color: yang ? 0xe4ddcf : 0x46423c, roughness: 0.9, emissive: JADE, emissiveIntensity: 0 });
-      const mat = new THREE.Mesh(new THREE.CircleGeometry(lead ? 1.25 : 1.12, 48), matMat); flat(mat, 0.01); g.add(mat);
+      matMat = new THREE.MeshStandardMaterial({ color: yang ? 0xe4ddcf : 0x46423c, roughness: 0.9, emissive: JADE, emissiveIntensity: 0 });
+      mat = new THREE.Mesh(new THREE.CircleGeometry(lead ? 1.25 : 1.12, 48), matMat); flat(mat, 0.01); g.add(mat);
       const rim = new THREE.Mesh(new THREE.RingGeometry(lead ? 1.22 : 1.09, lead ? 1.27 : 1.14, 64), new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.7 })); flat(rim, 0.015); g.add(rim);
       const dm = yang ? DESK_DARK : DESK_LIGHT;
       // 弧形桌（以圓柱片段做成）
-      const top = new THREE.Mesh(deskGeo, dm); top.position.set(0, 0.77, -0.55); g.add(top);
-      const front = new THREE.Mesh(new THREE.CylinderGeometry(1.04, 1.04, 0.42, 32, 1, true, -0.6, 1.2), new THREE.MeshStandardMaterial({ color: yang ? 0x24221f : 0xdcd5c6, roughness: 0.5, side: THREE.DoubleSide }));
+      top = new THREE.Mesh(deskGeo, dm); top.position.set(0, 0.77, -0.55); g.add(top);
+      front = new THREE.Mesh(new THREE.CylinderGeometry(1.04, 1.04, 0.42, 32, 1, true, -0.6, 1.2), new THREE.MeshStandardMaterial({ color: yang ? 0x24221f : 0xdcd5c6, roughness: 0.5, side: THREE.DoubleSide }));
       front.position.set(0, 0.54, -0.55); g.add(front);
       for (const sx of [-0.55, 0.55]) box(0.04, 0.33, 0.04, M(GOLD, { metalness: 0.5, roughness: 0.4 }), sx, 0.165, 0.33, g);
       box(0.9, 0.025, 0.02, M(GOLD, { metalness: 0.5, roughness: 0.4 }), 0, 0.72, 0.5, g);
       // 螢幕
-      const scrMat = new THREE.MeshStandardMaterial({ color: 0x101010, emissive: 0x9fe0c8, emissiveIntensity: 0.05, roughness: 0.3 });
+      scrMat = new THREE.MeshStandardMaterial({ color: 0x101010, emissive: 0x9fe0c8, emissiveIntensity: 0.05, roughness: 0.3 });
       box(0.72, 0.42, 0.03, M(yang ? 0x1a1917 : 0xcfc8b8), 0, 1.06, 0.36, g);
       const scr = box(0.66, 0.36, 0.01, scrMat, 0, 1.06, 0.345, g); scr.rotation.y = Math.PI;
       box(0.05, 0.22, 0.05, M(GOLD, { metalness: 0.5, roughness: 0.4 }), 0, 0.86, 0.38, g);
       // 桌燈（工作中亮起）
-      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 10), new THREE.MeshStandardMaterial({ color: 0xfff3d6, emissive: 0xffe2a8, emissiveIntensity: 0.1 }));
+      lamp = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 10), new THREE.MeshStandardMaterial({ color: 0xfff3d6, emissive: 0xffe2a8, emissiveIntensity: 0.1 }));
       lamp.position.set(0.5, 0.86, 0.3); g.add(lamp);
       cyl(0.05, 0.06, 0.06, M(GOLD, { metalness: 0.5 }), 0.5, 0.78, 0.3, g, 10);
       // 圓凳椅
@@ -752,7 +1116,8 @@ async function initBuilding() {
       const chairMat = M(yang ? 0x3a3632 : 0xd8d0c0);
       const back = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.26, 20, 1, true, Math.PI * 0.7, Math.PI * 0.6), new THREE.MeshStandardMaterial({ color: yang ? 0x3a3632 : 0xd8d0c0, roughness: 0.7, side: THREE.DoubleSide })); back.position.set(0, 0.74, -0.42); g.add(back);
       for (const sx of [-0.2, 0.2]) box(0.03, 0.3, 0.03, chairMat, sx, 0.6, -0.6, g);
-      const outfit = yang ? 0x2e2c2a : 0xf0ebe0;
+      outfit = yang ? 0x2e2c2a : 0xf0ebe0;
+      }
       const av = makeAvatar(f.g, outfit, f.color, !yang);
             scene.add(av.g);
       const label = makeLabel();
@@ -766,7 +1131,8 @@ async function initBuilding() {
 
     // ---------- 四隅：圓桌會議（左後）、書房（右後）、茶席（左前）、太極場（右前） ----------
     const MEET = { x: -8.6, z: -6.4 };
-    {
+    if (IS_B) B.meetRoom(MEET);
+    else {
       const g = new THREE.Group(); g.position.set(MEET.x, 0, MEET.z); scene.add(g);
       const rug = new THREE.Mesh(new THREE.CircleGeometry(1.75, 48), M(0xcfc6b4, { roughness: 0.95 })); flat(rug, 0.012); g.add(rug);
       cyl(0.85, 0.85, 0.07, M(0x2b2825, { roughness: 0.4 }), 0, 0.74, 0, g, 40);
@@ -774,7 +1140,7 @@ async function initBuilding() {
       const yy = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32), new THREE.MeshStandardMaterial({ map: coreTop.material.map, roughness: 0.4 })); flat(yy, 0.78); g.add(yy);
       for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; cyl(0.2, 0.2, 0.08, M(0x6b6255), Math.sin(a) * 1.2, 0.46, Math.cos(a) * 1.2, g, 16); cyl(0.04, 0.05, 0.42, M(0x3a3632), Math.sin(a) * 1.2, 0.21, Math.cos(a) * 1.2, g, 8); }
     }
-    const MEET_SEATS = Array.from({ length: 6 }, (_, i) => { const a = i * Math.PI / 3 + Math.PI / 6; return { type: 'meet', x: MEET.x + Math.sin(a) * 1.2, z: MEET.z + Math.cos(a) * 1.2, yaw: a + Math.PI }; });
+    const MEET_SEATS = Array.from({ length: 6 }, (_, i) => { const a = i * Math.PI / 3 + Math.PI / 6; return { type: 'meet', x: MEET.x + Math.sin(a) * 1.2, z: MEET.z + Math.cos(a) * 1.2, yaw: a + Math.PI, ...(IS_B ? { y: TOP } : {}) }; });
     const meetCv = document.createElement('canvas'); meetCv.width = 560; meetCv.height = 220;
     const meetTex = canvasTex(meetCv);
     const meetSpr = new THREE.Sprite(new THREE.SpriteMaterial({ map: meetTex, depthTest: false, transparent: true }));
@@ -783,12 +1149,15 @@ async function initBuilding() {
     function cornerSign(text, x, z, y = 1.7) {
       const cv = document.createElement('canvas'); cv.width = 420; cv.height = 140;
       const c = cv.getContext('2d');
-      c.fillStyle = 'rgba(242,238,229,.95)'; c.beginPath(); c.roundRect(6, 6, 408, 128, 20); c.fill();
-      c.strokeStyle = '#b8995a'; c.lineWidth = 5; c.stroke();
-      c.fillStyle = '#2a2723'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, text, 380, 76, 'bold', SERIF); c.fillText(text, 210, 74);
+      c.fillStyle = PAL.signBg; c.beginPath(); c.roundRect(6, 6, 408, 128, 20); c.fill();
+      c.strokeStyle = PAL.signBorder; c.lineWidth = 5; c.stroke();
+      c.fillStyle = PAL.signTxt; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, text, 380, 76, 'bold', IS_B ? SANS : SERIF); c.fillText(text, 210, 74);
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(cv), transparent: true, depthTest: false }));
       s.scale.set(1.5, 0.5, 1); s.position.set(x, y, z); s.renderOrder = 8; scene.add(s); signs.push(s);
     }
+    let SLOTS;
+    if (IS_B) SLOTS = B.corners(cornerSign);
+    else {
     // 書房
     const READ = { x: 8.6, z: -6.4 };
     {
@@ -834,21 +1203,8 @@ async function initBuilding() {
     cornerSign('圓桌會議', MEET.x, MEET.z - 1.6, 1.25); cornerSign('書房', READ.x - 1.4, READ.z + 1.45, 1.1); cornerSign('茶席', TEA.x, TEA.z + 1.6, 0.95); cornerSign('太極場', TAI.x, TAI.z + 1.6, 0.95);
     addBamboo(-10.6, 1.0, 5, 2.8); addBamboo(10.6, 1.0, 5, 2.8); addBamboo(-10.6, -2.6, 4, 2.6); addBamboo(10.6, -2.6, 4, 2.6);
     for (const [x, z] of [[-4.2, 9.2], [4.2, 9.2], [-10.4, 4.0], [10.4, 4.0]]) addLantern(x, z);
-
-    // 地面組織線：金線＝直屬；朱紅虛線＝ PA 稽核 IA
-    const lineMat = new THREE.LineBasicMaterial({ color: GOLD, transparent: true, opacity: 0.85 });
-    const dashMat = new THREE.LineDashedMaterial({ color: CINNABAR, dashSize: 0.22, gapSize: 0.16, transparent: true, opacity: 0.95 });
-    const link = (a, b, mat) => {
-      const A = P(SEAT_DEG[a], RING_R - 0.6), B = P(SEAT_DEG[b], RING_R - 0.6);
-      const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24; const k = 1 - Math.sin(Math.PI * t) * 0.12; pts.push(new THREE.Vector3((A.x + (B.x - A.x) * t) * k, TOP + 0.02, CZ + (A.z - CZ + (B.z - A.z) * t) * k)); }
-      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat); ln.computeLineDistances(); scene.add(ln);
-    };
-    for (const t of ['admin', 'kobe', 'fly']) link('pa', t, lineMat);
-    for (const t of ['clo', 'cto', 'cpo', 'fpa']) link('cos', t, lineMat);
-    link('pa', 'ia', dashMat);
-
     // 休息／活動位置
-    const SLOTS = [
+    SLOTS = [
       { id: 'walk-in-a', type: 'walk', label: '散步', r: 3.35, sp: 0.22, off: 0 },
       { id: 'tea-1', ...TEA_SEATS[0], label: '品茶' },
       { id: 'read-1', ...READ_SEATS[0], label: '看書' },
@@ -862,6 +1218,20 @@ async function initBuilding() {
       { id: 'tai-3', ...TAI_SEATS[2], label: '打太極' },
       { id: 'walk-out-b', type: 'walk', label: '散步', r: 8.35, sp: -0.1, off: Math.PI },
     ];
+    }
+
+    // 地面組織線：金線＝直屬；朱紅虛線＝ PA 稽核 IA
+    const lineMat = new THREE.LineBasicMaterial({ color: IS_B ? 0x5fd8ff : GOLD, transparent: true, opacity: 0.85 });
+    const dashMat = new THREE.LineDashedMaterial({ color: IS_B ? 0xff9a3c : CINNABAR, dashSize: 0.22, gapSize: 0.16, transparent: true, opacity: 0.95 });
+    const link = (a, b, mat) => {
+      const A = ringPt(SEAT_DEG[a], -0.6), Bp = ringPt(SEAT_DEG[b], -0.6);
+      const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24; const k = 1 - Math.sin(Math.PI * t) * 0.12; pts.push(new THREE.Vector3((A.x + (Bp.x - A.x) * t) * k, TOP + 0.02, CZ + (A.z - CZ + (Bp.z - A.z) * t) * k)); }
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat); ln.computeLineDistances(); scene.add(ln);
+    };
+    for (const t of ['admin', 'kobe', 'fly']) link('pa', t, lineMat);
+    for (const t of ['clo', 'cto', 'cpo', 'fpa']) link('cos', t, lineMat);
+    link('pa', 'ia', dashMat);
+
 
     // ---------- 名牌 ----------
     function drawBar(c, x, y, w, h, value, color) {
@@ -871,7 +1241,7 @@ async function initBuilding() {
         for (let i = -h; i < w + h; i += 16) { c.beginPath(); c.moveTo(x + i, y); c.lineTo(x + i + 8, y); c.lineTo(x + i + 8 - h, y + h); c.lineTo(x + i - h, y + h); c.fill(); }
       } else {
         c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x, y, w, h);
-        c.fillStyle = color || '#7fc4a8'; c.fillRect(x, y, w * Math.max(0, Math.min(1, value / 100)), h);
+        c.fillStyle = color || PAL.bar; c.fillRect(x, y, w * Math.max(0, Math.min(1, value / 100)), h);
       }
       c.restore();
     }
@@ -892,10 +1262,10 @@ async function initBuilding() {
       c.clearRect(0, 0, W, H);
       const dark = true;
       const h = bar ? 288 : 204, y0 = (H - h) / 2;
-      c.fillStyle = selected ? 'rgba(234,246,240,.97)' : 'rgba(28,27,25,.9)';
+      c.fillStyle = selected ? PAL.lblSelBg : PAL.lblBg;
       c.beginPath(); c.roundRect(8, y0, W - 16, h, 26); c.fill();
-      c.strokeStyle = selected ? '#5f9e8a' : '#b8995a'; c.lineWidth = selected ? 10 : 4; c.stroke();
-      const fg = selected ? '#1c1b19' : '#f4f1ea', sub = selected ? '#3a3632' : '#c9c2b4';
+      c.strokeStyle = selected ? PAL.lblSelBorder : PAL.lblBorder; c.lineWidth = selected ? 10 : 4; c.stroke();
+      const fg = selected ? PAL.lblSelFg : PAL.lblFg, sub = selected ? PAL.lblSelSub : PAL.lblSub;
       c.textAlign = 'center'; c.textBaseline = 'middle';
       const [nm, role] = TAG[d.f.id];
       c.fillStyle = fg; fitText(c, `${nm}・${role}`, W - 60, 60, 'bold'); c.fillText(`${nm}・${role}`, W / 2, y0 + 52);
@@ -918,7 +1288,7 @@ async function initBuilding() {
       const yy = y0 + h - 34;
       c.font = `30px ${SANS}`; const tw = c.measureText(ut).width;
       c.fillStyle = FRESH_COL[fr]; c.beginPath(); c.arc(W / 2 - tw / 2 - 16, yy, 9, 0, Math.PI * 2); c.fill();
-      c.fillStyle = selected ? '#3a3632' : FRESH_COL[fr] === '#9a948a' ? '#b3ac9f' : FRESH_COL[fr]; c.fillText(ut, W / 2 + 8, yy);
+      c.fillStyle = selected ? PAL.lblSelSub : FRESH_COL[fr] === '#9a948a' ? '#b3ac9f' : FRESH_COL[fr]; c.fillText(ut, W / 2 + 8, yy);
       d.label.tex.needsUpdate = true;
       const s = narrow ? 1.5 : 1.3;
       d.label.spr.scale.set(2.25 * s, 1.205 * s, 1); d.label.base = [2.25 * s, 1.205 * s]; d.label.fill = (bar ? 288 : 204) / 300;
@@ -927,17 +1297,17 @@ async function initBuilding() {
       const c = coreCv.getContext('2d'), W = 640, H = 260;
       c.clearRect(0, 0, W, H);
       const st = louisState(), sel = selected === 'louis';
-      c.fillStyle = sel ? 'rgba(234,246,240,.97)' : 'rgba(247,244,236,.94)';
+      c.fillStyle = sel ? PAL.coreSelBg : PAL.coreBg;
       c.beginPath(); c.roundRect(10, 10, W - 20, H - 20, 30); c.fill();
-      c.strokeStyle = st === 'active' ? '#5f9e8a' : '#b8995a'; c.lineWidth = st === 'active' || sel ? 10 : 5; c.stroke();
+      c.strokeStyle = st === 'active' ? PAL.coreAct : PAL.coreIdle; c.lineWidth = st === 'active' || sel ? 10 : 5; c.stroke();
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = '#1c1b19'; fitText(c, 'Louis・總經理主位', W - 70, 62, 'bold', SERIF); c.fillText('Louis・總經理主位', W / 2, 74);
+      c.fillStyle = PAL.coreTitle; fitText(c, 'Louis・總經理主位', W - 70, 62, 'bold', IS_B ? SANS : SERIF); c.fillText('Louis・總經理主位', W / 2, 74);
       let line;
       if (!louisActive || !has(louisActive.last_seen)) line = `最後來訊：${NO_DATA}`;
       else line = `最後來訊 ${fmtTaipei(louisActive.last_seen, false)}（${ago(louisActive.last_seen)}）`;
-      c.fillStyle = st === 'active' ? '#2f7a63' : '#5a554d'; fitText(c, line, W - 70, 44, 'bold'); c.fillText(line, W / 2, 150);
+      c.fillStyle = st === 'active' ? PAL.coreLineAct : PAL.coreLine; fitText(c, line, W - 70, 44, 'bold'); c.fillText(line, W / 2, 150);
       const tip = st === 'active' ? '一小時內有來訊・主位發光' : st === 'idle' ? '超過一小時未來訊' : '只記時間、不記內容';
-      c.fillStyle = '#8a8478'; fitText(c, tip, W - 70, 32, 'normal'); c.fillText(tip, W / 2, 206);
+      c.fillStyle = PAL.coreTip; fitText(c, tip, W - 70, 32, 'normal'); c.fillText(tip, W / 2, 206);
       coreTex.needsUpdate = true;
       const s = narrow ? 1.4 : 1.15; coreSpr.scale.set(2.7 * s, 1.1 * s, 1); meetSpr.scale.set(2.3 * s, 0.9 * s, 1);
     }
@@ -945,12 +1315,12 @@ async function initBuilding() {
       const c = meetCv.getContext('2d'), W = 560, H = 220;
       c.clearRect(0, 0, W, H);
       const busy = meetings.length > 0;
-      c.fillStyle = 'rgba(28,27,25,.9)'; c.beginPath(); c.roundRect(8, 8, W - 16, H - 16, 26); c.fill();
-      c.strokeStyle = busy ? '#e0b25c' : '#b8995a'; c.lineWidth = busy ? 8 : 4; c.stroke();
+      c.fillStyle = PAL.meetBg; c.beginPath(); c.roundRect(8, 8, W - 16, H - 16, 26); c.fill();
+      c.strokeStyle = busy ? '#e0b25c' : PAL.meetIdle; c.lineWidth = busy ? 8 : 4; c.stroke();
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      if (!busy) { c.fillStyle = '#c9c2b4'; fitText(c, '會議室・空閒', W - 60, 64, 'bold'); c.fillText('會議室・空閒', W / 2, H / 2); }
+      if (!busy) { c.fillStyle = PAL.meetIdleTxt; fitText(c, PAL.meetFree, W - 60, 64, 'bold'); c.fillText(PAL.meetFree, W / 2, H / 2); }
       else {
-        let t = meetings.map((x) => x.title).join('／'); c.fillStyle = '#f4f1ea'; fitText(c, t, W - 60, 54, 'bold'); while (c.measureText(t).width > W - 60 && t.length > 2) t = t.slice(0, -2) + '…'; c.fillText(t, W / 2, 80);
+        let t = meetings.map((x) => x.title).join('／'); c.fillStyle = PAL.meetTitle; fitText(c, t, W - 60, 54, 'bold'); while (c.measureText(t).width > W - 60 && t.length > 2) t = t.slice(0, -2) + '…'; c.fillText(t, W / 2, 80);
         c.fillStyle = '#e0b25c'; fitText(c, '會議中', W - 60, 48, 'bold'); c.fillText('會議中', W / 2, 150);
       }
       meetTex.needsUpdate = true;
@@ -959,41 +1329,44 @@ async function initBuilding() {
     // ---------- 大型看板內容 ----------
     function drawBigBoard() {
       const c = bigCv.getContext('2d'), W = 2048, H = 1280;
-      const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#191816'); bg.addColorStop(1, '#100f0e');
+      const bg = c.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, PAL.bg0); bg.addColorStop(1, PAL.bg1);
       c.fillStyle = bg; c.fillRect(0, 0, W, H);
       // 標題列
-      c.save(); c.globalAlpha = 0.9; drawTaiji(c, 92, 78, 38, '#f2eee5', '#191816'); c.restore();
-      c.strokeStyle = '#b8995a'; c.lineWidth = 3; c.beginPath(); c.arc(92, 78, 38, 0, Math.PI * 2); c.stroke();
-      c.textBaseline = 'middle'; c.textAlign = 'left'; c.fillStyle = '#f4f1ea';
-      c.font = `bold 66px ${SERIF}`; c.fillText('全員即時看板', 150, 80);
-      c.textAlign = 'right'; c.fillStyle = '#a49d90'; c.font = `34px ${SANS}`;
+      if (IS_B) B.boardLogo(c, 92, 78);
+      else {
+        c.save(); c.globalAlpha = 0.9; drawTaiji(c, 92, 78, 38, '#f2eee5', '#191816'); c.restore();
+        c.strokeStyle = '#b8995a'; c.lineWidth = 3; c.beginPath(); c.arc(92, 78, 38, 0, Math.PI * 2); c.stroke();
+      }
+      c.textBaseline = 'middle'; c.textAlign = 'left'; c.fillStyle = PAL.ink;
+      c.font = `bold 66px ${IS_B ? SANS : SERIF}`; c.fillText('全員即時看板', 150, 80);
+      c.textAlign = 'right'; c.fillStyle = PAL.muted; c.font = `34px ${SANS}`;
       c.fillText(lastCheck ? `每 30 秒檢查・上次 ${fmtTaipei(lastCheck.toISOString())}（台北時間）` : '尚未解鎖', W - 60, 80);
-      c.fillStyle = '#b8995a'; c.fillRect(60, 140, W - 120, 3);
+      c.fillStyle = PAL.acc; c.fillRect(60, 140, W - 120, 3);
       // 左欄：成員
       const ids = ['pa', 'ia', 'admin', 'kobe', 'fly', 'cos', 'clo', 'cto', 'cpo', 'fpa'];
       const x0 = 60, colW = 1250, y0 = 172, rowH = 100;
-      c.font = `28px ${SANS}`; c.fillStyle = '#8a8478'; c.textAlign = 'left';
+      c.font = `28px ${SANS}`; c.fillStyle = PAL.dim; c.textAlign = 'left';
       c.fillText('成員', x0 + 30, y0 + 6); c.fillText('目前', x0 + 300, y0 + 6); c.fillText('進度', x0 + 760, y0 + 6); c.textAlign = 'right'; c.fillText('更新', x0 + colW - 20, y0 + 6); c.textAlign = 'left';
       ids.forEach((id, i) => {
         const f = FLOORS.find((x) => x.id === id), p = person(id), y = y0 + 34 + i * rowH;
-        if (i === 5) { c.fillStyle = 'rgba(184,153,90,.5)'; c.fillRect(x0, y - 6, colW, 2); }
+        if (i === 5) { c.fillStyle = PAL.accA; c.fillRect(x0, y - 6, colW, 2); }
         c.fillStyle = i % 2 ? 'rgba(255,255,255,.025)' : 'rgba(255,255,255,.055)'; c.fillRect(x0, y, colW, rowH - 10);
-        c.fillStyle = PERSONAL.has(id) ? '#f2eee5' : '#4a4640'; c.beginPath(); c.arc(x0 + 30, y + 45, 13, 0, Math.PI * 2); c.fill();
-        c.strokeStyle = '#b8995a'; c.lineWidth = 2; c.stroke();
+        c.fillStyle = PERSONAL.has(id) ? PAL.dotP : PAL.dotC; c.beginPath(); c.arc(x0 + 30, y + 45, 13, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = PAL.acc; c.lineWidth = 2; c.stroke();
         const [nm, role] = TAG[id];
-        c.fillStyle = '#f4f1ea'; c.font = `bold 40px ${SANS}`; c.fillText(nm, x0 + 60, y + 34);
-        c.fillStyle = '#a49d90'; c.font = `26px ${SANS}`; c.fillText(role, x0 + 60, y + 72);
+        c.fillStyle = PAL.ink; c.font = `bold 40px ${SANS}`; c.fillText(nm, x0 + 60, y + 34);
+        c.fillStyle = PAL.muted; c.font = `26px ${SANS}`; c.fillText(role, x0 + 60, y + 72);
         const working = isWorking(p), meet = meetingOf(id), fr = freshness(p);
         const d = arr(p, 'doing');
         let txt = meet ? `會議中：${meet.title}` : d.length ? d.map((x) => x.text).join('；') : (p ? '休息中' : NO_DATA);
-        c.fillStyle = working || meet ? '#f4f1ea' : '#8a8478'; c.font = `34px ${SANS}`;
+        c.fillStyle = working || meet ? PAL.ink : PAL.dim; c.font = `34px ${SANS}`;
         while (c.measureText(txt).width > 430 && txt.length > 2) txt = txt.slice(0, -2) + '…';
         c.fillText(txt, x0 + 300, y + 45);
         if (working) {
           const pr = progressOf(p).value;
           drawBar(c, x0 + 760, y + 30, 190, 30, pr, fr === 'old' ? '#9a948a' : null);
-          c.fillStyle = '#f4f1ea'; c.font = `bold 32px ${SANS}`; c.fillText(pr == null ? '暫無' : `${pr}%`, x0 + 964, y + 45);
-        } else { c.fillStyle = '#5a554d'; c.font = `30px ${SANS}`; c.fillText('—', x0 + 760, y + 45); }
+          c.fillStyle = PAL.ink; c.font = `bold 32px ${SANS}`; c.fillText(pr == null ? '暫無' : `${pr}%`, x0 + 964, y + 45);
+        } else { c.fillStyle = PAL.faint; c.font = `30px ${SANS}`; c.fillText('—', x0 + 760, y + 45); }
         c.font = `30px ${SANS}`; c.textAlign = 'right';
         const ut = p ? `${fmtTaipei(p._ts, false) || NO_DATA}${p._src === 'data' ? ' 底稿' : ''}` : '—';
         c.fillStyle = FRESH_COL[fr]; c.fillText(ut, x0 + colW - 20, y + 45);
@@ -1004,39 +1377,39 @@ async function initBuilding() {
       c.fillStyle = 'rgba(255,255,255,.04)'; c.fillRect(x2 - 24, 172, w2 + 48, H - 230);
       let yy = 220;
       // 主位
-      c.fillStyle = '#b8995a'; c.font = `bold 40px ${SERIF}`; c.fillText('主位', x2, yy); yy += 56;
+      c.fillStyle = PAL.acc; c.font = `bold 40px ${IS_B ? SANS : SERIF}`; c.fillText('主位', x2, yy); yy += 56;
       const st = louisState();
-      c.fillStyle = st === 'active' ? '#6fd0ae' : '#c9c2b4'; c.font = `32px ${SANS}`;
+      c.fillStyle = st === 'active' ? PAL.active : PAL.sub2; c.font = `32px ${SANS}`;
       c.fillText(louisActive && has(louisActive.last_seen) ? `Louis 最後來訊 ${fmtTaipei(louisActive.last_seen, false)}（${ago(louisActive.last_seen)}）` : `Louis 最後來訊：${NO_DATA}`, x2, yy); yy += 74;
-      c.fillStyle = '#b8995a'; c.font = `bold 40px ${SERIF}`; c.fillText('警示', x2, yy); yy += 56;
+      c.fillStyle = PAL.acc; c.font = `bold 40px ${IS_B ? SANS : SERIF}`; c.fillText('警示', x2, yy); yy += 56;
       const al = alertList().slice(0, 5);
       c.font = `30px ${SANS}`;
-      if (!al.length) { c.fillStyle = '#8a8478'; c.fillText('目前沒有警示', x2, yy); yy += 50; }
+      if (!al.length) { c.fillStyle = PAL.dim; c.fillText('目前沒有警示', x2, yy); yy += 50; }
       for (const a of al) {
         c.fillStyle = a.level === 'red' ? '#d0574a' : '#e0b25c'; c.fillRect(x2, yy - 20, 8, 40);
-        c.fillStyle = '#e8e3d8'; let t = a.text; while (c.measureText(t).width > w2 - 30 && t.length > 2) t = t.slice(0, -2) + '…';
+        c.fillStyle = PAL.alertTxt; let t = a.text; while (c.measureText(t).width > w2 - 30 && t.length > 2) t = t.slice(0, -2) + '…';
         c.fillText(t, x2 + 22, yy); yy += 54;
       }
       yy = Math.max(yy + 24, 720);
-      c.fillStyle = '#b8995a'; c.font = `bold 40px ${SERIF}`; c.fillText('累計用量', x2, yy); yy += 56;
+      c.fillStyle = PAL.acc; c.font = `bold 40px ${IS_B ? SANS : SERIF}`; c.fillText('累計用量', x2, yy); yy += 56;
       c.font = `30px ${SANS}`;
       const h = usage.hermes;
       if (h && Array.isArray(h.profiles) && h.profiles.length) for (const pf of h.profiles) {
-        c.fillStyle = '#c9c2b4'; c.fillText(String(pf.label || pf.id).replace(/（.*?）/, ''), x2, yy);
-        c.textAlign = 'right'; c.fillStyle = '#f4f1ea'; c.fillText(`${fmtTok(pf.total)} 詞元`, x2 + w2, yy); c.textAlign = 'left'; yy += 46;
-      } else { c.fillStyle = '#8a8478'; c.fillText(`Air 特殊小組：${NO_DATA}`, x2, yy); yy += 46; }
+        c.fillStyle = PAL.sub2; c.fillText(String(pf.label || pf.id).replace(/（.*?）/, ''), x2, yy);
+        c.textAlign = 'right'; c.fillStyle = PAL.ink; c.fillText(`${fmtTok(pf.total)} 詞元`, x2 + w2, yy); c.textAlign = 'left'; yy += 46;
+      } else { c.fillStyle = PAL.dim; c.fillText(`Air 特殊小組：${NO_DATA}`, x2, yy); yy += 46; }
       const g = usage.grok;
       if (g && g.shares) {
-        c.fillStyle = '#c9c2b4'; c.fillText('助理本週額度已用', x2, yy);
-        c.textAlign = 'right'; c.fillStyle = '#f4f1ea'; c.fillText(typeof g.weekly_used_percent === 'number' ? `${Math.round(g.weekly_used_percent * 10) / 10}%` : NO_DATA, x2 + w2, yy); c.textAlign = 'left'; yy += 50;
+        c.fillStyle = PAL.sub2; c.fillText('助理本週額度已用', x2, yy);
+        c.textAlign = 'right'; c.fillStyle = PAL.ink; c.fillText(typeof g.weekly_used_percent === 'number' ? `${Math.round(g.weekly_used_percent * 10) / 10}%` : NO_DATA, x2 + w2, yy); c.textAlign = 'left'; yy += 50;
         const tops = Object.entries(g.shares).filter(([, v]) => typeof v === 'number').sort((a, b) => b[1] - a[1]).slice(0, 4);
         for (const [id, v] of tops) {
-          c.fillStyle = '#a49d90'; c.fillText(TAG[id] ? TAG[id][0] : id, x2, yy);
+          c.fillStyle = PAL.muted; c.fillText(TAG[id] ? TAG[id][0] : id, x2, yy);
           drawBar(c, x2 + 150, yy - 13, w2 - 280, 26, v);
-          c.fillStyle = '#f4f1ea'; c.textAlign = 'right'; c.fillText(v < 1 ? '<1%' : `${Math.round(v)}%`, x2 + w2, yy); c.textAlign = 'left'; yy += 44;
+          c.fillStyle = PAL.ink; c.textAlign = 'right'; c.fillText(v < 1 ? '<1%' : `${Math.round(v)}%`, x2 + w2, yy); c.textAlign = 'left'; yy += 44;
         }
-      } else { c.fillStyle = '#8a8478'; c.fillText(`助理額度：${NO_DATA}`, x2, yy); }
-      c.fillStyle = '#6a655c'; c.font = `24px ${SANS}`; c.fillText('特殊小組為真實詞元數；助理為週額度占比（非詞元）', x2, H - 52);
+      } else { c.fillStyle = PAL.dim; c.fillText(`助理額度：${NO_DATA}`, x2, yy); }
+      c.fillStyle = PAL.foot; c.font = `24px ${SANS}`; c.fillText('特殊小組為真實詞元數；助理為週額度占比（非詞元）', x2, H - 52);
       bigTex.needsUpdate = true;
     }
 
@@ -1105,7 +1478,7 @@ async function initBuilding() {
         const s = d.slot;
         if (s.type === 'walk') {
           const ang = s.off + sec * s.sp + ph * 0.05;
-          a.g.position.set(Math.sin(ang) * s.r, s.r < PLAT_R ? TOP : 0, CZ + Math.cos(ang) * s.r);
+          a.g.position.set(Math.sin(ang) * s.r, s.y ?? (s.r < PLAT_R ? TOP : 0), CZ + Math.cos(ang) * (s.rz ?? s.r));
           a.g.rotation.y = ang + (s.sp > 0 ? Math.PI / 2 : -Math.PI / 2);
           const w = Math.sin(sec * 6 + ph);
           a.legs[0].thigh.rotation.x = w * 0.45; a.legs[1].thigh.rotation.x = -w * 0.45;
@@ -1113,7 +1486,7 @@ async function initBuilding() {
           a.arms[0].sh.rotation.x = -w * 0.4; a.arms[1].sh.rotation.x = w * 0.4;
           a.hip.position.y = 0.72 + Math.abs(w) * 0.025;
         } else if (s.type === 'meet') {
-          a.g.position.set(s.x, 0, s.z); a.g.rotation.y = s.yaw; sit(a, 0.5);
+          a.g.position.set(s.x, s.y ?? 0, s.z); a.g.rotation.y = s.yaw; sit(a, 0.5);
           for (const A of a.arms) { A.sh.rotation.x = -0.5; A.el.rotation.x = -0.7; }
           a.head.rotation.y = Math.sin(sec * 0.7 + ph) * 0.3;
         } else if (s.type === 'tea') {
@@ -1123,10 +1496,27 @@ async function initBuilding() {
           a.arms[1].sh.rotation.x = -0.6 + Math.sin(sec * 0.9 + ph) * 0.25; a.arms[1].el.rotation.x = -1.2;
           a.arms[0].sh.rotation.x = -0.35; a.arms[0].el.rotation.x = -0.9;
         } else if (s.type === 'read') {
-          a.g.position.set(s.x, 0, s.z); a.g.rotation.y = s.yaw; sit(a, 0.42);
+          a.g.position.set(s.x, s.y ?? 0, s.z); a.g.rotation.y = s.yaw; sit(a, 0.42);
           a.book.visible = true;
           a.arms[0].sh.rotation.x = -0.55; a.arms[0].el.rotation.x = -1.0; a.arms[1].sh.rotation.x = -0.55; a.arms[1].el.rotation.x = -1.0;
           a.head.rotation.x = 0.3;
+        } else if (s.type === 'coffee') {
+          // 模板 B：站著喝咖啡聊天
+          a.g.position.set(s.x, s.y ?? 0, s.z); a.g.rotation.y = s.yaw;
+          a.cup.visible = true;
+          a.arms[1].sh.rotation.x = -0.7 + Math.sin(sec * 0.9 + ph) * 0.25; a.arms[1].el.rotation.x = -1.3;
+          a.arms[0].sh.rotation.x = 0.05; a.arms[0].sh.rotation.z = -0.08;
+          a.head.rotation.y = Math.sin(sec * 0.5 + ph) * 0.25;
+        } else if (s.type === 'patrol') {
+          // 模板 B：在機房走道來回巡視
+          const t = sec * s.sp + ph * 0.3 + (s.off || 0), u = (1 - Math.cos(t)) / 2;
+          a.g.position.set(s.x0 + (s.x1 - s.x0) * u, s.y ?? 0, s.z);
+          a.g.rotation.y = Math.sin(t) >= 0 ? Math.PI / 2 : -Math.PI / 2;
+          const w = Math.sin(sec * 6 + ph) * Math.min(1, Math.abs(Math.sin(t)) * 3);
+          a.legs[0].thigh.rotation.x = w * 0.45; a.legs[1].thigh.rotation.x = -w * 0.45;
+          a.legs[0].knee.rotation.x = Math.max(0, -w) * 0.5; a.legs[1].knee.rotation.x = Math.max(0, w) * 0.5;
+          a.arms[0].sh.rotation.x = -w * 0.4; a.arms[1].sh.rotation.x = w * 0.4;
+          a.head.rotation.y = 0.5;
         } else if (s.type === 'taichi') {
           a.g.position.set(s.x, 0.015, s.z); a.g.rotation.y = s.yaw + Math.sin(sec * 0.35) * 0.5;
           const t = sec * 0.6;
@@ -1251,7 +1641,8 @@ async function initBuilding() {
       const pulse = 0.5 + Math.sin(sec * 2.2) * 0.5;
       glowMat.opacity = st === 'active' ? 0.35 + pulse * 0.4 : 0;
       haloMat.emissiveIntensity = st === 'active' ? 0.6 + pulse * 0.8 : st === 'idle' ? 0.05 : 0.0;
-      haloMat.color.setHex(st === 'active' ? JADE : 0x8a8478);
+      haloMat.color.setHex(st === 'active' ? ACT : IDLE);
+      if (B) B.tick(sec, st, coreHolo);
       for (const b of bamboos) b.g.rotation.z = Math.sin(sec * 0.8 + b.ph) * 0.012;
       for (const d of desks) { poseAvatar(d, sec); if (d.working) d.lamp.material.emissiveIntensity = 0.8 + Math.sin(sec * 2.6 + d.phase) * 0.25; }
       declutter();
