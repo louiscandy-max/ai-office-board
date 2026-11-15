@@ -115,3 +115,9 @@ html[data-theme=B] .upd.fresh{color:#1d7a4a}
 html[data-theme=B] .upd.warm{color:#8a5a00}
 html[data-theme=B] .chat{color:#fff;background:#2f9be8;border-color:#2f9be8}
 @media (max-width:600px){.theme-sw button{padding:3px 9px;font-size:.76rem}}
+html[data-theme=B] .org-key{position:absolute;left:10px;top:10px;z-index:3;display:flex;flex-direction:column;gap:3px;background:rgba(255,255,255,.92);border:1px solid #b9d6f0;border-radius:10px;padding:7px 11px;font-size:.8rem;color:#2c4a66;box-shadow:0 2px 8px rgba(30,80,140,.15);pointer-events:none}
+html[data-theme=B] .org-key b{color:#1b3f66}
+html[data-theme=B] .org-key span{display:flex;align-items:center;gap:7px;white-space:nowrap}
+html[data-theme=B] .org-key i{display:inline-block;width:26px;height:0;border-top:3px solid #1b5fae}
+html[data-theme=B] .org-key i.k-dsh{border-top:3px dashed #ff7a14}
+@media (max-width:600px){html[data-theme=B] .org-key{flex-direction:row;gap:10px;font-size:.66rem;padding:4px 8px;left:6px;top:6px;border-radius:8px}html[data-theme=B] .org-key b{display:none}html[data-theme=B] .org-key span{gap:4px}html[data-theme=B] .org-key i{width:16px}}
