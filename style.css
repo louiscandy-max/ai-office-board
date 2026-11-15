@@ -76,35 +76,42 @@ li{margin:3px 0}
 .theme-sw{display:inline-flex;border:1px solid rgba(244,241,234,.45);border-radius:999px;overflow:hidden}
 .theme-sw button{background:transparent;color:#c9c2b4;border-radius:0;padding:4px 11px;font-weight:600;font-size:.82rem}
 .theme-sw button.on{background:var(--gold);color:#1c1b19}
-/* 模板 B：AI 科技公司 */
-html[data-theme=B]{--bg:#0a1120;--paper:#111b2e;--card:#0f1829;--ink:#e6eef8;--ink2:#c3d0e0;--line:#24344d;--muted:#8597b0;--gold:#38c8ff;--jade:#38c8ff;--done:#3fbf9a;--prog:#38c8ff;--pend:#5b6b82;--wait:#ff7a5c;--accent:#38c8ff}
-html[data-theme=B] body{font-family:-apple-system,"PingFang TC","Noto Sans CJK TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
-html[data-theme=B] .top{background:rgba(6,11,22,.96);border-bottom:2px solid #38c8ff;box-shadow:0 2px 18px rgba(56,200,255,.18)}
+/* 模板 B：AI 科技公司・藍天白雲綠地（明亮主題） */
+html[data-theme=B]{--bg:#eaf5ff;--paper:#ffffff;--card:#ffffff;--ink:#12324f;--ink2:#2c4a66;--line:#cfe1f0;--muted:#56718b;--gold:#2f9be8;--jade:#3fae6a;--done:#3fae6a;--prog:#2f9be8;--pend:#9fb0c0;--wait:#d0473b;--accent:#2f9be8}
+html[data-theme=B] body{background:linear-gradient(180deg,#d6ecff 0,#eaf5ff 420px,#f2f8f0 100%);font-family:-apple-system,"PingFang TC","Noto Sans CJK TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+html[data-theme=B] .top{background:linear-gradient(90deg,#2f8fe0,#5db6f2);color:#fff;border-bottom:3px solid #5cbf6e;box-shadow:0 2px 14px rgba(47,143,224,.25)}
 html[data-theme=B] .top h1,html[data-theme=B] .card h2,html[data-theme=B] .gate-box h2{font-family:inherit;letter-spacing:.03em}
-html[data-theme=B] .yy{border:2px solid #38c8ff;border-radius:6px;background:#0c1a30 radial-gradient(circle,#38c8ff 0 22%,transparent 24%);box-shadow:0 0 10px rgba(56,200,255,.6);animation:none}
-html[data-theme=B] .meta{color:#9fb3cc}
-html[data-theme=B] button{color:#06101f}
-html[data-theme=B] button.ghost,html[data-theme=B] #lock{color:#e6eef8;border-color:rgba(56,200,255,.5)}
-html[data-theme=B] .theme-sw{border-color:rgba(56,200,255,.5)}
-html[data-theme=B] .theme-sw button{color:#9fb3cc;background:transparent}
-html[data-theme=B] .theme-sw button.on{background:#38c8ff;color:#06101f}
-html[data-theme=B] #detail-close{background:#24344d;color:#e6eef8}
-html[data-theme=B] .status{color:#7fe0ff}
-html[data-theme=B] #building-wrap{background:#060b16}
-html[data-theme=B] .legend b{color:#7fe0ff}
-html[data-theme=B] .card{box-shadow:0 0 0 1px rgba(56,200,255,.05),0 6px 20px rgba(0,0,0,.25)}
-html[data-theme=B] .card h2::before{border-radius:3px;background:#38c8ff;border:0;box-shadow:0 0 8px rgba(56,200,255,.8)}
-html[data-theme=B] .wait-item{background:#2a1a1e}
-html[data-theme=B] .wait-item b{color:#ff9d85}
-html[data-theme=B] .wait-item.amber{background:#2a2616}
-html[data-theme=B] .gate{background:rgba(4,8,16,.92)}
-html[data-theme=B] .gate-box input[type=password]{background:#0a1120;color:#e6eef8}
-html[data-theme=B] .gate-box button{background:#38c8ff;color:#06101f}
-html[data-theme=B] .prog-wrap{background:#1a2638}
-html[data-theme=B] .prog-unknown{background:repeating-linear-gradient(45deg,#24344d 0 8px,#1a2638 8px 16px)}
-html[data-theme=B] .status-meet{color:#e0b25c}
-html[data-theme=B] .status-work{color:#5fe3c0}
-html[data-theme=B] .u-bar{background:#1a2638}
-html[data-theme=B] .upd.fresh{color:#5fe3c0}
-html[data-theme=B] .chat{color:#06101f;background:#38c8ff;border-color:#38c8ff}
+html[data-theme=B] .yy{border:2px solid #fff;border-radius:50%;background:radial-gradient(circle at 35% 40%,#fff 0 30%,transparent 32%),radial-gradient(circle at 62% 45%,#fff 0 26%,transparent 28%),linear-gradient(180deg,#7cc4f6 0 60%,#6cc06e 60%);animation:none}
+html[data-theme=B] .meta{color:#eaf5ff}
+html[data-theme=B] button{background:#fff;color:#1f5f99}
+html[data-theme=B] button.ghost,html[data-theme=B] #lock{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.75)}
+html[data-theme=B] .theme-sw{border-color:rgba(255,255,255,.75)}
+html[data-theme=B] .theme-sw button{color:#eaf5ff;background:transparent}
+html[data-theme=B] .theme-sw button.on{background:#fff;color:#1f5f99}
+html[data-theme=B] #detail-close{background:#2f9be8;color:#fff}
+html[data-theme=B] .status{color:#fff7c2}
+html[data-theme=B] .live i{background:#cfe1f0}
+html[data-theme=B] .live.on i{background:#7ee08f}
+html[data-theme=B] #building-wrap{background:#cfe8ff}
+html[data-theme=B] .hint{color:#3d5a75}
+html[data-theme=B] .legend{color:#2c4a66}
+html[data-theme=B] .legend b{color:#1f6fbf}
+html[data-theme=B] .card{border-color:#cfe1f0;box-shadow:0 4px 16px rgba(47,143,224,.08)}
+html[data-theme=B] .card h2::before{border-radius:50%;background:linear-gradient(180deg,#5db6f2 50%,#5cbf6e 50%);border:0}
+html[data-theme=B] .person{background:#f6fbff}
+html[data-theme=B] .wait-item{background:#fdecea}
+html[data-theme=B] .wait-item b{color:#a8322a}
+html[data-theme=B] .wait-item.amber{background:#fff4dc}
+html[data-theme=B] .gate{background:rgba(40,110,170,.55);backdrop-filter:blur(4px)}
+html[data-theme=B] .gate-box{border-color:#2f9be8}
+html[data-theme=B] .gate-box input[type=password]{background:#fff;color:#12324f}
+html[data-theme=B] .gate-box button{background:#2f9be8;color:#fff}
+html[data-theme=B] .prog-wrap{background:#e3eef8}
+html[data-theme=B] .prog-unknown{background:repeating-linear-gradient(45deg,#dbe6f0 0 8px,#c9d7e4 8px 16px)}
+html[data-theme=B] .status-meet{color:#a86400}
+html[data-theme=B] .status-work{color:#1d7a4a}
+html[data-theme=B] .u-bar{background:#e3eef8}
+html[data-theme=B] .upd.fresh{color:#1d7a4a}
+html[data-theme=B] .upd.warm{color:#8a5a00}
+html[data-theme=B] .chat{color:#fff;background:#2f9be8;border-color:#2f9be8}
 @media (max-width:600px){.theme-sw button{padding:3px 9px;font-size:.76rem}}
