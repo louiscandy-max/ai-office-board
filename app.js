@@ -611,7 +611,14 @@ async function initBuilding() {
         cos: { x: DX, z: RZ[0], yaw: -PI / 2 }, cto: { x: DX, z: RZ[1], yaw: -PI / 2 }, cpo: { x: DX, z: RZ[2], yaw: -PI / 2 }, clo: { x: DX, z: RZ[3], yaw: -PI / 2 }, fpa: { x: DX, z: RZ[4], yaw: -PI / 2 },
       };
       const CORE = { x: 0, z: -5.3 };                      // 總經理指揮台：走道盡頭、看板正前方
-      const ROOMS = { left: { x: -9.7, z: -3.7, name: '個人側會議室' }, right: { x: 9.7, z: -3.7, name: '公司側會議室' } };
+      // 各區平均規劃：左右對稱；六個側區同一開間 4.60×3.80（適度放大會議室／機房／專注艙，縮小咖啡吧／休息區）
+      const RX0 = 6.60, RX1 = 11.20, RW = RX1 - RX0, RD = 3.80;
+      const REAR_Z0 = -9.15, REAR_Z1 = REAR_Z0 + RD;        // 機房／專注艙 -9.15 .. -5.35
+      const MEET_Z0 = -4.55, MEET_Z1 = MEET_Z0 + RD;        // 兩側會議室 -4.55 .. -0.75
+      const FRONT_Z0 = 5.55, FRONT_Z1 = FRONT_Z0 + RD;      // 咖啡吧／休息區 5.55 .. 9.35
+      const WX0 = 1.90, WX1 = 5.40, WZ0 = -4.40, WZ1 = 5.30; // 兩側工位區 3.50×9.70，左右相同
+      const ROOMX = (RX0 + RX1) / 2, MEETZ = (MEET_Z0 + MEET_Z1) / 2, FRONTZ = (FRONT_Z0 + FRONT_Z1) / 2, REARZ = (REAR_Z0 + REAR_Z1) / 2;
+      const ROOMS = { left: { x: -ROOMX, z: MEETZ, name: '個人側會議室' }, right: { x: ROOMX, z: MEETZ, name: '公司側會議室' } };
 
       // 天空：藍天漸層背景＋緩慢飄動的白雲
       const clouds = [];
@@ -656,18 +663,19 @@ async function initBuilding() {
           for (let x = x0; x <= x1 + 0.01; x += step * 1.6) { c.beginPath(); c.moveTo(X(x), Y(z0)); c.lineTo(X(x), Y(z1)); c.stroke(); }
         };
         // 工作區：兩種綠色草坪，白色收邊
-        const WZ0 = -4.25, WZ1 = 6.1, WX0 = 1.85, WX1 = 5.2;
         grass(-WX1, WZ0, -WX0, WZ1, '#a3db84', ['#98d379', '#aee38f', '#8fcb70'], 16000);
         grass(WX0, WZ0, WX1, WZ1, '#6fbf7c', ['#64b471', '#7aca87', '#5aa968'], 16000);
         c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = 5; c.strokeRect(X(-WX1), Y(WZ0), X(-WX0) - X(-WX1), Y(WZ1) - Y(WZ0)); c.strokeRect(X(WX0), Y(WZ0), X(WX1) - X(WX0), Y(WZ1) - Y(WZ0));
         // 看板前石板廣場、中央步道、機房與專注艙地坪、咖啡吧木平台、休息區淺石
         stone(-4.6, -9.25, 4.6, -4.4, '#ece8df', 'rgba(170,160,140,.35)', 1.2);
         stone(-1.6, -4.4, 1.6, 10.4, '#f3efe6', 'rgba(170,160,140,.4)', 1.0);
-        stone(-11.3, -9.15, -6.8, -6.2, '#dfe4ea', 'rgba(140,150,165,.4)', 0.6);
-        stone(7.3, -9.1, 11.2, -6.7, '#e6e9ee', 'rgba(140,150,165,.35)', 0.6);
-        c.fillStyle = '#e2cfa9'; c.fillRect(X(-11.3), Y(4.9), X(-6.4) - X(-11.3), Y(9.5) - Y(4.9));
-        c.strokeStyle = 'rgba(150,115,70,.35)'; c.lineWidth = 2; for (let z = 4.9; z <= 9.5; z += 0.25) { c.beginPath(); c.moveTo(X(-11.3), Y(z)); c.lineTo(X(-6.4), Y(z)); c.stroke(); }
-        stone(6.4, 4.9, 11.3, 9.5, '#eef0ea', 'rgba(160,170,150,.35)', 0.9);
+        stone(-RX1, REAR_Z0, -RX0, REAR_Z1, '#dfe4ea', 'rgba(140,150,165,.4)', 0.6);
+        stone(RX0, REAR_Z0, RX1, REAR_Z1, '#e6e9ee', 'rgba(140,150,165,.35)', 0.6);
+        stone(-RX1, MEET_Z0, -RX0, MEET_Z1, '#e8eef4', 'rgba(140,150,165,.3)', 0.7);
+        stone(RX0, MEET_Z0, RX1, MEET_Z1, '#e8eef4', 'rgba(140,150,165,.3)', 0.7);
+        c.fillStyle = '#e2cfa9'; c.fillRect(X(-RX1), Y(FRONT_Z0), X(-RX0) - X(-RX1), Y(FRONT_Z1) - Y(FRONT_Z0));
+        c.strokeStyle = 'rgba(150,115,70,.35)'; c.lineWidth = 2; for (let z = FRONT_Z0; z <= FRONT_Z1 + 0.01; z += 0.25) { c.beginPath(); c.moveTo(X(-RX1), Y(z)); c.lineTo(X(-RX0), Y(z)); c.stroke(); }
+        stone(RX0, FRONT_Z0, RX1, FRONT_Z1, '#eef0ea', 'rgba(160,170,150,.35)', 0.9);
         c.fillStyle = 'rgba(110,140,170,.22)'; for (let z = -4; z < 10.4; z += 1.4) { c.beginPath(); c.moveTo(X(-0.7), Y(z + 0.55)); c.lineTo(X(0), Y(z)); c.lineTo(X(0.7), Y(z + 0.55)); c.lineTo(X(0.7), Y(z + 0.85)); c.lineTo(X(0), Y(z + 0.3)); c.lineTo(X(-0.7), Y(z + 0.85)); c.closePath(); c.fill(); }
         const trace = (pts, col, w) => {
           c.lineJoin = 'miter'; c.lineCap = 'square';
@@ -681,7 +689,8 @@ async function initBuilding() {
         trace([[-1.75, 10.3], [-1.75, -4.75], [-0.9, -4.75]], WH, 3); trace([[1.75, 10.3], [1.75, -4.75], [0.9, -4.75]], LG2, 3);
         for (let i = 0; i < 50; i++) {
           let x = -11 + rnd() * 22, z = -10.4 + rnd() * 20.4;
-          if (Math.abs(x) < 4.8 && z < -4.2 || Math.abs(x) < 2.1 || (Math.abs(x) < 5.6 && z > -4.6 && z < 7.6) || (Math.abs(x) > 6.2 && z > 4.7) || (Math.abs(x) > 6.6 && z < -6.0)) continue;
+          const inSide = Math.abs(x) >= RX0 - 0.15 && Math.abs(x) <= RX1 + 0.15 && ((z >= REAR_Z0 - 0.1 && z <= REAR_Z1 + 0.1) || (z >= MEET_Z0 - 0.1 && z <= MEET_Z1 + 0.1) || (z >= FRONT_Z0 - 0.1 && z <= FRONT_Z1 + 0.1));
+          if ((Math.abs(x) < 4.8 && z < -4.2) || Math.abs(x) < 2.1 || (Math.abs(x) >= WX0 - 0.2 && Math.abs(x) <= WX1 + 0.2 && z >= WZ0 - 0.2 && z <= WZ1 + 0.2) || inSide) continue;
           const pts = [[x, z]];
           for (let k = 0; k < 3; k++) { const d = 0.5 + rnd() * 1.4; if (k % 2) x += (rnd() < 0.5 ? -d : d); else z += (rnd() < 0.5 ? -d : d); pts.push([x, z]); }
           trace(pts, 'rgba(255,255,255,A)', 1.2);
@@ -691,19 +700,21 @@ async function initBuilding() {
         const label = (t, x, z, size, col) => { c.font = `bold ${Math.round(U * size)}px ${SANS}`; c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = U * size * 0.16; c.strokeText(t, X(x), Y(z)); c.fillStyle = col; c.fillText(t, X(x), Y(z)); };
         label('個人側', -3.55, 6.75, 0.62, '#1f5f99'); label('公司側', 3.55, 6.75, 0.62, '#1d6b3c');
         label('PA・Admin・Kobe・Fly・IA', -3.55, 7.4, 0.26, '#2c4a66'); label('CoS・CTO・CPO・CLO・FP&A', 3.55, 7.4, 0.26, '#2c4a66');
-        // 組織架構線（畫在地面）：藍色實線＝直屬上下級（箭頭指向下級）；橘色虛線＝平行協作／稽核
+        // 組織架構線：畫在略高於地面的透明層，幹線外移到椅背外側，避免坐著的人擋住
+        const ov = document.createElement('canvas'); ov.width = ov.height = S;
+        const o = ov.getContext('2d');
         const SOL = '#1b5fae', DSH = '#ff7a14';
         const org = (pts, col, dashed, arrow) => {
-          c.lineJoin = 'round'; c.lineCap = 'round';
-          c.setLineDash([]); c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = U * 0.26; c.beginPath(); pts.forEach(([x, z], i) => (i ? c.lineTo(X(x), Y(z)) : c.moveTo(X(x), Y(z)))); c.stroke();
-          c.setLineDash(dashed ? [U * 0.34, U * 0.2] : []); c.lineCap = dashed ? 'butt' : 'round'; c.strokeStyle = col; c.lineWidth = U * 0.15; c.beginPath(); pts.forEach(([x, z], i) => (i ? c.lineTo(X(x), Y(z)) : c.moveTo(X(x), Y(z)))); c.stroke();
-          c.setLineDash([]);
-          if (arrow) { const [ax, az] = pts[pts.length - 1], [bx, bz] = pts[pts.length - 2], a = Math.atan2(Y(az) - Y(bz), X(ax) - X(bx)), L = U * 0.42, Wd = U * 0.27;
-            c.save(); c.translate(X(ax), Y(az)); c.rotate(a); c.fillStyle = col; c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = U * 0.05;
-            c.beginPath(); c.moveTo(0, 0); c.lineTo(-L, -Wd); c.lineTo(-L, Wd); c.closePath(); c.stroke(); c.fill(); c.restore(); }
+          o.lineJoin = 'round'; o.lineCap = 'round';
+          o.setLineDash([]); o.strokeStyle = 'rgba(255,255,255,.95)'; o.lineWidth = U * 0.30; o.beginPath(); pts.forEach(([x, z], i) => (i ? o.lineTo(X(x), Y(z)) : o.moveTo(X(x), Y(z)))); o.stroke();
+          o.setLineDash(dashed ? [U * 0.34, U * 0.2] : []); o.lineCap = dashed ? 'butt' : 'round'; o.strokeStyle = col; o.lineWidth = U * 0.18; o.beginPath(); pts.forEach(([x, z], i) => (i ? o.lineTo(X(x), Y(z)) : o.moveTo(X(x), Y(z)))); o.stroke();
+          o.setLineDash([]);
+          if (arrow) { const [ax, az] = pts[pts.length - 1], [bx, bz] = pts[pts.length - 2], a = Math.atan2(Y(az) - Y(bz), X(ax) - X(bx)), L = U * 0.46, Wd = U * 0.30;
+            o.save(); o.translate(X(ax), Y(az)); o.rotate(a); o.fillStyle = col; o.strokeStyle = 'rgba(255,255,255,.95)'; o.lineWidth = U * 0.05;
+            o.beginPath(); o.moveTo(0, 0); o.lineTo(-L, -Wd); o.lineTo(-L, Wd); o.closePath(); o.stroke(); o.fill(); o.restore(); }
         };
-        const tag = (t, x, z, col) => { c.font = `bold ${Math.round(U * 0.3)}px ${SANS}`; c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = U * 0.07; c.strokeText(t, X(x), Y(z)); c.fillStyle = col; c.fillText(t, X(x), Y(z)); };
-        const BK = DX + 0.95, TR = DX + 1.55, TR2 = DX + 2.25; // 椅背後方、直屬幹線、稽核虛線幹線
+        const tag = (t, x, z, col) => { o.font = `bold ${Math.round(U * 0.3)}px ${SANS}`; o.strokeStyle = 'rgba(255,255,255,.95)'; o.lineWidth = U * 0.07; o.strokeText(t, X(x), Y(z)); o.fillStyle = col; o.fillText(t, X(x), Y(z)); };
+        const BK = DX + 1.20, TR = DX + 1.95, TR2 = DX + 2.55; // 外移至椅背外側：3.85／4.60／5.20
         for (const sg of [-1, 1]) {
           // Louis → PA／CoS（自指揮台兩端走到主管桌側）
           org([[sg * 1.6, CORE.z], [sg * DX, CORE.z], [sg * DX, RZ[0] - 1.05]], SOL, false, true);
@@ -717,11 +728,14 @@ async function initBuilding() {
         // PA ↔ IA 稽核（外側虛線幹線）；IA ↔ Fly 協作與稽核
         org([[-BK, RZ[0] - 0.5], [-TR2, RZ[0] - 0.5], [-TR2, RZ[4]], [-BK, RZ[4]]], DSH, true, false);
         org([[-(BK + 0.15), RZ[3] + 0.4], [-(BK + 0.15), RZ[4] - 0.4]], DSH, true, false);
-        c.save(); c.translate(X(-TR2 - 0.38), Y((RZ[1] + RZ[2]) / 2)); c.rotate(-Math.PI / 2); c.font = `bold ${Math.round(U * 0.3)}px ${SANS}`; c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = U * 0.07; c.strokeText('PA 稽核 IA', 0, 0); c.fillStyle = '#c25a00'; c.fillText('PA 稽核 IA', 0, 0); c.restore();
+        o.save(); o.translate(X(-TR2 - 0.38), Y((RZ[1] + RZ[2]) / 2)); o.rotate(-Math.PI / 2); o.font = `bold ${Math.round(U * 0.3)}px ${SANS}`; o.strokeStyle = 'rgba(255,255,255,.95)'; o.lineWidth = U * 0.07; o.strokeText('PA 稽核 IA', 0, 0); o.fillStyle = '#c25a00'; o.fillText('PA 稽核 IA', 0, 0); o.restore();
         tag('直屬', -(TR + 0.05), RZ[0] - 0.45, SOL); tag('直屬', TR + 0.05, RZ[0] - 0.45, SOL);
         const tex = canvasTex(cv);
         const fl = new THREE.Mesh(new THREE.PlaneGeometry(23, 21.4), new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.14, roughness: 0.92, metalness: 0 }));
         flat(fl, T0 + 0.001); fl.position.z = -0.2; scene.add(fl);
+        const otex = canvasTex(ov);
+        const orgFl = new THREE.Mesh(new THREE.PlaneGeometry(23, 21.4), new THREE.MeshStandardMaterial({ map: otex, transparent: true, depthWrite: false, roughness: 0.55, metalness: 0, emissive: 0xffffff, emissiveMap: otex, emissiveIntensity: 0.45 }));
+        flat(orgFl, T0 + 0.04); orgFl.position.z = -0.2; orgFl.renderOrder = 3; scene.add(orgFl);
         box(23.2, 0.3, 21.6, M(0xb5c7aa, { roughness: 0.9 }), 0, T0 - 0.151, -0.2, scene);
         box(23.2, 0.03, 0.04, glow(CY, 1.0), 0, T0, 10.52, scene);
         for (const sx of [-1.6, 1.6]) box(0.05, 0.02, 14.8, glow(sx < 0 ? CY : VI, 1.2), sx, T0 + 0.01, 3.0, scene);
@@ -871,17 +885,17 @@ async function initBuilding() {
         }
       }
       for (const [pod, R] of Object.entries(ROOMS)) {
-        const sg = Math.sign(R.x), x0 = R.x - 1.6, x1 = R.x + 1.6, z0 = R.z - 2.0, z1 = R.z + 2.0;
-        const zone = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 4.0), M(0xf3f6f9, { roughness: 0.8 })); flat(zone, T0 + 0.005); zone.position.set(R.x, T0 + 0.005, R.z); scene.add(zone);
+        const sg = Math.sign(R.x), x0 = R.x - RW / 2, x1 = R.x + RW / 2, z0 = R.z - RD / 2, z1 = R.z + RD / 2;
+        const zone = new THREE.Mesh(new THREE.PlaneGeometry(RW, RD), M(0xf3f6f9, { roughness: 0.8 })); flat(zone, T0 + 0.005); zone.position.set(R.x, T0 + 0.005, R.z); scene.add(zone);
         glassRoom(x0, z0, x1, z1, sg < 0 ? 'l' : 'r'); // 靠窗那面不另做玻璃
-        box(1.0, 0.05, 2.5, M(0xe6ebf2, { roughness: 0.3, metalness: 0.2 }), R.x, T0 + 0.75, R.z, scene);
-        box(1.02, 0.015, 2.52, glow(CY, 0.9), R.x, T0 + 0.72, R.z, scene);
-        box(0.3, 0.7, 1.6, M(0xdde5ee, { metalness: 0.5 }), R.x, T0 + 0.37, R.z, scene);
+        box(1.2, 0.05, 2.6, M(0xe6ebf2, { roughness: 0.3, metalness: 0.2 }), R.x, T0 + 0.75, R.z, scene);
+        box(1.22, 0.015, 2.62, glow(CY, 0.9), R.x, T0 + 0.72, R.z, scene);
+        box(0.34, 0.7, 1.7, M(0xdde5ee, { metalness: 0.5 }), R.x, T0 + 0.37, R.z, scene);
         const hg = new THREE.Group(); hg.position.set(R.x, T0 + 1.15, R.z); scene.add(hg);
         hg.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), new THREE.MeshBasicMaterial({ color: 0x5fdcff, wireframe: true, transparent: true, opacity: 0.6 })));
         spin.push(hg);
-        for (const s of [-1, 1]) for (const dz of [-0.85, 0, 0.85]) {
-          const cx = R.x + s * 0.85, ch = new THREE.Group(); ch.position.set(cx, T0, R.z + dz); ch.rotation.y = -s * PI / 2; scene.add(ch);
+        for (const s of [-1, 1]) for (const dz of [-0.90, 0, 0.90]) {
+          const cx = R.x + s * 1.15, ch = new THREE.Group(); ch.position.set(cx, T0, R.z + dz); ch.rotation.y = -s * PI / 2; scene.add(ch);
           box(0.44, 0.06, 0.44, M(0x6fb6e8), 0, 0.46, 0, ch); box(0.42, 0.42, 0.05, M(0x6fb6e8), 0, 0.72, -0.24, ch);
           cyl(0.03, 0.03, 0.42, metal, 0, 0.22, 0, ch, 8);
           MEET_SEATS[pod].push({ type: 'meet', x: cx, z: R.z + dz, yaw: -s * PI / 2, y: T0 });
@@ -898,74 +912,82 @@ async function initBuilding() {
             for (let k = 0; k < 6; k++) { const v = rnd(); c.fillStyle = v < 0.55 ? '#38c8ff' : v < 0.8 ? '#5fe3c0' : v < 0.93 ? '#8b7bff' : '#ffb347'; c.fillRect(14 + k * 12, 18 + r * 36, 6, 6); }
             c.fillStyle = 'rgba(56,200,255,.35)'; c.fillRect(92, 20 + r * 36, 22, 4); } }
         const ledTex = canvasTex(ledCv);
-        // 機房：兩排機櫃，中間冷通道
-        for (const rz of [-8.55, -6.95]) for (let i = 0; i < 5; i++) {
-          const x = -10.6 + i * 0.66;
+
+        // 機房（左後，與專注艙同開間）：兩排機櫃，中間冷通道
+        const SVX0 = -RX1, SVX1 = -RX0, SVCX = -ROOMX, SVCZ = REARZ;
+        for (const rz of [SVCZ - 0.85, SVCZ + 0.85]) for (let i = 0; i < 5; i++) {
+          const x = SVX0 + 0.70 + i * 0.70;
           box(0.62, 2.1, 0.9, M(0x3a4556, { metalness: 0.5, roughness: 0.4 }), x, T0 + 1.05, rz, scene);
           const fm = new THREE.MeshStandardMaterial({ map: ledTex, emissiveMap: ledTex, emissive: 0xffffff, emissiveIntensity: 0.9, roughness: 0.4 });
           for (const sd of [1, -1]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 1.96), fm); f.position.set(x, T0 + 1.05, rz + sd * 0.452); if (sd < 0) f.rotation.y = PI; scene.add(f); }
           box(0.62, 0.03, 0.9, glow(CY, 1.0), x, T0 + 2.11, rz, scene);
           blink.push({ m: fm, ph: rnd() * 6, sp: 1.5 + rnd() * 2 });
         }
-        { const aisle = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.5), new THREE.MeshBasicMaterial({ color: CY, transparent: true, opacity: 0.2 })); flat(aisle, T0 + 0.006); aisle.position.set(-9.3, T0 + 0.006, -7.75); scene.add(aisle); }
-        glassRoom(-11.3, -9.15, -6.8, -6.2, 'l');
-        // 專注艙：兩個玻璃小艙
-        const BOOTH = [8.2, 10.25];
+        { const aisle = new THREE.Mesh(new THREE.PlaneGeometry(RW - 0.8, 0.5), new THREE.MeshBasicMaterial({ color: CY, transparent: true, opacity: 0.2 })); flat(aisle, T0 + 0.006); aisle.position.set(SVCX, T0 + 0.006, SVCZ); scene.add(aisle); }
+        glassRoom(SVX0, REAR_Z0, SVX1, REAR_Z1, 'l');
+
+        // 專注艙（右後，與機房同開間）：同一區內並列兩座玻璃小艙
+        const BOOTH = [ROOMX - 1.05, ROOMX + 1.05];
+        glassRoom(RX0, REAR_Z0, RX1, REAR_Z1, 'r');
         for (const bx of BOOTH) {
-          glassRoom(bx - 0.9, -9.1, bx + 0.9, -6.7, null);
-          box(1.8, 0.05, 2.4, M(0xdde5ee), bx, T0 + 2.42, -7.9, scene);
-          box(1.2, 0.02, 0.06, glow(0xeef6ff, 0.8), bx, T0 + 2.39, -7.9, scene);
-          box(0.6, 0.44, 0.5, M(0x6fb6e8, { roughness: 0.85 }), bx, T0 + 0.22, -8.3, scene); box(0.6, 0.5, 0.12, M(0x6fb6e8), bx, T0 + 0.65, -8.55, scene);
-          box(0.9, 0.04, 0.4, M(0xe6ebf2), bx, T0 + 0.72, -7.45, scene); box(0.04, 0.7, 0.04, metal, bx, T0 + 0.36, -7.45, scene);
+          glassRoom(bx - 0.95, REAR_Z0 + 0.25, bx + 0.95, REAR_Z1 - 0.25, null);
+          box(1.9, 0.05, RD - 0.5, M(0xdde5ee), bx, T0 + 2.42, REARZ, scene);
+          box(1.2, 0.02, 0.06, glow(0xeef6ff, 0.8), bx, T0 + 2.39, REARZ, scene);
+          box(0.6, 0.44, 0.5, M(0x6fb6e8, { roughness: 0.85 }), bx, T0 + 0.22, REARZ - 0.55, scene); box(0.6, 0.5, 0.12, M(0x6fb6e8), bx, T0 + 0.65, REARZ - 0.80, scene);
+          box(0.9, 0.04, 0.4, M(0xe6ebf2), bx, T0 + 0.72, REARZ + 0.55, scene); box(0.04, 0.7, 0.04, metal, bx, T0 + 0.36, REARZ + 0.55, scene);
         }
-        // 咖啡吧（左前）：靠窗吧檯＋兩張高桌
-        const CF = { x: -8.6, z: 6.9 };
-        { box(0.62, 0.92, 3.4, M(0xf6f8fa, { roughness: 0.5 }), -10.85, T0 + 0.46, CF.z, scene);
-          box(0.7, 0.05, 3.5, M(0xc89f6e, { roughness: 0.5 }), -10.85, T0 + 0.945, CF.z, scene);
-          box(0.03, 0.03, 3.4, glow(CY, 1.1), -10.53, T0 + 0.9, CF.z, scene);
-          box(0.42, 0.48, 0.5, M(0x9aa6b8, { metalness: 0.8, roughness: 0.25 }), -10.9, T0 + 1.21, CF.z - 0.9, scene);
-          box(0.01, 0.1, 0.2, glow(CY, 1.4), -10.68, T0 + 1.3, CF.z - 0.9, scene);
-          for (const dz of [0.1, 0.32, 0.54]) cyl(0.04, 0.035, 0.09, M(0xf4f6f8), -10.8, T0 + 1.015, CF.z + dz, scene, 10);
+
+        // 咖啡吧（左前，與休息區同開間）：靠窗吧檯＋兩張高桌
+        const CF = { x: -ROOMX, z: FRONTZ };
+        { box(0.62, 0.92, 2.9, M(0xf6f8fa, { roughness: 0.5 }), -RX1 + 0.35, T0 + 0.46, CF.z, scene);
+          box(0.7, 0.05, 3.0, M(0xc89f6e, { roughness: 0.5 }), -RX1 + 0.35, T0 + 0.945, CF.z, scene);
+          box(0.03, 0.03, 2.9, glow(CY, 1.1), -RX1 + 0.67, T0 + 0.9, CF.z, scene);
+          box(0.42, 0.48, 0.5, M(0x9aa6b8, { metalness: 0.8, roughness: 0.25 }), -RX1 + 0.30, T0 + 1.21, CF.z - 0.8, scene);
+          box(0.01, 0.1, 0.2, glow(CY, 1.4), -RX1 + 0.52, T0 + 1.3, CF.z - 0.8, scene);
+          for (const dz of [0.1, 0.32, 0.54]) cyl(0.04, 0.035, 0.09, M(0xf4f6f8), -RX1 + 0.40, T0 + 1.015, CF.z + dz, scene, 10);
           const mc = document.createElement('canvas'); mc.width = 512; mc.height = 256; const c = mc.getContext('2d');
           c.fillStyle = '#071226'; c.fillRect(0, 0, 512, 256); c.strokeStyle = '#38c8ff'; c.lineWidth = 6; c.strokeRect(6, 6, 500, 244);
           c.fillStyle = '#eaf4ff'; c.textAlign = 'center'; c.font = `bold 64px ${SANS}`; c.fillText('咖啡吧', 256, 100); c.font = `38px ${SANS}`; c.fillStyle = '#7fe0ff'; c.fillText('美式・拿鐵・冷萃', 256, 180);
           const mt = canvasTex(mc); const ms = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.65), new THREE.MeshStandardMaterial({ map: mt, emissiveMap: mt, emissive: 0xffffff, emissiveIntensity: 0.85 }));
-          ms.position.set(-11.36, T0 + 1.9, CF.z + 0.6); ms.rotation.y = PI / 2; scene.add(ms);
-          for (const [x, z] of [[-8.9, 6.3], [-7.4, 7.9]]) {
+          ms.position.set(-RX1 + 0.04, T0 + 1.9, CF.z + 0.4); ms.rotation.y = PI / 2; scene.add(ms);
+          for (const [x, z] of [[-ROOMX - 0.15, FRONTZ - 0.55], [-ROOMX + 1.15, FRONTZ + 0.7]]) {
             box(0.9, 0.04, 0.6, M(0xeef2f7, { roughness: 0.3 }), x, T0 + 1.05, z, scene);
             box(0.92, 0.012, 0.62, glow(CY, 0.9), x, T0 + 1.03, z, scene);
             box(0.05, 1.03, 0.05, metal, x, T0 + 0.52, z, scene); box(0.5, 0.03, 0.4, M(0x2a3346), x, T0 + 0.015, z, scene);
             cyl(0.035, 0.03, 0.09, M(0xf4f6f8), x + 0.15, T0 + 1.115, z, scene, 10);
           } }
-        // 休息區（右前）
-        const LG = { x: 8.6, z: 6.9 };
+
+        // 休息區（右前，與咖啡吧同開間）
+        const LG = { x: ROOMX, z: FRONTZ };
         { const sofa = M(0x6fb6e8, { roughness: 0.85 }), cush = M(0xf6f8fa, { roughness: 0.9 });
-          box(2.6, 0.38, 0.8, sofa, LG.x - 0.1, T0 + 0.19, LG.z - 1.2, scene); box(2.6, 0.56, 0.2, sofa, LG.x - 0.1, T0 + 0.6, LG.z - 1.55, scene);
-          for (const dx of [-0.75, 0.45]) box(1.1, 0.08, 0.66, cush, LG.x + dx - 0.1, T0 + 0.42, LG.z - 1.15, scene);
-          box(0.8, 0.38, 2.0, sofa, LG.x + 2.15, T0 + 0.19, LG.z + 0.2, scene); box(0.2, 0.56, 2.0, sofa, LG.x + 2.5, T0 + 0.6, LG.z + 0.2, scene);
-          box(0.66, 0.08, 1.8, cush, LG.x + 2.12, T0 + 0.42, LG.z + 0.2, scene);
-          box(1.2, 0.04, 0.66, glass(0.4, 0xbfe9ff), LG.x - 0.1, T0 + 0.38, LG.z + 0.05, scene); box(1.1, 0.36, 0.54, M(0xe9eef3), LG.x - 0.1, T0 + 0.18, LG.z + 0.05, scene);
-          box(1.22, 0.012, 0.68, glow(VI, 0.8), LG.x - 0.1, T0 + 0.355, LG.z + 0.05, scene);
-          for (const [x, z] of [[LG.x - 1.9, LG.z - 1.6], [LG.x + 2.4, LG.z - 1.6], [LG.x - 1.9, LG.z + 2.1]]) {
+          box(2.4, 0.38, 0.75, sofa, LG.x - 0.15, T0 + 0.19, LG.z - 0.95, scene); box(2.4, 0.56, 0.2, sofa, LG.x - 0.15, T0 + 0.6, LG.z - 1.28, scene);
+          for (const dx of [-0.7, 0.4]) box(1.05, 0.08, 0.62, cush, LG.x + dx - 0.15, T0 + 0.42, LG.z - 0.90, scene);
+          box(0.75, 0.38, 1.8, sofa, LG.x + 1.70, T0 + 0.19, LG.z + 0.35, scene); box(0.2, 0.56, 1.8, sofa, LG.x + 2.02, T0 + 0.6, LG.z + 0.35, scene);
+          box(0.62, 0.08, 1.6, cush, LG.x + 1.68, T0 + 0.42, LG.z + 0.35, scene);
+          box(1.1, 0.04, 0.62, glass(0.4, 0xbfe9ff), LG.x - 0.15, T0 + 0.38, LG.z + 0.2, scene); box(1.0, 0.36, 0.50, M(0xe9eef3), LG.x - 0.15, T0 + 0.18, LG.z + 0.2, scene);
+          box(1.12, 0.012, 0.64, glow(VI, 0.8), LG.x - 0.15, T0 + 0.355, LG.z + 0.2, scene);
+          for (const [x, z] of [[LG.x - 1.7, LG.z - 1.35], [LG.x + 1.85, LG.z - 1.35], [LG.x - 1.7, LG.z + 1.45]]) {
             box(0.4, 0.42, 0.4, M(0xe6ebf2, { roughness: 0.4 }), x, T0 + 0.21, z, scene);
-            const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 1), M(0x2f8a6a, { roughness: 0.8, flatShading: true })); f.position.set(x, T0 + 0.85, z); scene.add(f);
+            const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), M(0x2f8a6a, { roughness: 0.8, flatShading: true })); f.position.set(x, T0 + 0.80, z); scene.add(f);
           } }
-        cornerSign('機房', -8.8, -6.2, 2.8); cornerSign('專注艙', 9.2, -6.7, 2.8); cornerSign('咖啡吧', -6.95, 9.15, 0.95); cornerSign('休息區', 6.95, 9.15, 0.95);
+        cornerSign('機房', -RX0 - 0.15, REAR_Z1 + 0.15, 2.6); cornerSign('專注艙', RX0 + 0.15, REAR_Z1 + 0.15, 2.6);
+        cornerSign('咖啡吧', -RX0 - 0.15, FRONT_Z1 - 0.15, 0.95); cornerSign('休息區', RX0 + 0.15, FRONT_Z1 - 0.15, 0.95);
         const y = T0, P2 = (x, z) => ({ x, z });
         return [
-          { id: 'walk-aisle-a', type: 'patrol', label: '散步', p0: P2(-0.55, 8.6), p1: P2(-0.55, -3.4), sp: 0.16, off: 0, y },
-          { id: 'coffee-1', type: 'coffee', x: -9.45, z: 6.3, yaw: PI / 2, y, label: '喝咖啡' },
-          { id: 'lounge-1', type: 'read', x: LG.x - 0.85, z: LG.z - 1.1, yaw: 0, y, label: '休息區小憩' },
-          { id: 'server-1', type: 'patrol', label: '巡視機房', p0: P2(-10.6, -7.75), p1: P2(-7.6, -7.75), sp: 0.35, off: 0, y },
-          { id: 'booth-1', type: 'read', x: BOOTH[0], z: -8.25, yaw: 0, y, label: '專注艙' },
-          { id: 'coffee-2', type: 'coffee', x: -8.35, z: 6.3, yaw: -PI / 2, y, label: '喝咖啡' },
-          { id: 'lounge-2', type: 'read', x: LG.x + 0.35, z: LG.z - 1.1, yaw: 0, y, label: '休息區小憩' },
-          { id: 'walk-front', type: 'patrol', label: '散步', p0: P2(-5.2, 6.2), p1: P2(5.2, 6.2), sp: 0.12, off: 0, y },
-          { id: 'walk-aisle-b', type: 'patrol', label: '散步', p0: P2(0.55, -3.4), p1: P2(0.55, 8.6), sp: 0.16, off: PI * 0.6, y },
-          { id: 'coffee-3', type: 'coffee', x: -6.85, z: 7.9, yaw: -PI / 2, y, label: '喝咖啡' },
-          { id: 'lounge-3', type: 'read', x: LG.x + 2.12, z: LG.z + 0.55, yaw: -PI / 2, y, label: '休息區小憩' },
-          { id: 'booth-2', type: 'read', x: BOOTH[1], z: -8.25, yaw: 0, y, label: '專注艙' },
-          { id: 'server-2', type: 'patrol', label: '巡視機房', p0: P2(-10.6, -7.75), p1: P2(-7.6, -7.75), sp: 0.35, off: PI, y },
+          { id: 'walk-aisle-a', type: 'patrol', label: '散步', p0: P2(-0.55, 8.6), p1: P2(-0.55, -3.4), sp: 0.16, off: 0, y, side: 'L' },
+          { id: 'coffee-1', type: 'coffee', x: -ROOMX - 0.55, z: FRONTZ - 0.55, yaw: PI / 2, y, label: '喝咖啡', side: 'L' },
+          { id: 'lounge-1', type: 'read', x: LG.x - 0.75, z: LG.z - 0.85, yaw: 0, y, label: '休息區小憩', side: 'R' },
+          { id: 'server-1', type: 'patrol', label: '巡視機房', p0: P2(SVX0 + 0.5, SVCZ), p1: P2(SVX1 - 0.5, SVCZ), sp: 0.35, off: 0, y, side: 'L' },
+          { id: 'booth-1', type: 'read', x: BOOTH[0], z: REARZ - 0.2, yaw: 0, y, label: '專注艙', side: 'R' },
+          { id: 'coffee-2', type: 'coffee', x: -ROOMX + 0.55, z: FRONTZ - 0.55, yaw: -PI / 2, y, label: '喝咖啡', side: 'L' },
+          { id: 'lounge-2', type: 'read', x: LG.x + 0.35, z: LG.z - 0.85, yaw: 0, y, label: '休息區小憩', side: 'R' },
+          { id: 'walk-front-l', type: 'patrol', label: '散步', p0: P2(-5.2, 6.2), p1: P2(-1.9, 6.2), sp: 0.12, off: 0, y, side: 'L' },
+          { id: 'walk-aisle-b', type: 'patrol', label: '散步', p0: P2(0.55, -3.4), p1: P2(0.55, 8.6), sp: 0.16, off: PI * 0.6, y, side: 'R' },
+          { id: 'coffee-3', type: 'coffee', x: -ROOMX + 1.15, z: FRONTZ + 0.7, yaw: -PI / 2, y, label: '喝咖啡', side: 'L' },
+          { id: 'lounge-3', type: 'read', x: LG.x + 1.68, z: LG.z + 0.55, yaw: -PI / 2, y, label: '休息區小憩', side: 'R' },
+          { id: 'booth-2', type: 'read', x: BOOTH[1], z: REARZ - 0.2, yaw: 0, y, label: '專注艙', side: 'R' },
+          { id: 'server-2', type: 'patrol', label: '巡視機房', p0: P2(SVX0 + 0.5, SVCZ), p1: P2(SVX1 - 0.5, SVCZ), sp: 0.35, off: PI, y, side: 'L' },
+          { id: 'walk-front-r', type: 'patrol', label: '散步', p0: P2(1.9, 6.2), p1: P2(5.2, 6.2), sp: 0.12, off: 0, y, side: 'R' },
         ];
       }
 
@@ -1511,9 +1533,12 @@ async function initBuilding() {
     function assignActivities() {
       const idle = desks.map((d) => d.f.id).filter((id) => !meetingOf(id) && hasRecord(id) && !isWorking(person(id))).sort();
       const taken = new Set(), map = {};
+      const LEFT = new Set(['pa', 'admin', 'kobe', 'fly', 'ia']);
       for (const id of idle) {
-        const i = hashId(id) % SLOTS.length;
-        for (let n = 0; n < SLOTS.length; n++) { const s = SLOTS[(i + n) % SLOTS.length]; if (!taken.has(s.id)) { taken.add(s.id); map[id] = s; break; } }
+        const pool = SLOTS.filter((s) => s.side === (LEFT.has(id) ? 'L' : 'R'));
+        const src = pool.length ? pool : SLOTS;
+        const i = hashId(id) % src.length;
+        for (let n = 0; n < src.length; n++) { const s = src[(i + n) % src.length]; if (!taken.has(s.id)) { taken.add(s.id); map[id] = s; break; } }
       }
       return map;
     }
@@ -1655,6 +1680,7 @@ async function initBuilding() {
       if (wasNarrow !== narrow) update();
     }
     let mode = new URLSearchParams(location.search).get('look') === 'board' ? 'board' : 'all';
+    syncOrgKey();
     let fly = null;
     const boardCenter = new THREE.Vector3(BOARD.x, BOARD.y, BOARD.z);
     new ResizeObserver(resize).observe(el); resize();
@@ -1727,8 +1753,9 @@ async function initBuilding() {
       }
     }
     function flyTo(vw) { fly = { t0: performance.now(), from: camera.position.clone(), to: new THREE.Vector3(...vw.pos), tf: controls.target.clone(), tt: new THREE.Vector3(...vw.tgt) }; }
-    function focusBoard() { mode = 'board'; stopSpin(); flyTo(boardView()); }
-    function focusAll() { mode = 'all'; flyTo(VIEW_ALL()); }
+    function syncOrgKey() { const wrap = $('#building-wrap'); if (wrap) wrap.classList.toggle('board-on', mode === 'board'); }
+    function focusBoard() { mode = 'board'; syncOrgKey(); stopSpin(); flyTo(boardView()); }
+    function focusAll() { mode = 'all'; syncOrgKey(); flyTo(VIEW_ALL()); }
     (function loop(t) {
       const now = performance.now(), sec = t * 0.001;
       if (fly) { const k = Math.min(1, (now - fly.t0) / 1300), e = k * k * (3 - 2 * k); camera.position.lerpVectors(fly.from, fly.to, e); controls.target.lerpVectors(fly.tf, fly.tt, e); if (k >= 1) fly = null; }
