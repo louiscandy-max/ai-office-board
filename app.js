@@ -309,21 +309,43 @@ function alertList() {
   return out;
 }
 
-/** 合併：夜間底稿 ← Air 即時 ← 助理即時；每人以較新時間戳為準，記錄來源 _src 與時間 _ts。 */
+/** 同時接受 people 陣列或 {id: {...}} 物件。 */
+function peopleList(src) {
+  const p = src && src.people;
+  if (Array.isArray(p)) return p.filter((x) => x && (x.id || x.id === 0));
+  if (p && typeof p === 'object') {
+    return Object.entries(p).flatMap(([id, v]) => {
+      if (!v || typeof v !== 'object') return [];
+      const rec = { ...v, id: v.id || id };
+      return rec.id ? [rec] : [];
+    });
+  }
+  return [];
+}
+
+/** 合併：夜間底稿 ← Air 即時 ← 助理即時；每人以較新的「個人」updated_at 為準。
+ *  夜間底稿常只有檔案級 updated_at、每人沒有自己的時間戳，不可因此蓋掉即時狀態。 */
 function mergeAll() {
   const d = plains.data || {};
   const out = { updated_at: d.updated_at, people: [], meetings: Array.isArray(d.meetings) ? d.meetings : [], louis_active: d.louis_active || null };
   const by = {};
-  for (const p of arr(d, 'people')) if (p && p.id) { by[p.id] = { ...p, _src: 'data', _ts: p.updated_at || d.updated_at }; }
+  for (const p of peopleList(d)) if (p && p.id) { by[p.id] = { ...p, _src: 'data', _ts: p.updated_at || d.updated_at, _personTs: !!p.updated_at }; }
   usage = { hermes: null, grok: null };
   for (const n of ['live', 'agents']) {
     const L = plains[n]; if (!L) continue;
-    for (const lp of arr(L, 'people')) {
+    for (const lp of peopleList(L)) {
       if (!lp || !lp.id) continue;
+      const personTs = !!lp.updated_at;
       const ts = lp.updated_at || L.updated_at, cur = by[lp.id];
-      const a = stampMs(ts), b = cur ? stampMs(cur._ts) : null;
-      if (cur && b != null && (a == null || a < b)) continue;
-      const m = { ...(cur || {}), id: lp.id, _src: n, _ts: ts };
+      if (cur && !(cur._src === 'data' && !cur._personTs)) {
+        // 底稿只有檔案時間時，不得蓋掉即時紀錄；雙方都有個人時間戳才比新舊。
+        if (cur._personTs && !personTs) continue;
+        if (cur._personTs === personTs) {
+          const a = stampMs(ts), b = stampMs(cur._ts);
+          if (b != null && (a == null || a < b)) continue;
+        }
+      }
+      const m = { ...(cur || {}), id: lp.id, _src: n, _ts: ts, _personTs: personTs };
       for (const k of ['doing', 'waiting_on_louis', 'tasks', 'name']) if (k in lp) m[k] = lp[k];
       by[lp.id] = m;
     }
@@ -335,7 +357,7 @@ function mergeAll() {
     if (L.usage && L.usage.grok) usage.grok = L.usage.grok;
     if (stampMs(L.updated_at) > (stampMs(out.updated_at) || 0)) out.updated_at = L.updated_at;
   }
-  out.people = Object.values(by);
+  out.people = Object.values(by).map(({ _personTs, ...rest }) => rest);
   directory = plains.directory || null;
   return out;
 }
