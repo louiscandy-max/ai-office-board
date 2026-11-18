@@ -51,9 +51,15 @@ function fmtTaipei(iso, withDate = true) {
   const p = Object.fromEntries(new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d).map((x) => [x.type, x.value]));
   return withDate ? `${p.month}/${p.day} ${p.hour}:${p.minute}` : `${p.hour}:${p.minute}`;
 }
+let lastDataIso = null;
 function setUpdated(iso) {
-  const t = fmtTaipei(iso);
-  $('#updated').textContent = t ? `資料更新於 ${t}（台北時間）` : `資料更新於：${NO_DATA}`;
+  lastDataIso = iso || null;
+  const d = iso ? new Date(iso) : null;
+  if (!d || isNaN(d)) { $('#updated').textContent = `資料更新於：${NO_DATA}`; return; }
+  const t = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(d);
+  const m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+  const rel = m < 1 ? '剛剛' : m < 60 ? `${m} 分鐘前` : `${Math.floor(m / 60)} 小時 ${m % 60} 分前`;
+  $('#updated').textContent = `資料更新於 ${t}（台北時間・${rel}最後一次狀態變更）`;
 }
 const setStatus = (m) => { $('#status').textContent = m || ''; };
 
@@ -258,7 +264,7 @@ function stampMs(s) {
 const SRC_LABEL = { data: '夜間底稿', live: 'Air 即時', agents: '助理即時' };
 const FILES = ['data', 'live', 'agents', 'directory'];
 const REPO = 'louiscandy-max/ai-office-board';
-const POLL_MS = 30000;
+const POLL_MS = 10000; // 2026-11-18 即時修正：10 秒檢查（Pages 同源，無 API 額度問題）
 let pass = null, lastCheck = null, pollTimer = null, polling = false;
 const encs = {}, plains = {}, fetchState = {};
 let directory = null;
@@ -372,30 +378,50 @@ function applyData(data) {
 }
 function noData(msg) { people = null; meetings = []; louisActive = null; usage = { hermes: null, grok: null }; setUpdated(null); setStatus(msg); render(); }
 
-/** 取得 main 最新 commit（API 以 ETag 重新驗證，304 不計入額度），再以 commit 固定網址讀 raw，避開 CDN 約 5 分鐘快取。 */
+/** 2026-11-18 即時修正（根因：raw.githubusercontent.com/main 會忽略 ?t= 快取最多 5 分鐘；
+ *  api.github.com 未登入每小時只有 60 次，30 秒一次輪詢半小時就被擋，退回 raw/main 拿到舊檔）。
+ *  現在：主來源＝本站 GitHub Pages 同源檔（?t= 不快取，推送後約 25 秒更新）；
+ *  輔助＝API 取 commit（最多 2 分鐘一次、被限流就等到重設）後讀 raw/<sha>（不會舊）。
+ *  兩邊都抓，取信封 updated_at 最新的一份；raw/main 只在兩者都失敗時當最後備援。 */
+const API_EVERY_MS = 120000;
+let apiSha = null, apiNextAt = 0;
 async function headSha() {
+  if (Date.now() < apiNextAt) return apiSha;
+  apiNextAt = Date.now() + API_EVERY_MS;
   try {
     const r = await fetch(`https://api.github.com/repos/${REPO}/commits/main`, { cache: 'no-cache', headers: { Accept: 'application/vnd.github.sha' } });
-    if (r.ok) { const t = (await r.text()).trim(); if (/^[0-9a-f]{40}$/.test(t)) return t; }
-  } catch (e) { /* 改用備援 */ }
-  return null;
+    if (r.ok) { const t = (await r.text()).trim(); if (/^[0-9a-f]{40}$/.test(t)) apiSha = t; }
+    else if (r.status === 403 || r.status === 429) {
+      const reset = Number(r.headers.get('X-RateLimit-Reset'));
+      if (Number.isFinite(reset) && reset > 0) apiNextAt = Math.max(apiNextAt, reset * 1000 + 1000);
+      else apiNextAt = Date.now() + 15 * 60000;
+    }
+  } catch (e) { /* 只靠 Pages */ }
+  return apiSha;
+}
+async function getEnc(u, noStore) {
+  try {
+    const r = await fetch(u, { cache: noStore ? 'no-store' : 'default' });
+    if (r.status === 404) return { state: 'missing' };
+    if (!r.ok) return { state: 'error' };
+    const j = await r.json();
+    return j && j.ct ? { state: 'ok', json: j } : { state: 'error' };
+  } catch (e) { return { state: 'error' }; }
 }
 async function fetchEnc(name, sha) {
   const t = Date.now();
-  const urls = [];
-  if (sha) urls.push(`https://raw.githubusercontent.com/${REPO}/${sha}/${name}.enc.json`);
-  urls.push(`https://raw.githubusercontent.com/${REPO}/main/${name}.enc.json?t=${t}`, `${name}.enc.json?t=${t}`);
-  let missing = false;
-  for (const u of urls) {
-    try {
-      const r = await fetch(u, { cache: u.includes('?t=') ? 'no-store' : 'default' });
-      if (r.status === 404) { missing = true; continue; }
-      if (!r.ok) continue;
-      const j = await r.json();
-      if (j && j.ct) return { state: 'ok', json: j };
-    } catch (e) { /* 下一個來源 */ }
+  const cands = [getEnc(`${name}.enc.json?t=${t}`, true)];
+  if (sha) cands.push(getEnc(`https://raw.githubusercontent.com/${REPO}/${sha}/${name}.enc.json`, false));
+  const res = await Promise.all(cands);
+  let best = null;
+  for (const r of res) {
+    if (r.state !== 'ok') continue;
+    if (!best || (stampMs(r.json.updated_at) || 0) > (stampMs(best.json.updated_at) || 0)) best = r;
   }
-  return { state: missing ? 'missing' : 'error' };
+  if (best) return best;
+  const last = await getEnc(`https://raw.githubusercontent.com/${REPO}/main/${name}.enc.json?t=${t}`, true);
+  if (last.state === 'ok') return last;
+  return { state: res.every((r) => r.state === 'missing') ? 'missing' : 'error' };
 }
 
 async function poll(force) {
@@ -423,7 +449,7 @@ function updateLive() {
   const el = $('#live'); if (!el) return;
   const bad = ['data', 'live', 'agents'].some((n) => fetchState[n] === 'error');
   el.className = `live ${!pass ? 'off' : bad ? 'warn' : 'on'}`;
-  $('#live-text').textContent = !pass ? '尚未解鎖' : `即時更新中・每 30 秒檢查・上次 ${lastCheck ? new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(lastCheck) : '—'}`;
+  $('#live-text').textContent = !pass ? '尚未解鎖' : `即時更新中・每 10 秒檢查・上次 ${lastCheck ? new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(lastCheck) : '—'}`;
 }
 function lockOut(msg) {
   pass = null; if (pollTimer) clearInterval(pollTimer); pollTimer = null;
@@ -488,7 +514,7 @@ if (IS_B) {
   const bw = $('#building'); if (bw) bw.setAttribute('aria-label', '三維 AI 科技公司辦公區總覽');
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && pass) poll(false); });
-setInterval(() => { if (pass && people) render(); }, 60000);
+setInterval(() => { if (pass && people) { render(); setUpdated(lastDataIso); } }, 60000);
 
 // ---------- 三維太極辦公層（同一層、圓形對稱） ----------
 // 左半為陽（個人側），右半為陰（公司側）；中央為 Louis 主位（太極核心），後方為全員即時看板牆。
