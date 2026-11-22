@@ -1,18 +1,20 @@
 // AI 辦公樓看板：前端只讀取加密資料檔，於瀏覽器端以通關密語解密。
 // 性別（Louis 2026-11-15 指定）：只有 CTO 與 Louis 為男性，其餘助理（PA、CoS、CLO、CPO、FP&A、IA、Admin、Kobe、Fly）皆為女性。
 // Louis 不再以站立人物呈現，改為中央「主位」太極核心，顯示最後來訊時間。
+// 組織、職稱與線條依《AI 團隊架構協議 2.6.4 定稿》（版本代碼 261122223000）。
+const PROTOCOL = '2.6.4 定稿 261122223000';
 const FLOORS = [
   { id: 'louis', g: 'm', name: 'Louis（總經理）', color: 0xb8995a },
-  { id: 'pa', g: 'f',  name: 'Sr. PA Ai（私人資深特助）', color: 0x5f9e8a },
+  { id: 'pa', g: 'f',  name: 'Sr. PA Ai（私人線主要 Bot）', color: 0x5f9e8a },
   { id: 'cos', g: 'f', name: 'CoS Ai（幕僚長）', color: 0xb8995a },
-  { id: 'clo', g: 'f', name: 'CLO Ai（法務）', color: 0x6b7f99 },
-  { id: 'cto', g: 'm', name: 'CTO Ai（技術長）', color: 0x3f6f8f },
-  { id: 'cpo', g: 'f', name: 'CPO Ai（採購長）', color: 0x8a6a4a },
-  { id: 'fpa', g: 'f', name: 'Sr. FP&A Analyst Ai（財務規劃）', color: 0x9a8a3a },
-  { id: 'ia', g: 'f',  name: 'Sr. IA Ai（投資分析師）', color: 0xb5443a },
-  { id: 'admin', g: 'f', name: 'Admin（特殊小組・Air 執行維運）', color: 0x4f7f6a },
-  { id: 'kobe', g: 'f', name: 'Ai Kobe（特殊小組・個人事務）', color: 0xa0524a },
-  { id: 'fly', g: 'f', name: 'Ai Fly（特殊小組・碳酸鋰預測）', color: 0xc9a13a },
+  { id: 'clo', g: 'f', name: 'CLO Ai（合約）', color: 0x6b7f99 },
+  { id: 'cto', g: 'm', name: 'CTO Ai（規格與數量）', color: 0x3f6f8f },
+  { id: 'cpo', g: 'f', name: 'CPO Ai（報價與成本）', color: 0x8a6a4a },
+  { id: 'fpa', g: 'f', name: 'FP&A Ai（資金與公司利益）', color: 0x9a8a3a },
+  { id: 'ia', g: 'f',  name: 'Sr. IA Ai（投資與金融稽核）', color: 0xb5443a },
+  { id: 'admin', g: 'f', name: 'Admin（特殊小組・Hermes Agent 系統維護）', color: 0x4f7f6a },
+  { id: 'kobe', g: 'f', name: 'Kobe（特殊小組・私人優先）', color: 0xa0524a },
+  { id: 'fly', g: 'f', name: 'Fly（特殊小組・公司任務為主）', color: 0xc9a13a },
 ];
 // 模板：A＝太極（預設）、B＝AI 科技公司。網址 ?theme=A|B 優先，其次本機記住的選擇。
 const THEME_KEY = 'aiOfficeBoard.theme';
@@ -508,23 +510,23 @@ for (const [btnId, t] of [['#theme-a', 'A'], ['#theme-b', 'B']]) {
 }
 if (IS_B) {
   const lg = $('.legend');
-  if (lg) lg.innerHTML = '藍天綠地 AI 科技開放式辦公：<b>中央走道</b> 直通後牆嵌入式全員看板，盡頭是 <b>總經理指揮台</b>（Louis 最後來訊時間，一小時內有來訊即發光）<br><b>走道左側</b> 個人側：PA、Admin、Kobe、Fly、IA｜<b>走道右側</b> 公司側：CoS、CTO、CPO、CLO、FP&amp;A（兩側面對面、朝向走道）<br>兩側玻璃會議室（左＝個人側、右＝公司側）・機房・專注艙・咖啡吧・休息區｜<b>藍色實線</b>：直屬上下級（箭頭指向下級）｜<b>橘色虛線</b>：平行協作／稽核';
+  if (lg) lg.innerHTML = '藍天綠地 AI 科技開放式辦公：<b>中央走道</b> 直通後牆嵌入式全員看板，盡頭是 <b>總經理指揮台</b>（Louis 最後來訊時間，一小時內有來訊即發光）<br><b>走道左側</b> 私人線：PA、特殊小組（Admin、Kobe、Fly）、IA｜<b>走道右側</b> 公司線：CoS、CTO、CPO、CLO、FP&amp;A（兩側面對面、朝向走道）<br>兩側玻璃會議室（左＝私人線、右＝公司線）・機房・專注艙・咖啡吧・休息區｜<b>藍色實線</b>：直屬上下級（箭頭指向下級）｜<b>橘色虛線</b>：平行、稽核、確認（PA 與 CoS 平行；特殊小組金融性產出交 IA 稽核；IA 報告由 PA 審核；CoS 協調、經 PA 同意由 Fly 支援公司任務）<br>依《AI 團隊架構協議 ' + PROTOCOL + '》';
   const wrap = $('#building-wrap');
-  if (wrap && !$('.org-key')) { const k = document.createElement('div'); k.className = 'org-key'; k.innerHTML = '<b>組織架構</b><span><i class="k-sol"></i>實線＝直屬上下級</span><span><i class="k-dsh"></i>虛線＝平行協作／稽核</span>'; wrap.appendChild(k); }
+  if (wrap && !$('.org-key')) { const k = document.createElement('div'); k.className = 'org-key'; k.innerHTML = '<b>組織架構</b><span><i class="k-sol"></i>實線＝直屬上下級</span><span><i class="k-dsh"></i>虛線＝平行、稽核、確認</span><span>協議 ' + PROTOCOL + '</span>'; wrap.appendChild(k); }
   const bw = $('#building'); if (bw) bw.setAttribute('aria-label', '三維 AI 科技公司辦公區總覽');
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && pass) poll(false); });
 setInterval(() => { if (pass && people) { render(); setUpdated(lastDataIso); } }, 60000);
 
 // ---------- 三維太極辦公層（同一層、圓形對稱） ----------
-// 左半為陽（個人側），右半為陰（公司側）；中央為 Louis 主位（太極核心），後方為全員即時看板牆。
+// 左半為陽（私人線），右半為陰（公司線）；中央為 Louis 主位（太極核心），後方為全員即時看板牆。
 const CZ = 0.2;          // 圓心 z
 const RING_R = 5.7;      // 工位所在圓半徑
 const PLAT_R = 7.6;      // 圓形平台半徑
 const SEAT_DEG = { ia: -28, pa: -62, admin: -98, kobe: -131, fly: -163, clo: 28, cos: 62, cto: 98, cpo: 131, fpa: 163 };
 const TAG = {
-  louis: ['Louis', '總經理'], pa: ['PA', '私人特助'], cos: ['CoS', '幕僚長'], clo: ['CLO', '法務'], cto: ['CTO', '技術長'],
-  cpo: ['CPO', '採購長'], fpa: ['FP&A', '財務規劃'], ia: ['IA', '投資分析'], admin: ['Admin', '執行維運'], kobe: ['Kobe', '個人事務'], fly: ['Fly', '碳酸鋰預測'],
+  louis: ['Louis', '總經理'], pa: ['PA', '私人線主要 Bot'], cos: ['CoS', '幕僚長'], clo: ['CLO', '合約'], cto: ['CTO', '規格與數量'],
+  cpo: ['CPO', '報價與成本'], fpa: ['FP&A', '資金與公司利益'], ia: ['IA', '投資與金融稽核'], admin: ['Admin', '系統維護'], kobe: ['Kobe', '私人優先'], fly: ['Fly', '公司任務為主'],
 };
 const PERSONAL = new Set(['pa', 'ia', 'admin', 'kobe', 'fly']);
 const INK = 0x2f2d2a, PAPER = 0xf1ede4, GOLD = 0xb8995a, JADE = 0x5f9e8a, CINNABAR = 0xb5443a;
@@ -673,7 +675,7 @@ async function initBuilding() {
       const ROOMX = (RX0 + RX1) / 2, FRONTZ = (FRONT_Z0 + FRONT_Z1) / 2;
       const MEET_LZ = (MEET_L_Z0 + MEET_L_Z1) / 2, MEET_RZ = (MEET_R_Z0 + MEET_R_Z1) / 2;
       const BOOTHZ = (BOOTH_Z0 + BOOTH_Z1) / 2, REARZ = (SVZ0 + SVZ1) / 2, SVCX = (SVX0 + SVX1) / 2;
-      const ROOMS = { left: { x: -ROOMX, z: MEET_LZ, name: '個人側會議室' }, right: { x: ROOMX, z: MEET_RZ, name: '公司側會議室' } };
+      const ROOMS = { left: { x: -ROOMX, z: MEET_LZ, name: '私人線會議室' }, right: { x: ROOMX, z: MEET_RZ, name: '公司線會議室' } };
 
       // 天空：藍天漸層背景＋緩慢飄動的白雲
       const clouds = [];
@@ -769,7 +771,7 @@ async function initBuilding() {
         c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
         const label = (t, x, z, size, col) => { c.font = `bold ${Math.round(U * size)}px ${SANS}`; c.strokeStyle = 'rgba(255,255,255,.95)'; c.lineWidth = U * size * 0.16; c.strokeText(t, X(x), Y(z)); c.fillStyle = col; c.fillText(t, X(x), Y(z)); };
         label('入口', 0, 16.55, 0.58, '#1d4a2e');
-        label('個人側', -4.40, 7.45, 0.62, '#1f5f99'); label('公司側', 4.40, 7.45, 0.62, '#1d6b3c');
+        label('私人線', -4.40, 7.45, 0.62, '#1f5f99'); label('公司線', 4.40, 7.45, 0.62, '#1d6b3c');
         label('PA・Admin・Kobe・Fly・IA', -4.40, 8.10, 0.26, '#2c4a66'); label('CoS・CTO・CPO・CLO・FP&A', 4.40, 8.10, 0.26, '#2c4a66');
         // 組織架構線：畫在略高於地面的透明層，幹線外移到椅背外側，避免坐著的人擋住
         const ov = document.createElement('canvas'); ov.width = ov.height = S;
@@ -796,10 +798,13 @@ async function initBuilding() {
         }
         // CoS ↔ PA 平行（跨走道，畫在次走道上以免被桌子擋住）
         org([[-(DX - 1.2), RZ[0]], [DX - 1.2, RZ[0]]], DSH, true, false); tag('平行', 0, RZ[0] - 0.42, '#c25a00');
-        // PA ↔ IA 稽核（外側虛線幹線）；IA ↔ Fly 協作與稽核
-        org([[-BK, RZ[0] - 0.5], [-TR2, RZ[0] - 0.5], [-TR2, RZ[4]], [-BK, RZ[4]]], DSH, true, false);
-        org([[-(BK + 0.15), RZ[3] + 0.4], [-(BK + 0.15), RZ[4] - 0.4]], DSH, true, false);
-        o.save(); o.translate(X(-TR2 - 0.38), Y((RZ[1] + RZ[2]) / 2)); o.rotate(-Math.PI / 2); o.font = `bold ${Math.round(U * 0.3)}px ${SANS}`; o.strokeStyle = 'rgba(255,255,255,.95)'; o.lineWidth = U * 0.07; o.strokeText('PA 稽核 IA', 0, 0); o.fillStyle = '#c25a00'; o.fillText('PA 稽核 IA', 0, 0); o.restore();
+        // 協議 2.6.4：IA 報告由 PA 審核（外側虛線幹線，箭頭指向 PA：IA 稽核後交 PA 核實）；IA 不是 PA 的下級
+        org([[-BK, RZ[4]], [-TR2, RZ[4]], [-TR2, RZ[0] - 0.5], [-BK, RZ[0] - 0.5]], DSH, true, true);
+        // 特殊小組（Admin、Kobe、Fly）金融性產出 → IA 稽核
+        org([[-(BK + 0.15), RZ[1] + 0.35], [-(BK + 0.15), RZ[4] - 0.4]], DSH, true, true);
+        // CoS 協調、經 PA 同意 → Fly 支援公司任務（次走道虛線，跨主走道）
+        org([[DX - 1.2, RZ[0] + 0.45], [DX - 1.2, RZ[3] - 0.25], [-(DX - 1.2), RZ[3] - 0.25]], DSH, true, true); tag('經 PA 同意支援公司任務', 0, RZ[3] - 0.62, '#c25a00');
+        o.save(); o.translate(X(-TR2 - 0.38), Y((RZ[1] + RZ[2]) / 2)); o.rotate(-Math.PI / 2); o.font = `bold ${Math.round(U * 0.3)}px ${SANS}`; o.strokeStyle = 'rgba(255,255,255,.95)'; o.lineWidth = U * 0.07; o.strokeText('IA 報告由 PA 審核', 0, 0); o.fillStyle = '#c25a00'; o.fillText('IA 報告由 PA 審核', 0, 0); o.restore();
         tag('直屬', -(TR + 0.05), RZ[0] - 0.45, SOL); tag('直屬', TR + 0.05, RZ[0] - 0.45, SOL);
         const tex = canvasTex(cv);
         const fl = new THREE.Mesh(new THREE.PlaneGeometry(FW, FD), new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.14, roughness: 0.92, metalness: 0 }));
@@ -872,7 +877,7 @@ async function initBuilding() {
         c.fillStyle = '#1f5f99'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `bold 72px ${SANS}`;
         c.fillText('智慧協作・數據驅動', X(0), Yy(6.05));
         c.font = `40px ${SANS}`; c.fillStyle = 'rgba(44,74,102,.9)';
-        c.fillText('左側 個人側', X(-10.4), Yy(6.2)); c.fillText('右側 公司側', X(10.4), Yy(6.2));
+        c.fillText('左側 私人線', X(-10.4), Yy(6.2)); c.fillText('右側 公司線', X(10.4), Yy(6.2));
         const tex = canvasTex(cv);
         const panel = new THREE.Mesh(new THREE.PlaneGeometry(WW, WH), new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 0.3, roughness: 0.5 }));
         panel.position.set(0, T0 + WH / 2, wf + 0.003); scene.add(panel);
@@ -1453,7 +1458,7 @@ async function initBuilding() {
     ];
     }
 
-    // 地面組織線：金線＝直屬；朱紅虛線＝ PA 稽核 IA
+    // 地面組織線（協議 2.6.4）：金線＝直屬、派工；朱紅虛線＝平行、稽核、確認
     const lineMat = new THREE.LineBasicMaterial({ color: IS_B ? 0x1f6fbf : GOLD, transparent: true, opacity: 0.85 });
     const dashMat = new THREE.LineDashedMaterial({ color: IS_B ? 0xff9a3c : CINNABAR, dashSize: 0.22, gapSize: 0.16, transparent: true, opacity: 0.95 });
     const link = (a, b, mat) => {
@@ -1462,9 +1467,19 @@ async function initBuilding() {
       const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24; const k = 1 - Math.sin(Math.PI * t) * 0.12; pts.push(new THREE.Vector3((A.x + (Bp.x - A.x) * t) * k, TOP + 0.02, CZ + (A.z - CZ + (Bp.z - A.z) * t) * k)); }
       const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat); ln.computeLineDistances(); scene.add(ln);
     };
-    for (const t of ['admin', 'kobe', 'fly']) link('pa', t, lineMat);
-    for (const t of ['clo', 'cto', 'cpo', 'fpa']) link('cos', t, lineMat);
-    link('pa', 'ia', dashMat);
+    // Louis（中央主位）→ PA、CoS：直屬
+    const linkCore = (b, mat) => {
+      if (IS_B) return;
+      const Bp = ringPt(SEAT_DEG[b], -0.6), L = Math.hypot(Bp.x, Bp.z - CZ), ux = Bp.x / L, uz = (Bp.z - CZ) / L, r0 = 2.3;
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(ux * r0, TOP + 0.02, CZ + uz * r0), new THREE.Vector3(Bp.x, TOP + 0.02, Bp.z)]), mat); ln.computeLineDistances(); scene.add(ln);
+    };
+    linkCore('pa', lineMat); linkCore('cos', lineMat);
+    for (const t of ['admin', 'kobe', 'fly']) link('pa', t, lineMat);       // PA 派工給特殊小組
+    for (const t of ['clo', 'cto', 'cpo', 'fpa']) link('cos', t, lineMat);  // CoS 派工給四位專業 AI
+    link('pa', 'cos', dashMat);                                            // PA 與 CoS 平行、不分大小
+    link('pa', 'ia', dashMat);                                             // IA 報告由 PA 審核（IA 不是 PA 的下級）
+    for (const t of ['admin', 'kobe', 'fly']) link(t, 'ia', dashMat);      // 特殊小組金融性產出交 IA 稽核
+    link('cos', 'fly', dashMat);                                           // CoS 協調、經 PA 同意由 Fly 支援公司任務
 
 
     // ---------- 名牌 ----------
@@ -1651,6 +1666,7 @@ async function initBuilding() {
         }
       } else { c.fillStyle = PAL.dim; c.fillText(`助理額度：${NO_DATA}`, x2, yy); }
       c.fillStyle = PAL.foot; c.font = `24px ${SANS}`; c.fillText('特殊小組為真實詞元數；助理為週額度占比（非詞元）', x2, H - 52);
+      c.fillStyle = PAL.foot; c.font = `24px ${SANS}`; c.fillText(`私人線（上五列）｜公司線（下五列）｜協議 ${PROTOCOL}`, x0 + 30, H - 40);
       bigTex.needsUpdate = true;
     }
 

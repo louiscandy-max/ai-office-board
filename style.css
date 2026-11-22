@@ -122,3 +122,5 @@ html[data-theme=B] .org-key span{display:flex;align-items:center;gap:7px;white-s
 html[data-theme=B] .org-key i{display:inline-block;width:26px;height:0;border-top:3px solid #1b5fae}
 html[data-theme=B] .org-key i.k-dsh{border-top:3px dashed #ff7a14}
 @media (max-width:600px){html[data-theme=B] .org-key{flex-direction:row;gap:10px;font-size:.66rem;padding:4px 8px;left:6px;top:6px;border-radius:8px}html[data-theme=B] .org-key b{display:none}html[data-theme=B] .org-key span{gap:4px}html[data-theme=B] .org-key i{width:16px}}
+.proto{padding:2px 9px;border:1px solid #b8995a;border-radius:999px;color:#e6d3a3;white-space:nowrap}
+html[data-theme=B] .proto{border-color:#ffffffaa;color:#fff}
