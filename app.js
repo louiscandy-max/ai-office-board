@@ -529,21 +529,23 @@ const TAG = {
   cpo: ['CPO', '報價與成本'], fpa: ['FP&A', '資金與公司利益'], ia: ['IA', '投資與金融稽核'], admin: ['Admin', '系統維護'], kobe: ['Kobe', '私人優先'], fly: ['Fly', '公司任務為主'],
 };
 const PERSONAL = new Set(['pa', 'ia', 'admin', 'kobe', 'fly']);
-const INK = 0x2f2d2a, PAPER = 0xf1ede4, GOLD = 0xb8995a, JADE = 0x5f9e8a, CINNABAR = 0xb5443a;
+// 模板 A 青春太極配色（2026-11-23）：玉綠、薄荷、珊瑚蜜桃、暖奶油、天空藍
+const INK = 0x2f2d2a, PAPER = 0xfff8ee, GOLD = 0xf4a582, JADE = 0x2fae94, CINNABAR = 0xff6b5b, MINT = 0xbfeedd, PEACH = 0xffd3bf, SKY = 0x8fd3f4;
+const RM = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
 const BOARD = { x: 0, y: 2.95, z: -9.25, w: 7.6, h: 4.75 };
 const DS = 1.22; // 工位與人物放大倍率
-const ACT = IS_B ? 0x38c8ff : JADE, ACT_E = IS_B ? 0x5fdcff : 0x6fd0ae, IDLE = IS_B ? 0x4a5a72 : 0x8a8478;
+const ACT = IS_B ? 0x38c8ff : JADE, ACT_E = IS_B ? 0x5fdcff : 0x6fd0ae, IDLE = IS_B ? 0x4a5a72 : 0x9fb8b1;
 const PAL = IS_B
   ? { bg0: '#0b1426', bg1: '#060b16', ink: '#eaf4ff', muted: '#8ea3bf', dim: '#6c7f99', faint: '#3d4c63', foot: '#4f6079', acc: '#38c8ff', accA: 'rgba(56,200,255,.5)', dotP: '#38c8ff', dotC: '#a78bfa', sub2: '#b9c9de', alertTxt: '#dde8f5', bar: '#38c8ff', active: '#5fe3c0',
       lblBg: 'rgba(255,255,255,.96)', lblSelBg: 'rgba(222,241,255,.98)', lblBorder: '#2f9be8', lblSelBorder: '#1f6fbf', lblFg: '#12324f', lblSelFg: '#0b2540', lblSub: '#3d5a75', lblSelSub: '#2c4a66',
       coreBg: 'rgba(255,255,255,.96)', coreSelBg: 'rgba(222,241,255,.98)', coreAct: '#2fae6a', coreIdle: '#2f9be8', coreTitle: '#12324f', coreLineAct: '#1d7a4a', coreLine: '#3d5a75', coreTip: '#5d7891',
       meetBg: 'rgba(255,255,255,.95)', meetIdle: '#2f9be8', meetIdleTxt: '#3d5a75', meetTitle: '#12324f', meetFree: '全像會議室・空閒',
       signBg: 'rgba(255,255,255,.95)', signBorder: '#3fb56b', signTxt: '#1d4a2e', freshTxt: { fresh: '#1d7a4a', warm: '#9a6400', old: '#5d6b7a', none: '#5d6b7a' }, meetTxt: '#b26a00', track: 'rgba(18,50,79,.14)' }
-  : { bg0: '#191816', bg1: '#100f0e', ink: '#f4f1ea', muted: '#a49d90', dim: '#8a8478', faint: '#5a554d', foot: '#6a655c', acc: '#b8995a', accA: 'rgba(184,153,90,.5)', dotP: '#f2eee5', dotC: '#4a4640', sub2: '#c9c2b4', alertTxt: '#e8e3d8', bar: '#7fc4a8', active: '#6fd0ae',
-      lblBg: 'rgba(28,27,25,.9)', lblSelBg: 'rgba(234,246,240,.97)', lblBorder: '#b8995a', lblSelBorder: '#5f9e8a', lblFg: '#f4f1ea', lblSelFg: '#1c1b19', lblSub: '#c9c2b4', lblSelSub: '#3a3632',
-      coreBg: 'rgba(247,244,236,.94)', coreSelBg: 'rgba(234,246,240,.97)', coreAct: '#5f9e8a', coreIdle: '#b8995a', coreTitle: '#1c1b19', coreLineAct: '#2f7a63', coreLine: '#5a554d', coreTip: '#8a8478',
-      meetBg: 'rgba(28,27,25,.9)', meetIdle: '#b8995a', meetIdleTxt: '#c9c2b4', meetTitle: '#f4f1ea', meetFree: '會議室・空閒',
-      signBg: 'rgba(242,238,229,.95)', signBorder: '#b8995a', signTxt: '#2a2723' };
+  : { bg0: '#17403f', bg1: '#0f2c2e', ink: '#f4fffb', muted: '#a9d3c9', dim: '#8cb9ae', faint: '#4f7f76', foot: '#86b3a8', acc: '#ffb08c', accA: 'rgba(255,176,140,.55)', dotP: '#7fe3c6', dotC: '#ffb08c', sub2: '#d2ece5', alertTxt: '#eafaf5', bar: '#7fe3c6', active: '#7fe3c6',
+      lblBg: 'rgba(255,255,255,.96)', lblSelBg: 'rgba(255,241,233,.98)', lblBorder: '#3fbf9f', lblSelBorder: '#ff8a73', lblFg: '#14433c', lblSelFg: '#4a2015', lblSub: '#4a7a70', lblSelSub: '#7a4a3c',
+      coreBg: 'rgba(255,255,255,.96)', coreSelBg: 'rgba(255,241,233,.98)', coreAct: '#22a383', coreIdle: '#ff9a7a', coreTitle: '#14433c', coreLineAct: '#1d7a62', coreLine: '#4a7a70', coreTip: '#6f948b',
+      meetBg: 'rgba(255,255,255,.95)', meetIdle: '#3fbf9f', meetIdleTxt: '#4a7a70', meetTitle: '#14433c', meetFree: '會議室・空閒',
+      signBg: 'rgba(255,255,255,.95)', signBorder: '#ff9f80', signTxt: '#1d5a50', freshTxt: { fresh: '#1d8a6a', warm: '#a86400', old: '#6a7f7a', none: '#6a7f7a' }, meetTxt: '#c2561f', track: 'rgba(20,67,60,.14)' };
 
 async function initBuilding() {
   const el = $('#building');
@@ -555,15 +557,20 @@ async function initBuilding() {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(IS_B ? 0xbfe2ff : 0xe9e5dc);
-    scene.fog = new THREE.Fog(IS_B ? 0x060b16 : 0xe9e5dc, 34, 70);
+    if (IS_B) scene.background = new THREE.Color(0xbfe2ff);
+    else { // 模板 A：天空藍漸層到暖奶油
+      const bc = document.createElement('canvas'); bc.width = 4; bc.height = 256; const bx = bc.getContext('2d');
+      const gr = bx.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#bfe6fb'); gr.addColorStop(0.55, '#e6f7f1'); gr.addColorStop(1, '#fff6ea');
+      bx.fillStyle = gr; bx.fillRect(0, 0, 4, 256); const bt = new THREE.CanvasTexture(bc); bt.colorSpace = THREE.SRGBColorSpace; scene.background = bt;
+    }
+    scene.fog = new THREE.Fog(IS_B ? 0x060b16 : 0xeef8f3, 34, 70);
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, IS_B ? 400 : 200);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.enablePan = false;
     controls.minDistance = 3; controls.maxDistance = IS_B ? 72 : 46;
     controls.maxPolarAngle = Math.PI * 0.5; // 允許水平視角，看板模式才能正對不變形
     controls.autoRotateSpeed = 0.4;
-    scene.add(IS_B ? new THREE.HemisphereLight(0xe6f4ff, 0x9ccf8a, 1.35) : new THREE.HemisphereLight(0xfffdf6, 0x8a8478, 1.25));
+    scene.add(IS_B ? new THREE.HemisphereLight(0xe6f4ff, 0x9ccf8a, 1.35) : new THREE.HemisphereLight(0xfffdf8, 0xb9e3d6, 1.35));
     const sun = new THREE.DirectionalLight(IS_B ? 0xfff9ee : 0xfff8ec, IS_B ? 1.25 : 1.1); sun.position.set(5, 16, 12); scene.add(sun);
     const fill = new THREE.DirectionalLight(IS_B ? 0xcfe8ff : 0xe6eef0, IS_B ? 0.45 : 0.45); fill.position.set(-9, 8, -6); scene.add(fill);
 
@@ -605,25 +612,36 @@ async function initBuilding() {
     if (!IS_B) {
       const cv = document.createElement('canvas'); cv.width = 512; cv.height = 512;
       const c = cv.getContext('2d');
-      c.fillStyle = '#dedad0'; c.fillRect(0, 0, 512, 512);
-      inkWash(c, 512, 512, 18, 0.05);
-      c.strokeStyle = 'rgba(80,74,64,.16)'; c.lineWidth = 2;
+      c.fillStyle = '#fbf3e6'; c.fillRect(0, 0, 512, 512);
+      c.strokeStyle = 'rgba(47,174,148,.20)'; c.lineWidth = 2;
       for (let i = 0; i <= 4; i++) { c.beginPath(); c.moveTo(0, i * 128); c.lineTo(512, i * 128); c.stroke(); c.beginPath(); c.moveTo(i * 128, 0); c.lineTo(i * 128, 512); c.stroke(); }
       const tex = canvasTex(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(5.5, 5.5);
       const fl = new THREE.Mesh(new THREE.BoxGeometry(23, 0.3, 21.4), M(0xffffff, { map: tex, roughness: 0.9 }));
       fl.position.set(0, -0.15, -0.2); scene.add(fl);
-      box(23.2, 0.12, 21.6, M(0x4a443c), 0, -0.3, -0.2, scene);
+      box(23.2, 0.12, 21.6, M(0x8fd3c1), 0, -0.3, -0.2, scene);
     }
     // 圓形太極平台
     if (!IS_B) {
       const S = 2048, cv = document.createElement('canvas'); cv.width = cv.height = S;
       const c = cv.getContext('2d');
-      drawTaiji(c, S / 2, S / 2, S / 2 - 4, '#f2eee5', '#383531');
-      inkWash(c, S, S, 46, 0.045);
-      // 細金圈
-      c.strokeStyle = 'rgba(184,153,90,.9)'; c.lineWidth = 10;
+      drawTaiji(c, S / 2, S / 2, S / 2 - 4, '#fff8ec', '#4fbfa5');
+      // 流動的氣：天空藍細曲線
+      c.save(); c.translate(S / 2, S / 2); c.lineCap = 'round';
+      for (let k = 0; k < 6; k++) {
+        c.rotate(Math.PI / 3); c.strokeStyle = k % 2 ? 'rgba(143,211,244,.55)' : 'rgba(255,255,255,.5)'; c.lineWidth = 7;
+        c.beginPath(); for (let t = 0; t <= 1.001; t += 0.02) { const r = S * (0.2 + t * 0.27), a = t * 1.6 + Math.sin(t * 6) * 0.06; const x = Math.cos(a) * r, y = Math.sin(a) * r; t ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke();
+      }
+      // 外圈蓮瓣
+      for (let i = 0; i < 48; i++) {
+        c.save(); c.rotate(i * Math.PI / 24); c.translate(0, -(S / 2 - 44));
+        c.fillStyle = i % 2 ? 'rgba(255,170,140,.55)' : 'rgba(255,214,196,.7)';
+        c.beginPath(); c.moveTo(0, -26); c.quadraticCurveTo(20, 0, 0, 26); c.quadraticCurveTo(-20, 0, 0, -26); c.fill(); c.restore();
+      }
+      c.restore();
+      // 珊瑚細圈
+      c.strokeStyle = 'rgba(255,138,115,.9)'; c.lineWidth = 10;
       c.beginPath(); c.arc(S / 2, S / 2, S / 2 - 12, 0, Math.PI * 2); c.stroke();
-      c.lineWidth = 4; c.strokeStyle = 'rgba(184,153,90,.55)';
+      c.lineWidth = 4; c.strokeStyle = 'rgba(255,138,115,.55)';
       c.beginPath(); c.arc(S / 2, S / 2, (S / 2) * (RING_R - 0.95) / PLAT_R, 0, Math.PI * 2); c.stroke();
       c.beginPath(); c.arc(S / 2, S / 2, (S / 2) * (RING_R + 0.95) / PLAT_R, 0, Math.PI * 2); c.stroke();
       // 八卦（環繞主位）
@@ -632,7 +650,7 @@ async function initBuilding() {
       for (let i = 0; i < 8; i++) {
         const a = i * Math.PI / 4;
         c.save(); c.translate(S / 2 + Math.sin(a) * rr, S / 2 - Math.cos(a) * rr); c.rotate(a);
-        c.fillStyle = 'rgba(184,153,90,.95)';
+        c.fillStyle = 'rgba(255,128,104,.92)';
         TRI[i].forEach((yang, k) => {
           const y = -34 + k * 30;
           if (yang) c.fillRect(-58, y, 116, 16); else { c.fillRect(-58, y, 50, 16); c.fillRect(8, y, 50, 16); }
@@ -641,7 +659,7 @@ async function initBuilding() {
       }
       const tex = canvasTex(cv);
       const plat = cyl(PLAT_R, PLAT_R + 0.08, 0.14, [M(0x6b6255), M(0xffffff, { map: tex, roughness: 0.82 }), M(0x6b6255)], 0, 0.07, CZ, scene, 96);
-      plat.material = [M(0x7a7062, { roughness: 0.8 }), M(0xffffff, { map: tex, roughness: 0.82 }), M(0x7a7062)];
+      plat.material = [M(0x8fd3c1, { roughness: 0.8 }), M(0xffffff, { map: tex, roughness: 0.82 }), M(0x8fd3c1)];
     }
     const TOP = IS_B ? 0.02 : 0.14; // 平台頂面高度（模板 B 為整片架高地板）
 
@@ -1148,8 +1166,8 @@ async function initBuilding() {
     const stalkMat = M(0x6f9a5a, { roughness: 0.55 }), nodeMat = M(0x4f7a40), leafMat = M(0x5d8c4a, { roughness: 0.8, side: THREE.DoubleSide });
     function addBamboo(x, z, n = 5, h = 3.2) {
       const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
-      cyl(0.42, 0.48, 0.32, M(0x3a3632), 0, 0.16, 0, g, 20);
-      cyl(0.4, 0.4, 0.02, M(0xcfc8b8), 0, 0.33, 0, g, 20);
+      cyl(0.42, 0.48, 0.32, M(IS_B ? 0x3a3632 : 0xf4a582), 0, 0.16, 0, g, 20);
+      cyl(0.4, 0.4, 0.02, M(IS_B ? 0xcfc8b8 : 0xfff1e4), 0, 0.33, 0, g, 20);
       for (let i = 0; i < n; i++) {
         const a = i * 2.4, r = 0.12 + (i % 3) * 0.09, hh = h * (0.75 + ((i * 37) % 10) / 40);
         const s = new THREE.Group(); s.position.set(Math.cos(a) * r, 0.33, Math.sin(a) * r); s.rotation.z = (Math.cos(a) * 0.07); s.rotation.x = Math.sin(a) * 0.07; g.add(s);
@@ -1166,11 +1184,11 @@ async function initBuilding() {
     // 石燈（圓燈）
     function addLantern(x, z) {
       const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
-      cyl(0.16, 0.2, 0.1, M(0x8a8478), 0, 0.05, 0, g, 12);
-      cyl(0.05, 0.06, 0.55, M(0x8a8478), 0, 0.37, 0, g, 10);
+      cyl(0.16, 0.2, 0.1, M(0xbfe3d8), 0, 0.05, 0, g, 12);
+      cyl(0.05, 0.06, 0.55, M(0xbfe3d8), 0, 0.37, 0, g, 10);
       const ball = new THREE.Mesh(new THREE.SphereGeometry(0.2, 18, 14), M(0xfff6e2, { emissive: 0xffe9bf, emissiveIntensity: 0.55, roughness: 0.4 }));
       ball.position.y = 0.84; g.add(ball);
-      cyl(0.22, 0.12, 0.06, M(0x3a3632), 0, 1.06, 0, g, 12);
+      cyl(0.22, 0.12, 0.06, M(0x2fae94), 0, 1.06, 0, g, 12);
     }
 
     // ---------- 全員即時看板牆（正面平放，不傾斜） ----------
@@ -1179,23 +1197,31 @@ async function initBuilding() {
     if (IS_B) B.wall(bigTex);
     else {
       const wz = BOARD.z - 0.14;
-      box(11.6, 0.3, 0.9, M(0x3a3632), 0, 0.15, wz, scene);
-      box(11.2, 6.1, 0.22, M(0x22201d, { roughness: 0.85 }), 0, 3.35, wz, scene);
+      box(11.6, 0.3, 0.9, M(0x2f8f7e), 0, 0.15, wz, scene);
+      { // 後牆：玉綠到天空藍漸層＋白色祥雲曲線
+        const wc = document.createElement('canvas'); wc.width = 1024; wc.height = 560; const w = wc.getContext('2d');
+        const wg = w.createLinearGradient(0, 0, 1024, 560); wg.addColorStop(0, '#2a8f84'); wg.addColorStop(1, '#3f8fb8'); w.fillStyle = wg; w.fillRect(0, 0, 1024, 560);
+        w.strokeStyle = 'rgba(255,255,255,.22)'; w.lineWidth = 6; w.lineCap = 'round';
+        for (const [cx, cy, r] of [[110, 90, 40], [920, 120, 46], [90, 470, 36], [940, 460, 42], [512, 520, 30]]) {
+          for (let k = 0; k < 3; k++) { w.beginPath(); w.arc(cx + (k - 1) * r * 1.1, cy, r * (k === 1 ? 1 : 0.75), Math.PI, Math.PI * 2); w.stroke(); }
+          w.beginPath(); w.moveTo(cx - r * 2, cy + 6); w.quadraticCurveTo(cx, cy + r * 0.8, cx + r * 2, cy + 6); w.stroke();
+        }
+        box(11.2, 6.1, 0.22, M(0xffffff, { map: canvasTex(wc), roughness: 0.85 }), 0, 3.35, wz, scene);
+      }
       box(11.4, 0.1, 0.3, M(GOLD, { metalness: 0.6, roughness: 0.35 }), 0, 6.45, wz, scene);
       box(11.4, 0.06, 0.28, M(GOLD, { metalness: 0.6, roughness: 0.35 }), 0, 0.32, wz + 0.02, scene);
       // 螢幕金框與畫面
       box(BOARD.w + 0.22, BOARD.h + 0.22, 0.08, M(GOLD, { metalness: 0.55, roughness: 0.35 }), BOARD.x, BOARD.y, BOARD.z - 0.02, scene);
-      box(BOARD.w + 0.08, BOARD.h + 0.08, 0.09, M(0x0d0d0c), BOARD.x, BOARD.y, BOARD.z - 0.01, scene);
+      box(BOARD.w + 0.08, BOARD.h + 0.08, 0.09, M(0x0f2c2e), BOARD.x, BOARD.y, BOARD.z - 0.01, scene);
       const screen = new THREE.Mesh(new THREE.PlaneGeometry(BOARD.w, BOARD.h), new THREE.MeshBasicMaterial({ map: bigTex, toneMapped: false }));
       screen.position.set(BOARD.x, BOARD.y, BOARD.z + 0.04); scene.add(screen);
       // 兩側對聯
       for (const [x, text] of [[-4.75, '道法自然'], [4.75, '厚德載物']]) {
         const cv = document.createElement('canvas'); cv.width = 256; cv.height = 1024;
         const c = cv.getContext('2d');
-        c.fillStyle = '#efe8d8'; c.fillRect(0, 0, 256, 1024);
-        inkWash(c, 256, 1024, 8, 0.05);
-        c.strokeStyle = '#b8995a'; c.lineWidth = 8; c.strokeRect(14, 14, 228, 996);
-        c.fillStyle = '#26231f'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `bold 150px ${SERIF}`;
+        c.fillStyle = '#fff7ec'; c.fillRect(0, 0, 256, 1024);
+        c.strokeStyle = '#ff9f80'; c.lineWidth = 8; c.strokeRect(14, 14, 228, 996);
+        c.fillStyle = '#1f7a68'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `bold 150px ${SERIF}`;
         [...text].forEach((ch, i) => c.fillText(ch, 128, 150 + i * 240));
         const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 3.6), new THREE.MeshStandardMaterial({ map: canvasTex(cv), roughness: 0.9 }));
         m.position.set(x, 3.15, wz + 0.12); scene.add(m);
@@ -1210,16 +1236,16 @@ async function initBuilding() {
     let coreTop, glowMat, glow, haloMat, halo, coreHolo = null;
     if (IS_B) ({ coreTop, glowMat, glow, haloMat, halo, holo: coreHolo } = B.core(core));
     else {
-    cyl(1.62, 1.72, 0.16, M(0x2a2825, { roughness: 0.6 }), 0, 0.08, 0, core, 64);
+    cyl(1.62, 1.72, 0.16, M(0x2f8f7e, { roughness: 0.6 }), 0, 0.08, 0, core, 64);
     cyl(1.5, 1.58, 0.12, M(GOLD, { metalness: 0.55, roughness: 0.35 }), 0, 0.2, 0, core, 64);
     coreTop = (() => {
       const cv = document.createElement('canvas'); cv.width = cv.height = 1024;
       const c = cv.getContext('2d');
-      drawTaiji(c, 512, 512, 506, '#f7f4ec', '#1c1b19');
+      drawTaiji(c, 512, 512, 506, '#fffaf0', '#22a383');
       const m = new THREE.Mesh(new THREE.CircleGeometry(1.46, 64), new THREE.MeshStandardMaterial({ map: canvasTex(cv), roughness: 0.35, metalness: 0.05 }));
       flat(m, 0.265); core.add(m); return m;
     })();
-    glowMat = new THREE.MeshBasicMaterial({ color: 0x7fd1b5, transparent: true, opacity: 0.0, depthWrite: false });
+    glowMat = new THREE.MeshBasicMaterial({ color: 0x7fe3c6, transparent: true, opacity: 0.0, depthWrite: false });
     glow = new THREE.Mesh(new THREE.RingGeometry(1.78, 2.2, 96), glowMat); flat(glow, 0.03); core.add(glow);
     haloMat = new THREE.MeshStandardMaterial({ color: ACT, emissive: ACT_E, emissiveIntensity: 0.0, roughness: 0.3, metalness: 0.2 });
     halo = new THREE.Mesh(new THREE.TorusGeometry(1.67, 0.035, 10, 120), haloMat); halo.rotation.x = Math.PI / 2; halo.position.y = 0.28; core.add(halo);
@@ -1241,7 +1267,7 @@ async function initBuilding() {
       g.rotateX(Math.PI / 2); // 形狀平面轉為水平：形狀 +y 對應 +z（朝向螢幕與中央）
       return g;
     })();
-    const DESK_DARK = M(0x2b2825, { roughness: 0.45 }), DESK_LIGHT = M(0xe9e3d6, { roughness: 0.5 });
+    const DESK_DARK = M(IS_B ? 0x2b2825 : 0x2a8a78, { roughness: 0.45 }), DESK_LIGHT = M(IS_B ? 0xe9e3d6 : 0xfff1e4, { roughness: 0.5 });
     function makeLabel() {
       const cv = document.createElement('canvas'); cv.width = 560; cv.height = 300;
       const tex = canvasTex(cv);
@@ -1325,19 +1351,19 @@ async function initBuilding() {
       if (IS_B) ({ matMat, mat, top, front, scrMat, lamp, outfit } = B.desk(g, yang, lead));
       else {
       // 圓形座席墊
-      matMat = new THREE.MeshStandardMaterial({ color: yang ? 0xe4ddcf : 0x46423c, roughness: 0.9, emissive: JADE, emissiveIntensity: 0 });
+      matMat = new THREE.MeshStandardMaterial({ color: yang ? MINT : PEACH, roughness: 0.9, emissive: JADE, emissiveIntensity: 0 });
       mat = new THREE.Mesh(new THREE.CircleGeometry(lead ? 1.25 : 1.12, 48), matMat); flat(mat, 0.01); g.add(mat);
       const rim = new THREE.Mesh(new THREE.RingGeometry(lead ? 1.22 : 1.09, lead ? 1.27 : 1.14, 64), new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.7 })); flat(rim, 0.015); g.add(rim);
       const dm = yang ? DESK_DARK : DESK_LIGHT;
       // 弧形桌（以圓柱片段做成）
       top = new THREE.Mesh(deskGeo, dm); top.position.set(0, 0.77, -0.55); g.add(top);
-      front = new THREE.Mesh(new THREE.CylinderGeometry(1.04, 1.04, 0.42, 32, 1, true, -0.6, 1.2), new THREE.MeshStandardMaterial({ color: yang ? 0x24221f : 0xdcd5c6, roughness: 0.5, side: THREE.DoubleSide }));
+      front = new THREE.Mesh(new THREE.CylinderGeometry(1.04, 1.04, 0.42, 32, 1, true, -0.6, 1.2), new THREE.MeshStandardMaterial({ color: yang ? 0x237a6a : 0xffe4d4, roughness: 0.5, side: THREE.DoubleSide }));
       front.position.set(0, 0.54, -0.55); g.add(front);
       for (const sx of [-0.55, 0.55]) box(0.04, 0.33, 0.04, M(GOLD, { metalness: 0.5, roughness: 0.4 }), sx, 0.165, 0.33, g);
       box(0.9, 0.025, 0.02, M(GOLD, { metalness: 0.5, roughness: 0.4 }), 0, 0.72, 0.5, g);
       // 螢幕
       scrMat = new THREE.MeshStandardMaterial({ color: 0x101010, emissive: 0x9fe0c8, emissiveIntensity: 0.05, roughness: 0.3 });
-      box(0.72, 0.42, 0.03, M(yang ? 0x1a1917 : 0xcfc8b8), 0, 1.06, 0.36, g);
+      box(0.72, 0.42, 0.03, M(yang ? 0x1f5a52 : 0xf6cdb8), 0, 1.06, 0.36, g);
       const scr = box(0.66, 0.36, 0.01, scrMat, 0, 1.06, 0.345, g); scr.rotation.y = Math.PI;
       box(0.05, 0.22, 0.05, M(GOLD, { metalness: 0.5, roughness: 0.4 }), 0, 0.86, 0.38, g);
       // 桌燈（工作中亮起）
@@ -1345,12 +1371,12 @@ async function initBuilding() {
       lamp.position.set(0.5, 0.86, 0.3); g.add(lamp);
       cyl(0.05, 0.06, 0.06, M(GOLD, { metalness: 0.5 }), 0.5, 0.78, 0.3, g, 10);
       // 圓凳椅
-      cyl(0.24, 0.24, 0.08, M(yang ? 0x3a3632 : 0xd8d0c0), 0, 0.46, -0.42, g, 20);
-      cyl(0.04, 0.05, 0.42, M(0x6b6255), 0, 0.22, -0.42, g, 8);
-      const chairMat = M(yang ? 0x3a3632 : 0xd8d0c0);
-      const back = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.26, 20, 1, true, Math.PI * 0.7, Math.PI * 0.6), new THREE.MeshStandardMaterial({ color: yang ? 0x3a3632 : 0xd8d0c0, roughness: 0.7, side: THREE.DoubleSide })); back.position.set(0, 0.74, -0.42); g.add(back);
+      cyl(0.24, 0.24, 0.08, M(yang ? 0x3fae96 : 0xffb79c), 0, 0.46, -0.42, g, 20);
+      cyl(0.04, 0.05, 0.42, M(0x9fb8b1), 0, 0.22, -0.42, g, 8);
+      const chairMat = M(yang ? 0x3fae96 : 0xffb79c);
+      const back = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.26, 20, 1, true, Math.PI * 0.7, Math.PI * 0.6), new THREE.MeshStandardMaterial({ color: yang ? 0x3fae96 : 0xffb79c, roughness: 0.7, side: THREE.DoubleSide })); back.position.set(0, 0.74, -0.42); g.add(back);
       for (const sx of [-0.2, 0.2]) box(0.03, 0.3, 0.03, chairMat, sx, 0.6, -0.6, g);
-      outfit = yang ? 0x2e2c2a : 0xf0ebe0;
+      outfit = yang ? 0x2a9a85 : 0xffd9c8;
       }
       const av = makeAvatar(f.g, outfit, f.color, !yang);
             scene.add(av.g);
@@ -1367,7 +1393,7 @@ async function initBuilding() {
     const MEET = IS_B ? B.ROOMS.left : { x: -8.6, z: -6.4 };
     if (!IS_B) {
       const g = new THREE.Group(); g.position.set(MEET.x, 0, MEET.z); scene.add(g);
-      const rug = new THREE.Mesh(new THREE.CircleGeometry(1.75, 48), M(0xcfc6b4, { roughness: 0.95 })); flat(rug, 0.012); g.add(rug);
+      const rug = new THREE.Mesh(new THREE.CircleGeometry(1.75, 48), M(0xd3f1e6, { roughness: 0.95 })); flat(rug, 0.012); g.add(rug);
       cyl(0.85, 0.85, 0.07, M(0x2b2825, { roughness: 0.4 }), 0, 0.74, 0, g, 40);
       cyl(0.1, 0.18, 0.7, M(0x2b2825), 0, 0.36, 0, g, 12);
       const yy = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32), new THREE.MeshStandardMaterial({ map: coreTop.material.map, roughness: 0.4 })); flat(yy, 0.78); g.add(yy);
@@ -1394,22 +1420,23 @@ async function initBuilding() {
       s.scale.set(1.5, 0.5, 1); s.position.set(x, y, z); s.renderOrder = 8; scene.add(s); signs.push(s);
     }
     let SLOTS;
+    let breathRef = null; // 模板 A：呼吸光環與飄雲
     if (IS_B) SLOTS = B.corners(cornerSign);
     else {
     // 書房
     const READ = { x: 8.6, z: -6.4 };
     {
       const g = new THREE.Group(); g.position.set(READ.x, 0, READ.z); scene.add(g);
-      const rug = new THREE.Mesh(new THREE.CircleGeometry(1.75, 48), M(0xcfc6b4, { roughness: 0.95 })); flat(rug, 0.012); g.add(rug);
+      const rug = new THREE.Mesh(new THREE.CircleGeometry(1.75, 48), M(0xdcefff, { roughness: 0.95 })); flat(rug, 0.012); g.add(rug);
       const sg = new THREE.Group(); sg.position.set(0.2, 0, -1.35); g.add(sg);
       const wood = M(0x5a4636);
       for (const y of [0.05, 0.6, 1.15, 1.7]) box(2.2, 0.05, 0.36, wood, 0, y, 0, sg);
       for (const x of [-1.1, 0, 1.1]) box(0.05, 1.72, 0.36, wood, x, 0.86, 0, sg);
-      const bookCols = [0x7a2e26, 0x2e3a4a, 0xb8995a, 0x3a5a4a, 0xe9e3d6, 0x2b2825];
+      const bookCols = [0xff8a73, 0x4fb3d9, 0xffc46b, 0x2fae94, 0xfff1e4, 0x9b8cff];
       for (let r = 0; r < 3; r++) for (let i = 0; i < 9; i++) box(0.09, 0.32 + ((i * 7 + r) % 4) * 0.03, 0.24, M(bookCols[(i + r) % 6]), -1.0 + i * 0.12 + (i > 4 ? 0.2 : 0), 0.25 + r * 0.55 + ((i * 7 + r) % 4) * 0.015, 0, sg);
       for (const [x, z, r] of [[-0.85, 0.2, 0.5], [0.95, 0.3, -0.5]]) {
         const ch = new THREE.Group(); ch.position.set(x, 0, z); ch.rotation.y = r; g.add(ch);
-        box(0.62, 0.36, 0.6, M(0x8a7a66, { roughness: 0.9 }), 0, 0.2, 0, ch); box(0.62, 0.42, 0.12, M(0x8a7a66), 0, 0.55, -0.26, ch);
+        box(0.62, 0.36, 0.6, M(0x8fd3f4, { roughness: 0.9 }), 0, 0.2, 0, ch); box(0.62, 0.42, 0.12, M(0x8fd3f4), 0, 0.55, -0.26, ch);
       }
     }
     const READ_SEATS = [{ type: 'read', x: READ.x - 0.85, z: READ.z + 0.25, yaw: 0.5 }, { type: 'read', x: READ.x + 0.95, z: READ.z + 0.35, yaw: -0.5 }];
@@ -1423,7 +1450,7 @@ async function initBuilding() {
       for (const [x, z] of [[-0.42, -0.25], [0.42, -0.25], [-0.42, 0.25], [0.42, 0.25]]) box(0.06, 0.28, 0.06, M(0x3a2c22), x, 0.17, z, g);
       cyl(0.08, 0.1, 0.12, M(0x6b4a3a), 0, 0.43, 0, g, 12);
       for (const x of [-0.25, 0.22, 0.3]) cyl(0.03, 0.025, 0.04, M(0xf2efe8), x, 0.39, x > 0.25 ? 0.15 : -0.12, g, 8);
-      for (const [x, z] of [[0, -0.75], [-0.95, 0.15], [0.95, 0.15], [0, 0.85]]) cyl(0.25, 0.27, 0.08, M(0x7a2e26, { roughness: 0.9 }), x, 0.1, z, g, 16);
+      for (const [x, z] of [[0, -0.75], [-0.95, 0.15], [0.95, 0.15], [0, 0.85]]) cyl(0.25, 0.27, 0.08, M(0xff9f80, { roughness: 0.9 }), x, 0.1, z, g, 16);
     }
     const TEA_SEATS = [
       { type: 'tea', x: TEA.x, z: TEA.z - 0.75, yaw: 0 }, { type: 'tea', x: TEA.x - 0.95, z: TEA.z + 0.15, yaw: Math.PI / 2 },
@@ -1433,14 +1460,42 @@ async function initBuilding() {
     const TAI = { x: 8.6, z: 6.4 };
     {
       const cv = document.createElement('canvas'); cv.width = cv.height = 512;
-      const c = cv.getContext('2d'); c.fillStyle = '#d9d2c3'; c.fillRect(0, 0, 512, 512);
-      c.globalAlpha = 0.22; drawTaiji(c, 256, 256, 200, '#ffffff', '#2a2723'); c.globalAlpha = 1;
+      const c = cv.getContext('2d'); c.fillStyle = '#dff3ff'; c.fillRect(0, 0, 512, 512);
+      c.globalAlpha = 0.4; drawTaiji(c, 256, 256, 200, '#ffffff', '#2fae94'); c.globalAlpha = 1;
       const m = new THREE.Mesh(new THREE.CircleGeometry(1.75, 48), new THREE.MeshStandardMaterial({ map: canvasTex(cv), roughness: 0.95 })); flat(m, 0.015); m.position.set(TAI.x, 0.015, TAI.z); scene.add(m);
     }
     const TAI_SEATS = [{ type: 'taichi', x: TAI.x - 0.95, z: TAI.z - 0.45, yaw: 0 }, { type: 'taichi', x: TAI.x + 0.95, z: TAI.z - 0.45, yaw: 0 }, { type: 'taichi', x: TAI.x, z: TAI.z + 0.75, yaw: 0 }];
     cornerSign('圓桌會議', MEET.x, MEET.z - 1.6, 1.25); cornerSign('書房', READ.x - 1.4, READ.z + 1.45, 1.1); cornerSign('茶席', TEA.x, TEA.z + 1.6, 0.95); cornerSign('太極場', TAI.x, TAI.z + 1.6, 0.95);
     addBamboo(-10.6, 1.0, 5, 2.8); addBamboo(10.6, 1.0, 5, 2.8); addBamboo(-10.6, -2.6, 4, 2.6); addBamboo(10.6, -2.6, 4, 2.6);
     for (const [x, z] of [[-4.2, 9.2], [4.2, 9.2], [-10.4, 4.0], [10.4, 4.0]]) addLantern(x, z);
+    // 蓮花池（前方中央，低矮不擋視線）與天空飄雲
+    {
+      const g = new THREE.Group(); g.position.set(0, 0, 9.15); scene.add(g);
+      const water = new THREE.Mesh(new THREE.CircleGeometry(1.15, 48), M(0x8fd3f4, { roughness: 0.15, metalness: 0.1, emissive: 0x6fc6ee, emissiveIntensity: 0.15 })); flat(water, 0.02); g.add(water);
+      const rim = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.32, 48), M(0xfff1e4)); flat(rim, 0.025); g.add(rim);
+      const pad = M(0x3fae6f, { roughness: 0.6, side: THREE.DoubleSide }), petal = M(0xffb3a1, { roughness: 0.5, emissive: 0xff9f8a, emissiveIntensity: 0.12 });
+      for (const [x, z, r] of [[-0.55, -0.2, 0.26], [0.45, 0.3, 0.22], [0.1, -0.55, 0.2], [-0.25, 0.55, 0.18], [0.7, -0.35, 0.16]]) {
+        const pd = new THREE.Mesh(new THREE.CircleGeometry(r, 20, 0.3, Math.PI * 2 - 0.6), pad); flat(pd, 0.035); pd.position.set(x, 0.035, z); g.add(pd);
+      }
+      for (const [x, z] of [[-0.55, -0.2], [0.45, 0.3]]) {
+        const fl = new THREE.Group(); fl.position.set(x, 0.05, z); g.add(fl);
+        for (let i = 0; i < 8; i++) { const pt = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), petal); pt.scale.set(0.5, 1.1, 0.25); const a = i * Math.PI / 4; pt.position.set(Math.cos(a) * 0.07, 0.08, Math.sin(a) * 0.07); pt.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5); fl.add(pt); }
+        const ctr = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), M(0xffd76b)); ctr.position.y = 0.1; fl.add(ctr);
+      }
+    }
+    const clouds = [];
+    {
+      const cm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, emissive: 0xffffff, emissiveIntensity: 0.45, transparent: true, opacity: 0.95, fog: false });
+      for (const [x, y, z, s, sp] of [[-9, 5.4, -11.2, 0.9, 0.16], [3, 6.6, -11.6, 1.0, 0.11], [9.5, 5.0, -11.0, 0.8, 0.2], [-17, 6.1, -11.4, 0.85, 0.14]]) {
+        const g = new THREE.Group(); g.position.set(x, y, z); g.scale.setScalar(s); scene.add(g);
+        for (const [dx, dy, r] of [[0, 0, 0.9], [0.9, -0.15, 0.7], [-0.9, -0.2, 0.65], [0.35, 0.45, 0.6], [-0.4, 0.35, 0.55]]) { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), cm); m.position.set(dx, dy, 0); m.scale.z = 0.55; g.add(m); }
+        clouds.push({ g, x0: x, sp });
+      }
+    }
+    // 平台外緣呼吸光環（薄荷綠）
+    const breathMat = new THREE.MeshBasicMaterial({ color: 0x7fe3c6, transparent: true, opacity: 0.35, depthWrite: false });
+    { const br = new THREE.Mesh(new THREE.RingGeometry(PLAT_R + 0.12, PLAT_R + 0.42, 128), breathMat); flat(br, 0.012); br.position.z = CZ; scene.add(br); }
+    breathRef = { breathMat, clouds };
     // 休息／活動位置
     SLOTS = [
       { id: 'walk-in-a', type: 'walk', label: '散步', r: 3.35, sp: 0.22, off: 0 },
@@ -1459,7 +1514,7 @@ async function initBuilding() {
     }
 
     // 地面組織線（協議 2.6.4）：金線＝直屬、派工；朱紅虛線＝平行、稽核、確認
-    const lineMat = new THREE.LineBasicMaterial({ color: IS_B ? 0x1f6fbf : GOLD, transparent: true, opacity: 0.85 });
+    const lineMat = new THREE.LineBasicMaterial({ color: IS_B ? 0x1f6fbf : 0x178a72, transparent: true, opacity: 0.9 });
     const dashMat = new THREE.LineDashedMaterial({ color: IS_B ? 0xff9a3c : CINNABAR, dashSize: 0.22, gapSize: 0.16, transparent: true, opacity: 0.95 });
     const link = (a, b, mat) => {
       if (IS_B) return; // 模板 B 的組織線畫在地面貼圖（buildThemeB）
@@ -1590,8 +1645,8 @@ async function initBuilding() {
       // 標題列
       if (IS_B) B.boardLogo(c, 92, 78);
       else {
-        c.save(); c.globalAlpha = 0.9; drawTaiji(c, 92, 78, 38, '#f2eee5', '#191816'); c.restore();
-        c.strokeStyle = '#b8995a'; c.lineWidth = 3; c.beginPath(); c.arc(92, 78, 38, 0, Math.PI * 2); c.stroke();
+        c.save(); c.globalAlpha = 0.95; drawTaiji(c, 92, 78, 38, '#fffaf0', '#2fae94'); c.restore();
+        c.strokeStyle = '#ffb08c'; c.lineWidth = 3; c.beginPath(); c.arc(92, 78, 38, 0, Math.PI * 2); c.stroke();
       }
       c.textBaseline = 'middle'; c.textAlign = 'left'; c.fillStyle = PAL.ink;
       c.font = `bold 66px ${IS_B ? SANS : SERIF}`; c.fillText('全員即時看板', 150, 80);
@@ -1904,14 +1959,18 @@ async function initBuilding() {
       // 看板模式：把近裁切面推到看板前，前景桌椅不會擋住螢幕（手機直式距離較遠時特別需要）
       const nearWant = mode === 'board' && !fly ? Math.max(0.1, camera.position.distanceTo(boardCenter) - 0.9) : 0.1;
       if (Math.abs(camera.near - nearWant) > 0.01) { camera.near = nearWant; camera.updateProjectionMatrix(); }
-      if (!IS_B) coreTop.rotation.z = sec * 0.12;
+      if (!IS_B && !RM) coreTop.rotation.z = sec * 0.12;
+      if (breathRef && !RM) {
+        breathRef.breathMat.opacity = 0.22 + (0.5 + Math.sin(sec * 0.9) * 0.5) * 0.3;
+        for (const c of breathRef.clouds) c.g.position.x = ((c.x0 + sec * c.sp + 22) % 44 + 44) % 44 - 22;
+      }
       const st = louisState();
       const pulse = 0.5 + Math.sin(sec * 2.2) * 0.5;
       glowMat.opacity = st === 'active' ? 0.35 + pulse * 0.4 : 0;
       haloMat.emissiveIntensity = st === 'active' ? 0.6 + pulse * 0.8 : st === 'idle' ? 0.05 : 0.0;
       haloMat.color.setHex(st === 'active' ? ACT : IDLE);
       if (B) B.tick(sec, st, coreHolo);
-      for (const b of bamboos) b.g.rotation.z = Math.sin(sec * 0.8 + b.ph) * 0.012;
+      if (!RM) for (const b of bamboos) b.g.rotation.z = Math.sin(sec * 0.8 + b.ph) * 0.012;
       for (const d of desks) { poseAvatar(d, sec); if (d.working) d.lamp.material.emissiveIntensity = 0.8 + Math.sin(sec * 2.6 + d.phase) * 0.25; }
       declutter();
       renderer.render(scene, camera);

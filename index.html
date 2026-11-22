@@ -8,7 +8,7 @@
 <title>AI 辦公樓看板</title>
 <link rel="icon" href="data:,">
 <script>(function(){var t='A';try{var q=(new URLSearchParams(location.search).get('theme')||'').toUpperCase();t=(q==='A'||q==='B')?q:(localStorage.getItem('aiOfficeBoard.theme')==='B'?'B':'A');}catch(e){}document.documentElement.dataset.theme=t;})();</script>
-<link rel="stylesheet" href="style.css?v=261123011500">
+<link rel="stylesheet" href="style.css?v=261123013500">
 <script type="importmap">
 { "imports": {
   "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -34,6 +34,15 @@
 
 <section id="building-wrap">
   <div id="building" aria-label="三維開放式辦公區總覽"></div>
+  <div class="a-deco" aria-hidden="true">
+    <svg viewBox="0 0 64 64" class="tc tc1"><circle cx="32" cy="10" r="6"/><path d="M32 17v20M32 22l-14 6M32 22l12-8M32 37l-10 18M32 37l12 16"/></svg>
+    <svg viewBox="0 0 64 64" class="tc tc2"><circle cx="30" cy="10" r="6"/><path d="M30 17l2 20M31 23l-16-4M31 23l16 4M32 37l-14 16M32 37l8 18"/></svg>
+    <svg viewBox="0 0 64 64" class="ic tea"><path d="M14 30h30v6a15 15 0 0 1-30 0z"/><path d="M44 33h4a5 5 0 0 1 0 10h-5"/><path class="steam" d="M22 24c-3-4 3-6 0-10M30 24c-3-4 3-6 0-10M38 24c-3-4 3-6 0-10"/></svg>
+    <svg viewBox="0 0 64 64" class="ic lotus"><path d="M32 50c-6-8-6-20 0-30 6 10 6 22 0 30z"/><path d="M32 50c-12-2-18-12-18-22 10 2 16 10 18 22zM32 50c12-2 18-12 18-22-10 2-16 10-18 22z"/><path d="M12 52h40"/></svg>
+    <svg viewBox="0 0 64 64" class="tc tc3"><circle cx="34" cy="10" r="6"/><path d="M34 17l-2 20M33 23l-14 10M33 23l15-10M32 37l-16 10M32 37l4 18"/></svg>
+    <svg viewBox="0 0 64 64" class="tc tc4"><circle cx="32" cy="12" r="6"/><path d="M32 19v18M32 24l-15-8M32 24l15-8M32 37l-9 18M32 37l9 18"/></svg>
+    <span class="deco-txt">太極・養生・呼吸</span>
+  </div>
   <p class="hint">拖曳可旋轉、雙指可縮放，點選座位、成員或中央主位查看內容</p>
   <p class="legend">太極同層：<b>中央主位</b> Louis（總經理）最後來訊時間（一小時內有來訊即發光）<br><b>左半・陽</b> 私人線：PA、IA、特殊小組（Admin、Kobe、Fly）｜<b>右半・陰</b> 公司線：CoS、CLO、CTO、CPO、FP&amp;A<br>後方 全員即時看板牆｜四隅 圓桌會議・書房・茶席・太極場<br>金線：直屬、派工（Louis→PA、CoS；PA→特殊小組；CoS→四位專業 AI）｜朱紅虛線：平行、稽核、確認（PA 與 CoS 平行；特殊小組金融性產出交 IA 稽核；IA 報告由 PA 審核；CoS 協調、經 PA 同意由 Fly 支援公司任務）<br>依《AI 團隊架構協議 2.6.4 定稿 261122223000》</p>
 </section>
@@ -79,6 +88,6 @@
   </form>
 </div>
 
-<script type="module" src="app.js?v=261123011500"></script>
+<script type="module" src="app.js?v=261123013500"></script>
 </body>
 </html>
