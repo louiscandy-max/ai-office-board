@@ -1439,34 +1439,6 @@ async function initBuilding() {
     }
     const TAI_SEATS = [{ type: 'taichi', x: TAI.x - 0.95, z: TAI.z - 0.45, yaw: 0 }, { type: 'taichi', x: TAI.x + 0.95, z: TAI.z - 0.45, yaw: 0 }, { type: 'taichi', x: TAI.x, z: TAI.z + 0.75, yaw: 0 }];
     cornerSign('圓桌會議', MEET.x, MEET.z - 1.6, 1.25); cornerSign('書房', READ.x - 1.4, READ.z + 1.45, 1.1); cornerSign('茶席', TEA.x, TEA.z + 1.6, 0.95); cornerSign('太極場', TAI.x, TAI.z + 1.6, 0.95);
-    // 新增：太極拳區（左側兩叢竹子之間的空地；不動其他各區大小與位置）
-    const QUAN = { x: -9.6, z: -0.8 };
-    {
-      const g = new THREE.Group(); g.position.set(QUAN.x, 0, QUAN.z); g.userData.zone = 'quan'; scene.add(g);
-      const cv = document.createElement('canvas'); cv.width = cv.height = 512;
-      const c = cv.getContext('2d'); c.fillStyle = '#e4dccb'; c.fillRect(0, 0, 512, 512);
-      c.globalAlpha = 0.28; drawTaiji(c, 256, 256, 210, '#ffffff', '#2a2723'); c.globalAlpha = 1;
-      const mat = new THREE.Mesh(new THREE.CircleGeometry(1.1, 48), new THREE.MeshStandardMaterial({ map: canvasTex(cv), roughness: 0.95 })); flat(mat, 0.015); g.add(mat);
-      const rim = new THREE.Mesh(new THREE.RingGeometry(1.07, 1.14, 64), new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.8 })); flat(rim, 0.018); g.add(rim);
-      // 兩位打太極拳的人物（裝飾，不代表任何成員）
-      const quanFigs = [];
-      for (const [dx, g2, yaw, dz] of [[0, 'm', 0.3, -0.45], [0, 'f', -0.3, 0.45]]) {
-        const a = makeAvatar(g2, 0xf4f1ea, CINNABAR, true);
-        a.g.position.set(dx, 0.015, dz); a.g.rotation.y = yaw; a.g.scale.setScalar(DS); g.add(a.g);
-        a.hip.position.y = 0.66;
-        a.legs[0].thigh.rotation.z = 0.2; a.legs[1].thigh.rotation.z = -0.2;
-        a.legs[0].thigh.rotation.x = -0.25; a.legs[0].knee.rotation.x = 0.35;
-        quanFigs.push(a);
-      }
-      const poseQuan = (sec) => quanFigs.forEach((a, i) => {
-        const t = sec * 0.6 + i * 0.8;
-        a.arms[0].sh.rotation.x = -0.9 - Math.sin(t) * 0.5; a.arms[0].sh.rotation.z = -0.35 - Math.cos(t) * 0.3; a.arms[0].el.rotation.x = -0.5;
-        a.arms[1].sh.rotation.x = -0.9 + Math.sin(t) * 0.5; a.arms[1].sh.rotation.z = 0.35 - Math.cos(t) * 0.3; a.arms[1].el.rotation.x = -0.5;
-      });
-      poseQuan(0);
-      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { const step = () => { poseQuan(performance.now() / 1000); requestAnimationFrame(step); }; requestAnimationFrame(step); }
-    }
-    cornerSign('太極拳', QUAN.x, QUAN.z + 1.25, 0.75);
     addBamboo(-10.6, 1.0, 5, 2.8); addBamboo(10.6, 1.0, 5, 2.8); addBamboo(-10.6, -2.6, 4, 2.6); addBamboo(10.6, -2.6, 4, 2.6);
     for (const [x, z] of [[-4.2, 9.2], [4.2, 9.2], [-10.4, 4.0], [10.4, 4.0]]) addLantern(x, z);
     // 休息／活動位置
@@ -1484,6 +1456,174 @@ async function initBuilding() {
       { id: 'tai-3', ...TAI_SEATS[2], label: '打太極' },
       { id: 'walk-out-b', type: 'walk', label: '散步', r: 8.35, sp: -0.1, off: Math.PI },
     ];
+    }
+
+    // ---------- 太極拳宗師（可愛版）：主動走向休息中的成員打招呼；工作中、會議中、無資料者一律不打擾 ----------
+    // 可互動＝與休息安排同一判斷：沒有會議、有資料、doing[] 為空（isWorking 為否）。
+    const master = IS_B ? null : (() => {
+      const g = new THREE.Group(); const rig = new THREE.Group(); g.add(rig);
+      const skin = M(0xf2d6b8, { roughness: 0.6 }), whiteM = M(0xf7f4ec, { roughness: 0.8 }), blackM = M(0x23211e, { roughness: 0.7 });
+      const hairM = M(0xfbfaf6, { roughness: 0.9 }), goldM = M(GOLD, { metalness: 0.5, roughness: 0.4 });
+      const hip = new THREE.Group(); hip.position.y = 0.34; rig.add(hip);
+      const legs = [];
+      for (const sx of [-0.08, 0.08]) { const th = new THREE.Group(); th.position.x = sx; hip.add(th); box(0.1, 0.3, 0.11, blackM, 0, -0.15, 0, th); box(0.12, 0.05, 0.18, blackM, 0, -0.31, 0.03, th); legs.push(th); }
+      const upper = new THREE.Group(); hip.add(upper);
+      // 長袍：左半黑、右半白（太極兩儀），胸前與背後各一枚太極紋
+      for (const [t0, mat] of [[0, blackM], [Math.PI, whiteM]]) { const h = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.3, 0.52, 24, 1, false, t0, Math.PI), mat); h.position.y = 0.17; upper.add(h); }
+      const sash = new THREE.Mesh(new THREE.TorusGeometry(0.205, 0.025, 6, 24), goldM); sash.rotation.x = Math.PI / 2; sash.position.y = 0.2; upper.add(sash);
+      const ec = document.createElement('canvas'); ec.width = ec.height = 128; drawTaiji(ec.getContext('2d'), 64, 64, 58, '#ffffff', '#23211e');
+      const emMat = new THREE.MeshBasicMaterial({ map: canvasTex(ec), transparent: true });
+      for (const sz of [1, -1]) { const em = new THREE.Mesh(new THREE.CircleGeometry(0.085, 24), emMat); em.position.set(0, 0.31, sz * 0.212); em.rotation.set(-0.24 * sz, sz > 0 ? 0 : Math.PI, 0); upper.add(em); }
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 6, 20), goldM); collar.rotation.x = Math.PI / 2; collar.position.y = 0.43; upper.add(collar);
+      // 大圓頭、光頭白髮髻、白眉、白長鬚、腮紅
+      const head = new THREE.Group(); head.position.y = 0.66; upper.add(head);
+      head.add(new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 18), skin));
+      const ring = new THREE.Mesh(new THREE.SphereGeometry(0.248, 24, 12, Math.PI * 0.55, Math.PI * 0.9, Math.PI * 0.3, Math.PI * 0.32), hairM); head.add(ring);
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.075, 14, 10), hairM); bun.position.set(0, 0.27, -0.02); head.add(bun);
+      cyl(0.012, 0.012, 0.2, goldM, 0, 0.28, -0.02, head, 6).rotation.z = Math.PI / 2;
+      for (const ex of [-0.08, 0.08]) {
+        const e = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), M(0x111111)); e.position.set(ex, 0.03, 0.222); head.add(e);
+        const hl = new THREE.Mesh(new THREE.SphereGeometry(0.009, 6, 4), M(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.6 })); hl.position.set(ex + 0.01, 0.042, 0.248); head.add(hl);
+        const br = box(0.1, 0.022, 0.03, hairM, ex * 1.05, 0.095, 0.215, head); br.rotation.z = ex > 0 ? -0.35 : 0.35;
+        const bl = new THREE.Mesh(new THREE.CircleGeometry(0.03, 12), new THREE.MeshBasicMaterial({ color: 0xf0a0a0, transparent: true, opacity: 0.7 })); bl.position.set(ex * 1.55, -0.04, 0.2); bl.rotation.y = ex > 0 ? 0.6 : -0.6; head.add(bl);
+      }
+      const beard = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.34, 16), hairM); beard.rotation.x = Math.PI + 0.25; beard.position.set(0, -0.24, 0.15); head.add(beard);
+      for (const sx of [-1, 1]) { const mu = box(0.1, 0.03, 0.04, hairM, sx * 0.05, -0.06, 0.225, head); mu.rotation.z = sx * -0.4; }
+      const arms = [];
+      for (const sx of [-1, 1]) {
+        const sh = new THREE.Group(); sh.position.set(sx * 0.2, 0.38, 0); upper.add(sh);
+        const sleeveM = sx > 0 ? blackM : whiteM;
+        cyl(0.055, 0.075, 0.2, sleeveM, 0, -0.1, 0, sh, 12);
+        const el2 = new THREE.Group(); el2.position.y = -0.2; sh.add(el2);
+        cyl(0.075, 0.085, 0.14, sleeveM, 0, -0.06, 0, el2, 12);
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), skin); hand.position.y = -0.16; el2.add(hand);
+        arms.push({ sh, el: el2 });
+      }
+      const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.3, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.16, depthWrite: false }));
+      flat(shadow, 0.012); g.add(shadow);
+      g.scale.setScalar(1.3); scene.add(g);
+      // 名牌與對話泡泡
+      const tag = (() => { const cv = document.createElement('canvas'); cv.width = 360; cv.height = 96; const c = cv.getContext('2d');
+        c.fillStyle = 'rgba(35,33,30,0.82)'; c.beginPath(); c.roundRect(4, 4, 352, 88, 44); c.fill(); c.strokeStyle = '#b8995a'; c.lineWidth = 4; c.stroke();
+        c.fillStyle = '#f7f4ec'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, '太極拳宗師', 320, 52, 'bold', SERIF); c.fillText('太極拳宗師', 180, 50);
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(cv), transparent: true, depthTest: false })); s.scale.set(1.05, 0.28, 1); s.renderOrder = 11; scene.add(s); return s; })();
+      const bcv = document.createElement('canvas'); bcv.width = 480; bcv.height = 180; const btex = canvasTex(bcv);
+      const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: btex, transparent: true, depthTest: false })); bubble.scale.set(2.3, 0.86, 1); bubble.renderOrder = 12; bubble.visible = false; scene.add(bubble);
+      let btext = '';
+      const say = (t) => { if (t === btext) return; btext = t; const c = bcv.getContext('2d'); c.clearRect(0, 0, 480, 180);
+        c.fillStyle = '#fffdf7'; c.strokeStyle = '#b8995a'; c.lineWidth = 6; c.beginPath(); c.roundRect(8, 8, 464, 124, 40); c.moveTo(220, 132); c.lineTo(240, 172); c.lineTo(262, 132); c.fill(); c.stroke();
+        c.fillStyle = '#fffdf7'; c.fillRect(224, 124, 34, 12);
+        c.fillStyle = '#23211e'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, t, 420, 56, 'bold', SERIF); c.fillText(t, 240, 72); btex.needsUpdate = true; };
+      return { g, rig, hip, upper, head, legs, arms, tag, bubble, say };
+    })();
+    const mst = { state: 'pick', target: null, route: [], timer: 0, replan: 0, visited: new Set(), x: 0, z: CZ + 8.0, yaw: Math.PI, prev: null, log: [], greetT: 0 };
+    {
+      const LI = 4.0, LO = 8.0, CR = 2.0, SPEED = 1.3, GAPS = [0, 45, 80, 114.5, 147, 180, -45, -80, -114.5, -147].map((d) => d * Math.PI / 180);
+      const PRACTICE = { x: 0, z: CZ + 8.0 };
+      const CORNERS = { tea: { x: -8.6, z: 6.4 }, read: { x: 8.6, z: -6.4 }, taichi: { x: 8.6, z: 6.4 } };
+      const th = (p) => Math.atan2(p.x, p.z - CZ), rad = (p) => Math.hypot(p.x, p.z - CZ);
+      const pt = (r, t) => ({ x: r * Math.sin(t), z: CZ + r * Math.cos(t) });
+      const dAng = (a, b) => { let d = (b - a) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; };
+      const arc = (cx, cz, r, t0, t1) => { const d = dAng(t0, t1), n = Math.max(1, Math.ceil(Math.abs(d) * r / 0.35)), o = []; for (let i = 1; i <= n; i++) { const t = t0 + d * i / n; o.push({ x: cx + r * Math.sin(t), z: cz + r * Math.cos(t) }); } return o; };
+      const cornerOf = (p) => Object.values(CORNERS).find((c) => Math.hypot(p.x - c.x, p.z - c.z) < CR + 0.4) || null;
+      // 從某點走到外圈或內圈走道（回傳路徑點與所在走道）
+      function exitTo(p) {
+        const c = cornerOf(p);
+        if (c) { const a = Math.atan2(p.x - c.x, p.z - c.z), ain = Math.atan2(-c.x, CZ - c.z); return { pts: [{ x: c.x + CR * Math.sin(a), z: c.z + CR * Math.cos(a) }, ...arc(c.x, c.z, CR, a, ain), pt(LO, th(c))], lane: LO, t: th(c) }; }
+        const r = rad(p), t = th(p);
+        return r < 4.8 ? { pts: [pt(LI, t)], lane: LI, t } : { pts: [pt(LO, t)], lane: LO, t };
+      }
+      function plan(from, to) {
+        const A = exitTo(from), B = exitTo(to); const pts = [...A.pts];
+        if (A.lane === B.lane) pts.push(...arc(0, CZ, A.lane, A.t, B.t));
+        else {
+          let best = GAPS[0], bc = 1e9; for (const gp of GAPS) { const c = Math.abs(dAng(A.t, gp)) * A.lane + Math.abs(dAng(gp, B.t)) * B.lane; if (c < bc) { bc = c; best = gp; } }
+          pts.push(...arc(0, CZ, A.lane, A.t, best), pt(B.lane, best), ...arc(0, CZ, B.lane, best, B.t));
+        }
+        pts.push(...B.pts.slice(0, -1).reverse(), { x: to.x, z: to.z });
+        return pts;
+      }
+      const isFree = (d) => !meetingOf(d.f.id) && hasRecord(d.f.id) && !isWorking(person(d.f.id));
+      // 站位：在對方外側約 0.85 處；散步中的人依其角速度預估會合點
+      function standOf(d, lead = 0) {
+        const s = d.slot;
+        if (d.atDesk || !s) { const w = seatWorld(d), t = th(w); return { ...pt(rad(w) + 0.9, t), moving: false }; }
+        if (s.type === 'walk') { const p = d.av.g.position, t = th(p) + s.sp * lead, r = rad(p); return { ...pt(r + 0.85, t), moving: true }; }
+        const c = CORNERS[s.type]; if (!c) return null;
+        const dx = s.x - c.x, dz = s.z - c.z, L = Math.hypot(dx, dz) || 1, k = (L + 0.8) / L; return { x: c.x + dx * k, z: c.z + dz * k, moving: false };
+      }
+      const routeLen = (pts) => { let L = 0, px = mst.x, pz = mst.z; for (const q of pts) { L += Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z; } return L; };
+      function replan(d) {
+        let st = standOf(d); if (!st) return null;
+        if (st.moving) for (let i = 0; i < 2; i++) { const T = routeLen(plan(mst, st)) / SPEED; st = standOf(d, T); }
+        mst.route = plan(mst, st); return st;
+      }
+      const GREET = (n) => [`${n}，休息一下～`, `抱拳！${n} 你好`, `${n}，深呼吸～`, `${n}，喝口茶吧`];
+      const logIt = (ev, d) => { mst.log.push({ t: Math.round(performance.now()), ev, id: d ? d.f.id : null }); if (mst.log.length > 60) mst.log.shift(); };
+      mst.tick = (sec, dt) => {
+        const a = master; if (!a) return;
+        // 目標轉為工作中／會議中：立即放棄
+        if (mst.target && !isFree(mst.target)) { logIt('abandon', mst.target); mst.target = null; mst.state = 'pick'; mst.route = []; }
+        if (mst.state === 'pick' || (mst.state === 'practice' && (mst.timer -= dt) <= 0)) {
+          let c = desks.filter((d) => isFree(d) && !mst.visited.has(d.f.id));
+          if (!c.length && desks.some(isFree)) { mst.visited.clear(); c = desks.filter((d) => isFree(d) && d.f.id !== mst.prev); }
+          if (c.length) {
+            c.sort((p, q) => Math.hypot(p.av.g.position.x - mst.x, p.av.g.position.z - mst.z) - Math.hypot(q.av.g.position.x - mst.x, q.av.g.position.z - mst.z));
+            mst.target = c[0]; mst.state = 'go'; mst.replan = 0; logIt('target', c[0]);
+          } else if (mst.state !== 'practice') { mst.state = 'practice'; mst.route = plan(mst, PRACTICE); mst.timer = 1; logIt('practice'); }
+          else mst.timer = 1;
+        }
+        const d = mst.target; let moving = false, face = null, st = null;
+        if (mst.state === 'go' && d) {
+          // 靜止目標只規劃一次（位置改變才重算）；散步中的目標每 0.6 秒重估會合點
+          const key = d.atDesk ? 'desk' : d.slot;
+          if (mst.replan <= 0 || mst.slotRef !== key || (mst.stand && mst.stand.moving && (mst.replan -= dt) <= 0)) { st = replan(d); mst.replan = 0.6; mst.stand = st; mst.slotRef = key; }
+          const live = standOf(d);
+          if (live && Math.hypot(live.x - mst.x, live.z - mst.z) < (live.moving ? 0.5 : 0.25)) { mst.state = 'greet'; mst.greetT = 0; mst.route = []; a.say(GREET((TAG[d.f.id] || [shortName(d.f)])[0])[hashId(d.f.id + mst.visited.size) % 4]); logIt('greet', d); }
+          else if (!mst.route.length && live && !live.moving) mst.route = [{ x: live.x, z: live.z }];
+        }
+        if (mst.route.length) {
+          let step = SPEED * dt;
+          while (step > 0 && mst.route.length) { const q = mst.route[0], dx = q.x - mst.x, dz = q.z - mst.z, L = Math.hypot(dx, dz); if (L <= step) { mst.x = q.x; mst.z = q.z; step -= L; mst.route.shift(); } else { mst.x += dx / L * step; mst.z += dz / L * step; step = 0; face = Math.atan2(dx, dz); } if (L > 1e-4) face = Math.atan2(dx, dz); }
+          moving = true;
+        }
+        if (mst.state === 'greet' && d) {
+          const live = standOf(d);
+          if (live && live.moving) { const nx = live.x, nz = live.z; moving = Math.hypot(nx - mst.x, nz - mst.z) > 0.002; mst.x = nx; mst.z = nz; }
+          const tp = d.av.g.position; face = Math.atan2(tp.x - mst.x, tp.z - mst.z);
+          if ((mst.greetT += dt) > 3.6) { logIt('done', d); mst.visited.add(d.f.id); mst.prev = d.f.id; mst.target = null; mst.state = 'rest'; mst.timer = 1.4; }
+        }
+        if (mst.state === 'rest' && (mst.timer -= dt) <= 0) mst.state = 'pick';
+        if (face != null) { mst.yaw += dAng(mst.yaw, face) * Math.min(1, dt * 8); }
+        // 姿勢
+        a.hip.position.y = 0.34; a.upper.rotation.set(0, 0, 0); a.head.rotation.set(0, 0, 0); a.rig.rotation.set(0, 0, 0);
+        for (const L of a.legs) L.rotation.set(0, 0, 0);
+        for (const A of a.arms) { A.sh.rotation.set(0, 0, 0); A.el.rotation.set(0, 0, 0); }
+        if (moving) {
+          const w = Math.sin(sec * 9);
+          a.legs[0].rotation.x = w * 0.55; a.legs[1].rotation.x = -w * 0.55;
+          a.arms[0].sh.rotation.x = -w * 0.5; a.arms[1].sh.rotation.x = w * 0.5; a.arms[0].sh.rotation.z = -0.15; a.arms[1].sh.rotation.z = 0.15;
+          a.hip.position.y = 0.34 + Math.abs(w) * 0.03;
+        }
+        if (mst.state === 'greet') {
+          const t = mst.greetT;
+          if (t < 1.2) { a.arms[1].sh.rotation.z = 2.5; a.arms[1].el.rotation.z = Math.sin(sec * 11) * 0.45; a.head.rotation.z = Math.sin(sec * 5) * 0.08; }
+          else if (t < 2.5) { const e = Math.sin(Math.min(1, (t - 1.2) / 1.3) * Math.PI); a.upper.rotation.x = e * 0.45; a.head.rotation.x = e * 0.2;
+            a.arms[0].sh.rotation.x = -1.35; a.arms[1].sh.rotation.x = -1.35; a.arms[0].sh.rotation.z = 0.5; a.arms[1].sh.rotation.z = -0.5; a.arms[0].el.rotation.x = -0.5; a.arms[1].el.rotation.x = -0.5; }
+          else { const k = sec * 1.6; a.arms[0].sh.rotation.x = -1.0 - Math.sin(k) * 0.4; a.arms[1].sh.rotation.x = -1.0 + Math.sin(k) * 0.4; a.arms[0].sh.rotation.z = -0.3; a.arms[1].sh.rotation.z = 0.3; a.arms[0].el.rotation.x = -0.6; a.arms[1].el.rotation.x = -0.6; }
+        } else if (!moving) {
+          // 原地打太極（雲手）
+          const t = sec * 0.7;
+          a.hip.position.y = 0.31; a.legs[0].rotation.z = -0.16; a.legs[1].rotation.z = 0.16; a.rig.rotation.y = Math.sin(t * 0.5) * 0.45;
+          a.arms[0].sh.rotation.x = -0.9 - Math.sin(t) * 0.5; a.arms[0].sh.rotation.z = -0.35 - Math.cos(t) * 0.3; a.arms[0].el.rotation.x = -0.5;
+          a.arms[1].sh.rotation.x = -0.9 + Math.sin(t) * 0.5; a.arms[1].sh.rotation.z = 0.35 - Math.cos(t) * 0.3; a.arms[1].el.rotation.x = -0.5;
+        }
+        const y = rad(mst) < PLAT_R ? TOP : 0;
+        a.g.position.set(mst.x, y, mst.z); a.g.rotation.y = mst.yaw;
+        a.tag.position.set(mst.x, y + 1.95, mst.z);
+        a.bubble.position.set(mst.x, y + 2.6, mst.z);
+        a.bubble.visible = spritesShown && mst.state === 'greet'; a.tag.visible = spritesShown && !a.bubble.visible;
+      };
     }
 
     // 地面組織線（協議 2.6.4）：金線＝直屬、派工；朱紅虛線＝平行、稽核、確認
@@ -1893,7 +2033,7 @@ async function initBuilding() {
       // 看板模式：隱藏所有名牌，避免擋住正面螢幕
       showSprites(!(mode === 'board' && (!fly || performance.now() - fly.t0 > 500)));
       if (!spritesShown) return;
-      const fixed = [rectOf(coreSpr, 0.85), rectOf(meetSpr, 0.85), ...(meetSpr2 ? [rectOf(meetSpr2, 0.85)] : []), ...signs.map((sg) => rectOf(sg, 0.9))];
+      const fixed = [rectOf(coreSpr, 0.85), rectOf(meetSpr, 0.85), ...(meetSpr2 ? [rectOf(meetSpr2, 0.85)] : []), ...signs.map((sg) => rectOf(sg, 0.9)), ...(master && master.bubble.visible ? [rectOf(master.bubble, 0.85)] : [])];
       // 拉近時名牌不無限放大：螢幕寬度上限約 300 像素
       for (const d of desks) {
         const b = d.label.base; if (!b) continue;
@@ -1941,6 +2081,7 @@ async function initBuilding() {
       if (B) B.tick(sec, st, coreHolo);
       for (const b of bamboos) b.g.rotation.z = Math.sin(sec * 0.8 + b.ph) * 0.012;
       for (const d of desks) { poseAvatar(d, sec); if (d.working) d.lamp.material.emissiveIntensity = 0.8 + Math.sin(sec * 2.6 + d.phase) * 0.25; }
+      if (master) { const dtm = Math.min(0.25, Math.max(0, sec - (mst.last ?? sec))); mst.last = sec; mst.tick(sec, dtm); }
       declutter();
       renderer.render(scene, camera);
       requestAnimationFrame(loop);
