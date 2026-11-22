@@ -510,7 +510,7 @@ for (const [btnId, t] of [['#theme-a', 'A'], ['#theme-b', 'B']]) {
 }
 if (IS_B) {
   const lg = $('.legend');
-  if (lg) lg.innerHTML = '藍天綠地 AI 科技開放式辦公：<b>中央走道</b> 直通後牆嵌入式全員看板，盡頭是 <b>總經理指揮台</b>（Louis 最後來訊時間，一小時內有來訊即發光）<br><b>走道左側</b> 私人線：PA、特殊小組（Admin、Kobe、Fly）、IA｜<b>走道右側</b> 公司線：CoS、CTO、CPO、CLO、FP&amp;A（兩側面對面、朝向走道）<br>兩側玻璃會議室（左＝私人線、右＝公司線）・機房・專注艙・咖啡吧・休息區｜<b>藍色實線</b>：直屬上下級（箭頭指向下級）｜<b>橘色虛線</b>：平行、稽核、確認（PA 與 CoS 平行；特殊小組金融性產出交 IA 稽核；IA 報告由 PA 審核；CoS 協調、經 PA 同意由 Fly 支援公司任務）<br>依《AI 團隊架構協議 ' + PROTOCOL + '》';
+  if (lg) lg.innerHTML = '藍天綠地 AI 科技開放式辦公：<b>中央走道</b> 直通後牆嵌入式全員看板，盡頭是 <b>總經理指揮台</b>（Louis 最後來訊時間，一小時內有來訊即發光）<br><b>走道左側</b> 私人線：PA、特殊小組（Admin、Kobe、Fly）、IA｜<b>走道右側</b> 公司線：CoS、CTO、CPO、CLO、FP&amp;A（兩側面對面、朝向走道）<br>兩側玻璃會議室（左＝私人線、右＝公司線）・機房・專注艙・咖啡吧・休息區<br><b>可愛版 Louis</b> 會主動找休息中的成員打招呼；休息中的成員也會在咖啡吧、休息區一起喝咖啡聊 AI 趨勢（工作中、會議中的成員不參加）<br><b>藍色實線</b>：直屬上下級（箭頭指向下級）｜<b>橘色虛線</b>：平行、稽核、確認（PA 與 CoS 平行；特殊小組金融性產出交 IA 稽核；IA 報告由 PA 審核；CoS 協調、經 PA 同意由 Fly 支援公司任務）<br>依《AI 團隊架構協議 ' + PROTOCOL + '》';
   const wrap = $('#building-wrap');
   if (wrap && !$('.org-key')) { const k = document.createElement('div'); k.className = 'org-key'; k.innerHTML = '<b>組織架構</b><span><i class="k-sol"></i>實線＝直屬上下級</span><span><i class="k-dsh"></i>虛線＝平行、稽核、確認</span><span>協議 ' + PROTOCOL + '</span>'; wrap.appendChild(k); }
   const bw = $('#building'); if (bw) bw.setAttribute('aria-label', '三維 AI 科技公司辦公區總覽');
@@ -1517,24 +1517,96 @@ async function initBuilding() {
       const mb = mkBubble(2.3, '#b8995a'), rb = mkBubble(2.0, '#5f9e8a'); // 宗師：金框；成員回話：玉色框
       return { g, rig, hip, upper, head, legs, arms, tag, bubble: mb.spr, say: mb.say, reply: rb.spr, replySay: rb.say };
     })();
-    const mst = { state: 'pick', target: null, route: [], timer: 0, replan: 0, visited: new Set(), x: 0, z: CZ + 8.0, yaw: Math.PI, prev: null, log: [], greetT: 0 };
+    // ---------- 模板 B：可愛版 Louis（短黑髮、白襯衫＋深藍西裝外套），主動找休息中的成員互動 ----------
+    const louis = !IS_B ? null : (() => {
+      const g = new THREE.Group(); const rig = new THREE.Group(); g.add(rig);
+      const skin = M(0xf2d3b4, { roughness: 0.6 }), hairM = M(0x1c1a19, { roughness: 0.8 }), navy = M(0x23365c, { roughness: 0.7 });
+      const shirt = M(0xf7f9fc, { roughness: 0.7 }), pants = M(0x3a3f4a, { roughness: 0.8 }), shoe = M(0x5a3a26, { roughness: 0.6 });
+      const hip = new THREE.Group(); hip.position.y = 0.36; rig.add(hip);
+      const legs = [];
+      for (const sx of [-0.08, 0.08]) { const th = new THREE.Group(); th.position.x = sx; hip.add(th); box(0.11, 0.32, 0.12, pants, 0, -0.16, 0, th); box(0.12, 0.05, 0.19, shoe, 0, -0.33, 0.03, th); legs.push(th); }
+      const upper = new THREE.Group(); hip.add(upper);
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.2, 0.44, 20), navy); torso.position.y = 0.2; upper.add(torso);
+      box(0.13, 0.3, 0.03, shirt, 0, 0.27, 0.185, upper);                 // 白襯衫前襟（不打領帶）
+      for (const sx of [-1, 1]) { const lp = box(0.06, 0.26, 0.02, M(0x1b2a48), sx * 0.085, 0.3, 0.19, upper); lp.rotation.z = sx * 0.25; } // 西裝翻領
+      for (const yy of [0.12, 0.2]) cyl(0.012, 0.012, 0.01, M(0xd9c48a), 0.0, yy, 0.205, upper, 8).rotation.x = Math.PI / 2;
+      const collar = box(0.18, 0.05, 0.05, shirt, 0, 0.43, 0.13, upper); collar.rotation.x = -0.3;
+      const head = new THREE.Group(); head.position.y = 0.66; upper.add(head);
+      head.add(new THREE.Mesh(new THREE.SphereGeometry(0.235, 24, 18), skin));
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.248, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.42), hairM); hair.position.y = 0.02; head.add(hair);
+      const fringe = new THREE.Mesh(new THREE.SphereGeometry(0.25, 20, 10, Math.PI * 1.15, Math.PI * 0.7, Math.PI * 0.3, Math.PI * 0.14), hairM); head.add(fringe);
+      const back = new THREE.Mesh(new THREE.SphereGeometry(0.244, 20, 12, Math.PI * 0.4, Math.PI * 1.2, Math.PI * 0.3, Math.PI * 0.35), hairM); head.add(back);
+      for (const ex of [-0.08, 0.08]) {
+        const e = new THREE.Mesh(new THREE.SphereGeometry(0.027, 10, 8), M(0x111111)); e.position.set(ex, 0.0, 0.215); head.add(e);
+        const hl = new THREE.Mesh(new THREE.SphereGeometry(0.009, 6, 4), M(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.6 })); hl.position.set(ex + 0.01, 0.012, 0.24); head.add(hl);
+        const br = box(0.08, 0.018, 0.02, hairM, ex, 0.075, 0.215, head); br.rotation.z = ex > 0 ? -0.1 : 0.1;
+        const bl = new THREE.Mesh(new THREE.CircleGeometry(0.028, 12), new THREE.MeshBasicMaterial({ color: 0xf0a0a0, transparent: true, opacity: 0.6 })); bl.position.set(ex * 1.5, -0.06, 0.2); bl.rotation.y = ex > 0 ? 0.6 : -0.6; head.add(bl);
+      }
+      const smile = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.008, 6, 12, Math.PI), M(0x7a3b2e)); smile.position.set(0, -0.08, 0.222); smile.rotation.z = Math.PI; head.add(smile);
+      const arms = [];
+      for (const sx of [-1, 1]) {
+        const sh = new THREE.Group(); sh.position.set(sx * 0.215, 0.38, 0); upper.add(sh);
+        cyl(0.05, 0.055, 0.2, navy, 0, -0.1, 0, sh, 12);
+        const el2 = new THREE.Group(); el2.position.y = -0.2; sh.add(el2);
+        cyl(0.05, 0.05, 0.13, navy, 0, -0.06, 0, el2, 12);
+        cyl(0.052, 0.052, 0.025, shirt, 0, -0.13, 0, el2, 12);
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.042, 10, 8), skin); hand.position.y = -0.17; el2.add(hand);
+        arms.push({ sh, el: el2 });
+      }
+      const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.3, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.16, depthWrite: false }));
+      flat(shadow, 0.012); g.add(shadow);
+      g.scale.setScalar(1.3); scene.add(g);
+      const tag = (() => { const cv = document.createElement('canvas'); cv.width = 360; cv.height = 96; const c = cv.getContext('2d');
+        c.fillStyle = 'rgba(16,40,80,0.86)'; c.beginPath(); c.roundRect(4, 4, 352, 88, 44); c.fill(); c.strokeStyle = '#38c8ff'; c.lineWidth = 4; c.stroke();
+        c.fillStyle = '#eaf4ff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `bold 54px ${SANS}`; c.fillText('Louis', 180, 50);
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(cv), transparent: true, depthTest: false })); s.scale.set(0.95, 0.26, 1); s.renderOrder = 11; scene.add(s); return s; })();
+      const mkBubble = (W, edge) => { const cv = document.createElement('canvas'); cv.width = 480; cv.height = 180; const tex = canvasTex(cv);
+        const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })); spr.scale.set(W, W * 0.374, 1); spr.renderOrder = 12; spr.visible = false; scene.add(spr);
+        let cur = ''; const say = (t) => { if (t === cur) return; cur = t; const c = cv.getContext('2d'); c.clearRect(0, 0, 480, 180);
+          c.fillStyle = '#ffffff'; c.strokeStyle = edge; c.lineWidth = 6; c.beginPath(); c.roundRect(8, 8, 464, 124, 40); c.moveTo(220, 132); c.lineTo(240, 172); c.lineTo(262, 132); c.fill(); c.stroke();
+          c.fillStyle = '#ffffff'; c.fillRect(224, 124, 34, 12);
+          c.fillStyle = '#10223f'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, t, 420, 56, 'bold', SANS); c.fillText(t, 240, 72); tex.needsUpdate = true; };
+        return { spr, say }; };
+      const mb = mkBubble(2.3, '#1f6fbf'), rb = mkBubble(2.0, '#3fb56b');
+      return { kind: 'louis', g, rig, hip, upper, head, legs, arms, tag, bubble: mb.spr, say: mb.say, reply: rb.spr, replySay: rb.say };
+    })();
+    if (master) master.kind = 'master';
+    const VIS = master || louis; // 每個模板只有一位主動訪客：模板 A 太極拳宗師、模板 B Louis
+    const TALK = {"dlg": [{"g": "tech", "a": ["IEA：資料中心用電到2030年將近倍增", "從2025年485TWh增至約950TWh"], "s": "儲能應用案例先整理好，客戶問得到"}, {"g": "tech", "a": ["IEA：2025年AI資料中心用電成長50%"], "s": "可多留意AI機房對備援電力的需求"}, {"g": "tech", "a": ["IEA估2030年資料中心電池需求約25GW"], "s": "產品說明可補上削峰與備援情境"}, {"g": "proc", "a": ["TrendForce：AI機房儲能從選配變必要"], "s": "報價前先問清楚客戶的備援規格"}, {"g": "proc", "a": ["日經：DRAM價格已約為去年底的兩倍"], "s": "買電腦或伺服器前，先比價再排交期"}, {"g": "proc", "a": ["TrendForce：第4季DRAM合約價估季增10–15%"], "s": "含記憶體的設備報價，留意有效期"}, {"g": "proc", "a": ["TrendForce：記憶體缺口收斂，漲幅逐季縮小"], "s": "長約價格條款，簽約前逐條確認"}, {"g": "legal", "a": ["歐盟AI法：今年8月2日起開始執法", "含通用模型、禁止行為與透明度規則"], "s": "與歐洲夥伴合作，留意合約AI條款"}, {"g": "legal", "a": ["歐盟對頂尖模型罰款最高達全球營收3%"], "s": "用AI工具前，先看條款與資料用途"}, {"g": "legal", "a": ["歐盟高風險AI規則2027年12月2日起適用", "範圍包含關鍵基礎設施等領域"], "s": "設備若用AI控制，可先確認是否適用"}, {"g": "fin", "a": ["Menlo：企業AI部署支出至9月達1770億美元", "去年約330億美元"], "s": "導入AI先算月成本，再看省多少工時"}, {"g": "fin", "a": ["麥肯錫：約兩成企業說AI成本限制了使用"], "s": "每月檢查一次AI訂閱與用量"}, {"g": "fin", "a": ["Ramp：每百萬token均價一個月降21%"], "s": "模型可定期比價，不必綁定一家"}, {"g": "inv", "a": ["NPR：那斯達克本週跌10%", "為2020年3月以來最差的一週"], "s": "波動大時先看全貌，別急著做決定"}, {"g": "inv", "a": ["NPR：Fed九月升息，三年多來首次", "AI蓋資料中心的借貸成本跟著變高"], "s": "研究AI題材時，可一併看負債與利率"}, {"g": "inv", "a": ["NPR：市場擔心AI公司間循環融資風險"], "s": "留意資產是否過度集中在同一主題"}, {"g": "mgmt", "a": ["Gartner：僅17%組織已部署AI代理", "逾六成預計兩年內導入"], "s": "可先挑一個流程試行，再慢慢擴大"}, {"g": "mgmt", "a": ["Gartner：代理式AI正處期望膨脹高峰"], "s": "導入前先定好驗收標準與負責人"}, {"g": "mgmt", "a": ["麥肯錫：大企業四成在擴大用AI代理", "小型組織則持平在22%"], "s": "小公司可從重複的文書工作開始"}, {"g": "ops", "a": ["KPMG：資料準備與存取是AI首要障礙"], "s": "報價與規格資料先整理成固定格式"}, {"g": "ops", "a": ["Gartner：41%資安長遇過深偽社交工程"], "s": "改帳戶或付款的要求，一律回撥確認"}, {"g": "ops", "a": ["IDC：不到一半的AI概念驗證能上線"], "s": "試行時記錄成效，沒效就及早停"}], "react": ["真的嗎？那可以怎麼做？", "這個值得記下來", "嗯，有道理", "那我們能做什麼？", "原來如此", "好，回頭整理給大家"], "mOpen": ["來來來，喝茶先，趨勢慢慢聊", "老夫考考你們：AI最近有何新鮮事？", "以柔克剛，先聽再出手", "茶要慢慢品，消息也要慢慢查"], "mReact": ["好！這招老夫記下了", "心靜，判斷才準", "快不如穩，穩不如準", "妙哉，貴在實用"], "lOpen": ["大家在聊什麼？我也聽聽", "喝杯咖啡，聊聊AI新消息吧", "有什麼值得注意的趨勢？"], "lReact": ["這點很實用，記下了", "好，我們慢慢來", "謝謝，辛苦大家了", "有道理，回頭再細看"]};
+    const ROLE = { cto: 'tech', cpo: 'proc', clo: 'legal', fpa: 'fin', ia: 'inv', cos: 'mgmt', pa: 'mgmt', kobe: 'ops', fly: 'ops', admin: 'ops' };
+    // 聚會泡泡（每處聚會一個；一次只有一人說話，輪流出現）
+    function talkBubble() {
+      const cv = document.createElement('canvas'); cv.width = 720; cv.height = 250; const tex = canvasTex(cv);
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })); spr.scale.set(3.1, 3.1 * 250 / 720, 1); spr.renderOrder = 12; spr.visible = false; scene.add(spr);
+      let cur = '';
+      const say = (t, who) => { const key = who + '|' + t; if (key === cur) return; cur = key; const c = cv.getContext('2d'); c.clearRect(0, 0, 720, 250);
+        c.fillStyle = IS_B ? '#ffffff' : '#fffdf7'; c.strokeStyle = IS_B ? '#1f6fbf' : '#5f9e8a'; c.lineWidth = 6;
+        c.beginPath(); c.roundRect(8, 8, 704, 190, 36); c.moveTo(338, 198); c.lineTo(360, 242); c.lineTo(384, 198); c.fill(); c.stroke(); c.fillRect(342, 190, 38, 12);
+        c.fillStyle = IS_B ? '#1f6fbf' : '#8a6a2e'; c.textAlign = 'left'; c.textBaseline = 'middle'; c.font = `bold 34px ${SANS}`; c.fillText(who, 30, 42);
+        c.fillStyle = IS_B ? '#10223f' : '#23211e'; c.textAlign = 'center'; const font = IS_B ? SANS : SERIF;
+        const lines = t.length > 16 ? [t.slice(0, Math.ceil(t.length / 2)), t.slice(Math.ceil(t.length / 2))] : [t];
+        let sz = 54; c.font = `bold ${sz}px ${font}`; while (lines.some((l) => c.measureText(l).width > 660) && sz > 30) { sz -= 2; c.font = `bold ${sz}px ${font}`; }
+        lines.forEach((l, i) => c.fillText(l, 360, lines.length === 1 ? 118 : 96 + i * 62)); tex.needsUpdate = true; };
+      return { spr, say };
+    }
+    const mst = { state: 'pick', target: null, route: [], timer: 0, replan: 0, visited: new Set(), x: IS_B ? -1.9 : 0, z: IS_B ? 9.3 : CZ + 8.0, yaw: Math.PI, prev: null, log: [], greetT: 0 };
     {
       const LI = 4.0, LO = 8.0, CR = 2.0, SPEED = 1.3, GAPS = [0, 45, 80, 114.5, 147, 180, -45, -80, -114.5, -147].map((d) => d * Math.PI / 180);
-      const PRACTICE = { x: 0, z: CZ + 8.0 };
+      const PRACTICE = IS_B ? { x: -1.9, z: 9.3 } : { x: 0, z: CZ + 8.0 };
       const CORNERS = { tea: { x: -8.6, z: 6.4 }, read: { x: 8.6, z: -6.4 }, taichi: { x: 8.6, z: 6.4 } };
       const th = (p) => Math.atan2(p.x, p.z - CZ), rad = (p) => Math.hypot(p.x, p.z - CZ);
       const pt = (r, t) => ({ x: r * Math.sin(t), z: CZ + r * Math.cos(t) });
       const dAng = (a, b) => { let d = (b - a) % (2 * Math.PI); if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d; };
       const arc = (cx, cz, r, t0, t1) => { const d = dAng(t0, t1), n = Math.max(1, Math.ceil(Math.abs(d) * r / 0.35)), o = []; for (let i = 1; i <= n; i++) { const t = t0 + d * i / n; o.push({ x: cx + r * Math.sin(t), z: cz + r * Math.cos(t) }); } return o; };
       const cornerOf = (p) => Object.values(CORNERS).find((c) => Math.hypot(p.x - c.x, p.z - c.z) < CR + 0.4) || null;
-      // 從某點走到外圈或內圈走道（回傳路徑點與所在走道）
+      // 模板 A：從某點走到外圈或內圈走道（回傳路徑點與所在走道）
       function exitTo(p) {
         const c = cornerOf(p);
         if (c) { const a = Math.atan2(p.x - c.x, p.z - c.z), ain = Math.atan2(-c.x, CZ - c.z); return { pts: [{ x: c.x + CR * Math.sin(a), z: c.z + CR * Math.cos(a) }, ...arc(c.x, c.z, CR, a, ain), pt(LO, th(c))], lane: LO, t: th(c) }; }
         const r = rad(p), t = th(p);
         return r < 4.8 ? { pts: [pt(LI, t)], lane: LI, t } : { pts: [pt(LO, t)], lane: LO, t };
       }
-      function plan(from, to) {
+      function planA(from, to) {
         const A = exitTo(from), B = exitTo(to); const pts = [...A.pts];
         if (A.lane === B.lane) pts.push(...arc(0, CZ, A.lane, A.t, B.t));
         else {
@@ -1544,40 +1616,134 @@ async function initBuilding() {
         pts.push(...B.pts.slice(0, -1).reverse(), { x: to.x, z: to.z });
         return pts;
       }
+      // 模板 B 走道圖：中央主走道 C（x=0）、兩側次走道 L／R（x=∓7.1，工位島與外圍島之間）、前方橫走道 X1（z=8.7）；
+      // 咖啡吧、休息區、專注艙各從綠籬開口進出；機房與專注艙第二座玻璃艙走不進去，不列為拜訪目標。
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      function attachB(p) {
+        const ax = Math.abs(p.x), sx = Math.sign(p.x) || 1;
+        if (p.x < -7.6 && p.z > 10.3) return { room: 'coffee', pre: [{ x: -8.6, z: 12.4 }], cp: { x: -7.1, z: 12.4 }, k: 'L' };
+        if (p.x > 7.6 && p.z > 10.3) return { room: 'lounge', pre: (p.x > 9.3 ? [{ x: p.x, z: 13.5 }, { x: 9.0, z: 13.5 }] : []).concat([{ x: 8.6, z: 12.4 }]), cp: { x: 7.1, z: 12.4 }, k: 'R' };
+        if (p.x > 7.6 && p.z > -3.6 && p.z < 0.6) return { room: 'booth', pre: [{ x: 8.6, z: -1.4 }], cp: { x: 7.1, z: -1.4 }, k: 'R' };
+        if (ax >= 6.6) return { pre: [], cp: { x: 7.1 * sx, z: clamp(p.z, -4.6, 16.0) }, k: sx < 0 ? 'L' : 'R' };
+        if (p.z > 6.2) return { pre: [], cp: { x: clamp(p.x, -7.1, 7.1), z: 8.7 }, k: 'X' };
+        return { pre: [], cp: { x: 0, z: clamp(p.z, -3.0, 15.5) }, k: 'C' };
+      }
+      const JUNC = { C: { x: 0, z: 8.7 }, L: { x: -7.1, z: 8.7 }, R: { x: 7.1, z: 8.7 } };
+      function planB(from, to) {
+        if (Math.hypot(from.x - to.x, from.z - to.z) < 1.2) return [{ x: to.x, z: to.z }];
+        const A = attachB(from), B = attachB(to);
+        if (A.room && A.room === B.room) return [...(B.room === 'lounge' && (from.x > 9.3) !== (to.x > 9.3) ? [{ x: 9.0, z: 13.5 }] : []), { x: to.x, z: to.z }];
+        const pts = [...A.pre, A.cp];
+        if (A.k !== B.k) { if (A.k !== 'X') pts.push(JUNC[A.k]); if (B.k !== 'X') pts.push(JUNC[B.k]); }
+        pts.push(B.cp, ...B.pre.slice().reverse(), { x: to.x, z: to.z });
+        return pts;
+      }
+      const plan = IS_B ? planB : planA;
       const isFree = (d) => !meetingOf(d.f.id) && hasRecord(d.f.id) && !isWorking(person(d.f.id));
       // 站位：在對方外側約 1.15 處；散步中的人依其角速度預估會合點
-      function standOf(d, lead = 0) {
+      function standOfA(d, lead = 0) {
         const s = d.slot;
         if (d.atDesk || !s) { const w = seatWorld(d), t = th(w); return { ...pt(rad(w) + 1.2, t), moving: false }; }
         if (s.type === 'walk') { const p = d.av.g.position, t = th(p) + (d.react ? 0 : s.sp * lead), r = rad(p); return { ...pt(r + 1.15, t), moving: true }; }
         const c = CORNERS[s.type]; if (!c) return null;
         const dx = s.x - c.x, dz = s.z - c.z, L = Math.hypot(dx, dz) || 1, k = (L + 1.15) / L; return { x: c.x + dx * k, z: c.z + dz * k, moving: false };
       }
+      const STAND_B = { 'coffee-1': { x: -10.85, z: 12.85 }, 'coffee-2': { x: -9.4, z: 12.45 }, 'coffee-3': { x: -8.5, z: 13.3 }, 'lounge-1': { x: 8.85, z: 12.2 }, 'lounge-2': { x: 11.2, z: 12.15 }, 'lounge-3': { x: 11.25, z: 13.3 }, 'booth-1': { x: 8.6, z: -1.4 } };
+      function standOfB(d) {
+        const s = d.slot;
+        if (d.atDesk || !s) { const w = seatWorld(d); return { x: (Math.sign(w.x) || 1) * 2.0, z: w.z, moving: false }; }
+        if (s.type === 'patrol') {
+          const p = d.av.g.position;
+          if (/^walk-aisle/.test(s.id)) return { x: p.x, z: p.z + (mst.z >= p.z ? 1.1 : -1.1), moving: true };
+          if (/^walk-front/.test(s.id)) return { x: p.x, z: 8.7, moving: true };
+          return null; // 機房巡視：玻璃機房內走道太窄
+        }
+        const st = STAND_B[s.id]; return st ? { ...st, moving: false } : null;
+      }
+      const standOf = IS_B ? standOfB : standOfA;
       const routeLen = (pts) => { let L = 0, px = mst.x, pz = mst.z; for (const q of pts) { L += Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z; } return L; };
       function replan(d) {
         let st = standOf(d); if (!st) return null;
-        if (st.moving) for (let i = 0; i < 3; i++) { const T = routeLen(plan(mst, st)) / SPEED; st = standOf(d, T); }
+        if (st.moving && !IS_B) for (let i = 0; i < 3; i++) { const T = routeLen(plan(mst, st)) / SPEED; st = standOf(d, T); }
         mst.route = plan(mst, st); return st;
       }
-      const GREET = (n) => [`${n}，休息一下～`, `抱拳！${n} 你好`, `${n}，深呼吸～`, `${n}，喝口茶吧`];
-      const REPLY = ['宗師早！', '謝謝宗師', '一起練！', '宗師好～', '受教了！', '宗師請喝茶'];
-      const COOL = 8, GREET_T = 4.0, SAY_T = 1.9; // 同一人 8 秒內不重複打招呼；宗師先說、對方 1.9 秒後回話（兩個泡泡不同時出現）
+      const isMaster = VIS && VIS.kind === 'master';
+      const GREET = isMaster ? (n) => [`${n}，休息一下～`, `抱拳！${n} 你好`, `${n}，深呼吸～`, `${n}，喝口茶吧`] : (n) => [`嗨，${n}！休息一下`, `${n}，辛苦了`, `${n}，喝杯咖啡嗎？`, `${n}，最近還好嗎？`];
+      const REPLY = isMaster ? ['宗師早！', '謝謝宗師', '一起練！', '宗師好～', '受教了！', '宗師請喝茶'] : ['Louis 好！', '謝謝總經理', '一起喝咖啡！', '您好～', '收到，謝謝', '總經理辛苦了'];
+      const CALL = isMaster ? '宗師！' : 'Louis！';
+      const COOL = 8, GREET_T = 4.0, SAY_T = 1.9, LINE_T = 4.2; // 同一人 8 秒內不重複；宗師／Louis 先說、對方 1.9 秒後回話
       mst.cool = {}; mst.caller = null; mst.greets = 0;
-      const logIt = (ev, d) => { mst.log.push({ t: Math.round(performance.now()), ev, id: d ? d.f.id : null }); if (mst.log.length > 80) mst.log.shift(); };
-      const ok = (d, sec) => isFree(d) && !(mst.cool[d.f.id] > sec - COOL);
+      const logIt = (ev, d) => { mst.log.push({ t: Math.round(performance.now()), ev, id: d ? (d.f ? d.f.id : d.id) : null }); if (mst.log.length > 120) mst.log.shift(); };
+      const ok = (d, sec) => isFree(d) && !(mst.cool[d.f.id] > sec - COOL) && !d.gather && !!standOf(d);
       const distTo = (d) => Math.hypot(d.av.g.position.x - mst.x, d.av.g.position.z - mst.z);
       const startGo = (d) => { mst.target = d; mst.state = 'go'; mst.replan = 0; mst.stand = null; logIt('target', d); };
+      // ---------- 聚會：同一休息區有 2–3 位休息中成員（或 1 位＋宗師／Louis）就一起喝茶、吃點心、喝咖啡、聊 AI 趨勢 ----------
+      const SPOTS = IS_B ? [
+        { id: 'coffee', name: '咖啡吧', test: (s) => /^coffee/.test(s.id), c: { x: -10.0, z: 12.4 }, host: { x: -9.0, z: 12.1 }, act: ['coffee'] },
+        { id: 'lounge', name: '休息區', test: (s) => /^lounge/.test(s.id), c: { x: 10.4, z: 12.2 }, host: { x: 8.9, z: 12.7 }, act: ['coffee', 'chat'] },
+      ] : [
+        { id: 'tea', name: '茶席', test: (s) => s.type === 'tea', c: { x: -8.6, z: 6.4 }, host: { x: -8.6, z: 7.45 }, act: ['tea', 'meal'] },
+        { id: 'read', name: '書房', test: (s) => s.type === 'read', c: { x: 8.6, z: -6.2 }, host: { x: 8.6, z: -5.15 }, act: ['chat'] },
+        { id: 'tai', name: '太極場', test: (s) => s.type === 'taichi', c: { x: 8.6, z: 6.2 }, host: { x: 8.6, z: 6.25 }, act: ['chat'] },
+      ];
+      for (const sp of SPOTS) Object.assign(sp, { seq: null, li: 0, t: 0, gap: 1.5 + Math.random() * 3, k: Math.floor(Math.random() * 7), bub: talkBubble(), hostCool: -99, members: [] });
+      let dlgPtr = Math.floor(Math.random() * TALK.dlg.length);
+      const nameOf = (who) => who === 'host' ? (isMaster ? '太極拳宗師' : 'Louis') : (TAG[who.f.id] || [shortName(who.f)])[0];
+      const pick = (arr, k) => arr[((k % arr.length) + arr.length) % arr.length];
+      function buildSeq(sp, hostHere) {
+        const m = sp.members, roles = new Set(m.map((d) => ROLE[d.f.id]));
+        let dl = null; for (let n = 0; n < TALK.dlg.length; n++) { const c = TALK.dlg[(dlgPtr + n) % TALK.dlg.length]; if (roles.has(c.g)) { dl = c; dlgPtr = (dlgPtr + n + 1) % TALK.dlg.length; break; } }
+        if (!dl) return null;
+        const R = m.find((d) => ROLE[d.f.id] === dl.g), others = m.filter((d) => d !== R), O = hostHere ? 'host' : pick(others, sp.k);
+        if (!O) return null;
+        const seq = [];
+        if (hostHere) seq.push({ who: 'host', text: pick(isMaster ? TALK.mOpen : TALK.lOpen, sp.k) });
+        for (const t of dl.a) seq.push({ who: R, text: t });
+        seq.push({ who: O, text: O === 'host' ? pick(isMaster ? TALK.mReact : TALK.lReact, sp.k + 1) : pick(TALK.react, sp.k) });
+        seq.push({ who: R, text: dl.s });
+        if (hostHere && others.length) seq.push({ who: others[0], text: pick(TALK.react, sp.k + 2) });
+        return seq;
+      }
+      function tickSpots(sec, dt) {
+        for (const d of desks) d.gather = null;
+        for (const sp of SPOTS) {
+          sp.members = desks.filter((d) => !d.atDesk && d.slot && sp.test(d.slot) && isFree(d) && !d.react).slice(0, 3);
+          const hostHere = mst.state === 'hosting' && mst.spot === sp;
+          const active = sp.members.length >= 2 || (sp.members.length >= 1 && hostHere);
+          if (!active) { sp.seq = null; sp.bub.spr.visible = false; continue; }
+          if (!sp.seq) { if ((sp.gap -= dt) <= 0) { sp.seq = buildSeq(sp, hostHere); sp.withHost = hostHere; sp.li = 0; sp.t = 0; sp.k++; sp.actNow = pick(sp.act, sp.k); if (sp.seq) logIt('talk:' + sp.id + ':' + sp.members.map((d) => d.f.id).join('+') + (hostHere ? '+host' : '')); } }
+          let line = null;
+          if (sp.seq) {
+            sp.t += dt; if (sp.t > LINE_T) { sp.li++; sp.t = 0; }
+            while (sp.seq && sp.li < sp.seq.length && sp.seq[sp.li].who !== 'host' && !sp.members.includes(sp.seq[sp.li].who)) sp.li++; // 說話者轉忙碌：跳過
+            if (sp.seq && sp.seq[sp.li] && sp.seq[sp.li].who === 'host' && !hostHere) sp.li++;
+            if (sp.li >= sp.seq.length) { sp.seq = null; sp.gap = 5 + Math.random() * 4; if (sp.withHost) mst.hostDone = true; }
+            else line = sp.seq[sp.li];
+          }
+          const act = sp.actNow || sp.act[0];
+          for (const d of sp.members) d.gather = { cx: sp.c.x, cz: sp.c.z, speaking: !!line && line.who === d, act, sp: sp.id };
+          sp.speakingHost = !!line && line.who === 'host';
+          if (line && spritesShown) { const p = line.who === 'host' ? VIS.g.position : line.who.av.g.position; sp.bub.say(line.text, nameOf(line.who)); sp.bub.spr.position.set(p.x, p.y + 3.15, p.z); sp.bub.spr.visible = true; sp.lastLine = line.text; }
+          else sp.bub.spr.visible = false;
+        }
+      }
+      mst.spots = SPOTS;
       mst.tick = (sec, dt) => {
-        const a = master; if (!a) return;
+        const a = VIS; if (!a) return;
+        tickSpots(sec, dt);
         // 目標或呼喚者轉為工作中／會議中：立即放棄
         if (mst.target && !isFree(mst.target)) { logIt('abandon', mst.target); mst.target = null; mst.state = 'pick'; mst.route = []; }
         if (mst.state === 'called' && (!mst.caller || !isFree(mst.caller))) { logIt('abandon', mst.caller); mst.caller = null; mst.state = 'pick'; }
+        if ((mst.state === 'host-go' || mst.state === 'hosting') && !desks.some((d) => !d.atDesk && d.slot && mst.spot.test(d.slot) && isFree(d))) { logIt('host-abandon', mst.spot); mst.state = 'pick'; mst.route = []; }
+        if (mst.state === 'hosting') { mst.timer -= dt; if (mst.hostDone || mst.timer <= 0) { logIt('host-done', mst.spot); for (const d of mst.spot.members) mst.cool[d.f.id] = sec; mst.spot.hostCool = sec; mst.lastHost = sec; mst.state = 'rest'; mst.timer = 1.4; } }
         if (mst.state === 'pick' || (mst.state === 'practice' && (mst.timer -= dt) <= 0)) {
+          // 約三成回合：帶休息中的成員在休息區喝茶／吃點心／喝咖啡聊天
+          const hostable = SPOTS.filter((sp) => sec - sp.hostCool > 25 && !(mst.lastHost > sec - 20) && desks.some((d) => !d.atDesk && d.slot && sp.test(d.slot) && isFree(d) && !(mst.cool[d.f.id] > sec - COOL)));
           let c = desks.filter((d) => ok(d, sec) && !mst.visited.has(d.f.id));
           if (!c.length) { mst.visited.clear(); c = desks.filter((d) => ok(d, sec)); }
-          if (c.length) {
+          if (hostable.length && (Math.random() < 0.3 || !c.length)) { const sp = pick(hostable, Math.floor(Math.random() * 9)); mst.spot = sp; mst.state = 'host-go'; mst.route = plan(mst, sp.host); logIt('host-go', sp); }
+          else if (c.length) {
             const near = c.filter((d) => distTo(d) < 6);
-            // 約兩成機會由附近休息中的成員主動揮手呼喚「宗師！」，宗師就先去找他
             if (near.length && Math.random() < 0.2) { const k = near[Math.floor(Math.random() * near.length)]; mst.caller = k; mst.state = 'called'; mst.timer = 1.6; mst.route = []; logIt('call', k); }
             else { c.sort((p, q) => distTo(p) - distTo(q)); startGo(c[0]); }
           } else if (mst.state !== 'practice') { mst.state = 'practice'; mst.route = plan(mst, PRACTICE); mst.timer = 1; logIt('practice'); }
@@ -1588,18 +1754,21 @@ async function initBuilding() {
           const cp = mst.caller.av.g.position; face = Math.atan2(cp.x - mst.x, cp.z - mst.z);
           if ((mst.timer -= dt) <= 0) { const k = mst.caller; mst.caller = null; startGo(k); }
         }
+        if (mst.state === 'host-go' && !mst.route.length && Math.hypot(mst.spot.host.x - mst.x, mst.spot.host.z - mst.z) < 0.3) { mst.state = 'hosting'; mst.hostDone = false; mst.timer = 45; mst.spot.seq = null; mst.spot.gap = 0.6; logIt('hosting', mst.spot); }
+        if (mst.state === 'hosting') face = Math.atan2(mst.spot.c.x - mst.x, mst.spot.c.z - mst.z);
         const d = mst.target;
         if (mst.state === 'go' && d) {
-          // 靜止目標只規劃一次（位置改變才重算）；散步中的目標依角速度預估會合點，走完再重估，接近時直接迎上
+          // 靜止目標只規劃一次（位置改變才重算）；散步中的目標預估會合點，走完再重估，接近時直接迎上
           const key = d.atDesk ? 'desk' : d.slot;
-          const near = mst.stand && mst.stand.moving && (() => { const lv = standOf(d); return lv && Math.hypot(lv.x - mst.x, lv.z - mst.z) < 2.2 && Math.abs(rad(lv) - rad(mst)) < 0.6 ? lv : null; })();
-          if (near) mst.route = [{ x: near.x, z: near.z }]; // 已在同一走道且很近：直接迎上去
-          else if (mst.replan <= 0 || mst.slotRef !== key || (mst.stand && mst.stand.moving && !mst.route.length)) { st = replan(d); mst.replan = 1; mst.stand = st; mst.slotRef = key; }
+          const near = mst.stand && mst.stand.moving && (() => { const lv = standOf(d); if (!lv) return null; const dd = Math.hypot(lv.x - mst.x, lv.z - mst.z); return (IS_B ? dd < 2.6 : dd < 2.2 && Math.abs(rad(lv) - rad(mst)) < 0.6) ? lv : null; })();
+          if (near) mst.route = [{ x: near.x, z: near.z }]; // 已很近：直接迎上去
+          else if (mst.replan <= 0 || mst.slotRef !== key || (mst.stand && mst.stand.moving && (!mst.route.length || (IS_B && (mst.replan -= dt) <= 0)))) { st = replan(d); mst.replan = 1.5; mst.stand = st; mst.slotRef = key; }
           const live = standOf(d);
-          if (live && Math.hypot(live.x - mst.x, live.z - mst.z) < (live.moving ? 0.5 : 0.25)) {
+          if (!live) { logIt('abandon', d); mst.target = null; mst.state = 'pick'; mst.route = []; }
+          else if (Math.hypot(live.x - mst.x, live.z - mst.z) < (live.moving ? 0.5 : 0.25)) {
             mst.state = 'greet'; mst.greetT = 0; mst.route = []; mst.mirror = Math.random() < 0.5; const n = mst.greets++;
             a.say(GREET((TAG[d.f.id] || [shortName(d.f)])[0])[hashId(d.f.id + n) % 4]); mst.replyText = REPLY[hashId(n + d.f.id) % REPLY.length]; logIt('greet', d);
-          } else if (!mst.route.length && live && !live.moving) mst.route = [{ x: live.x, z: live.z }];
+          } else if (!mst.route.length && !live.moving) mst.route = [{ x: live.x, z: live.z }];
         }
         if (mst.route.length) {
           let step = SPEED * dt;
@@ -1621,40 +1790,49 @@ async function initBuilding() {
           else if (mst.state === 'go' && distTo(tg) < 2.5) tg.react = { mode: 'face', mx: mst.x, mz: mst.z };
         }
         // 姿勢
-        a.hip.position.y = 0.34; a.upper.rotation.set(0, 0, 0); a.head.rotation.set(0, 0, 0); a.rig.rotation.set(0, 0, 0);
+        const kL = a.kind === 'louis';
+        a.hip.position.y = kL ? 0.36 : 0.34; a.upper.rotation.set(0, 0, 0); a.head.rotation.set(0, 0, 0); a.rig.rotation.set(0, 0, 0);
         for (const L of a.legs) L.rotation.set(0, 0, 0);
         for (const A of a.arms) { A.sh.rotation.set(0, 0, 0); A.el.rotation.set(0, 0, 0); }
         if (moving) {
           const w = Math.sin(sec * 9);
           a.legs[0].rotation.x = w * 0.55; a.legs[1].rotation.x = -w * 0.55;
           a.arms[0].sh.rotation.x = -w * 0.5; a.arms[1].sh.rotation.x = w * 0.5; a.arms[0].sh.rotation.z = -0.15; a.arms[1].sh.rotation.z = 0.15;
-          a.hip.position.y = 0.34 + Math.abs(w) * 0.03;
+          a.hip.position.y += Math.abs(w) * 0.03;
         }
         if (mst.state === 'greet') {
           const t = mst.greetT;
           if (t < 1.3) { a.arms[1].sh.rotation.z = 2.5; a.arms[1].el.rotation.z = Math.sin(sec * 11) * 0.45; a.head.rotation.z = Math.sin(sec * 5) * 0.08; }
-          else if (t < 2.7) { const e = Math.sin(Math.min(1, (t - 1.3) / 1.4) * Math.PI); a.upper.rotation.x = e * 0.45; a.head.rotation.x = e * 0.2;
+          else if (t < 2.7) { const e = Math.sin(Math.min(1, (t - 1.3) / 1.4) * Math.PI); a.upper.rotation.x = e * (kL ? 0.25 : 0.45); a.head.rotation.x = e * 0.2;
             a.arms[0].sh.rotation.x = -1.35; a.arms[1].sh.rotation.x = -1.35; a.arms[0].sh.rotation.z = 0.5; a.arms[1].sh.rotation.z = -0.5; a.arms[0].el.rotation.x = -0.5; a.arms[1].el.rotation.x = -0.5; }
+          else if (kL) { a.arms[1].sh.rotation.x = -0.9 + Math.sin(sec * 4) * 0.2; a.arms[1].el.rotation.x = -0.6; a.head.rotation.x = Math.sin(sec * 3) * 0.06; }
           else { const k = sec * 1.6; a.arms[0].sh.rotation.x = -1.0 - Math.sin(k) * 0.4; a.arms[1].sh.rotation.x = -1.0 + Math.sin(k) * 0.4; a.arms[0].sh.rotation.z = -0.3; a.arms[1].sh.rotation.z = 0.3; a.arms[0].el.rotation.x = -0.6; a.arms[1].el.rotation.x = -0.6; }
         } else if (mst.state === 'called') {
           a.arms[1].sh.rotation.z = 1.3; a.head.rotation.x = -0.1;
+        } else if (mst.state === 'hosting' && !moving && (kL || mst.spot.speakingHost)) {
+          // 主持聚會：說話時比手勢，聽時點頭
+          if (mst.spot.speakingHost) { a.arms[1].sh.rotation.x = -0.9 + Math.sin(sec * 4) * 0.25; a.arms[1].el.rotation.x = -0.6; a.arms[0].sh.rotation.x = -0.3; }
+          else a.head.rotation.x = 0.08 + Math.sin(sec * 1.6) * 0.06;
         } else if (!moving) {
+          if (kL) { a.rig.rotation.y = Math.sin(sec * 0.6) * 0.15; a.head.rotation.y = Math.sin(sec * 0.8) * 0.25; a.arms[0].sh.rotation.z = -0.08; a.arms[1].sh.rotation.z = 0.08; }
+          else {
           // 原地打太極（雲手）
           const t = sec * 0.7;
           a.hip.position.y = 0.31; a.legs[0].rotation.z = -0.16; a.legs[1].rotation.z = 0.16; a.rig.rotation.y = Math.sin(t * 0.5) * 0.45;
           a.arms[0].sh.rotation.x = -0.9 - Math.sin(t) * 0.5; a.arms[0].sh.rotation.z = -0.35 - Math.cos(t) * 0.3; a.arms[0].el.rotation.x = -0.5;
           a.arms[1].sh.rotation.x = -0.9 + Math.sin(t) * 0.5; a.arms[1].sh.rotation.z = 0.35 - Math.cos(t) * 0.3; a.arms[1].el.rotation.x = -0.5;
+          }
         }
-        const y = rad(mst) < PLAT_R ? TOP : 0;
+        const y = IS_B ? TOP : rad(mst) < PLAT_R ? TOP : 0;
         a.g.position.set(mst.x, y, mst.z); a.g.rotation.y = mst.yaw;
         a.tag.position.set(mst.x, y + 1.95, mst.z);
         a.bubble.position.set(mst.x, y + 2.6, mst.z);
         a.bubble.visible = spritesShown && mst.state === 'greet' && mst.greetT < SAY_T;
         a.tag.visible = spritesShown && !a.bubble.visible;
-        // 對方的回話泡泡（宗師說完才出現，避免兩個泡泡疊在一起）
+        // 對方的回話泡泡（說完才出現，避免兩個泡泡疊在一起）
         let rp = null;
         if (mst.state === 'greet' && tg && tg.react && mst.greetT >= SAY_T) { rp = tg; a.replySay(mst.replyText); }
-        else if (mst.state === 'called' && mst.caller && mst.caller.react) { rp = mst.caller; a.replySay('宗師！'); }
+        else if (mst.state === 'called' && mst.caller && mst.caller.react) { rp = mst.caller; a.replySay(CALL); }
         a.reply.visible = spritesShown && !!rp;
         if (rp) { const p = rp.av.g.position; a.reply.position.set(p.x, p.y + 2.75, p.z); }
       };
@@ -1901,7 +2079,7 @@ async function initBuilding() {
       for (const d of desks) {
         const id = d.f.id, p = person(id), working = isWorking(p), meet = meetingOf(id), on = id === selected;
         const waiting = p && arr(p, 'waiting_on_louis').length;
-        if (working || meet || !hasRecord(id)) d.react = null; // 轉為忙碌：立即停止回應宗師
+        if (working || meet || !hasRecord(id)) d.react = d.gather = null; // 轉為忙碌：立即停止互動與聚會
         if (meet) { d.atDesk = false; d.slot = meetSeat[id] || null; }
         else { d.atDesk = working || !hasRecord(id); d.slot = d.atDesk ? null : (act[id] || null); }
         if (!d.atDesk && !d.slot) d.atDesk = true;
@@ -1979,10 +2157,11 @@ async function initBuilding() {
           a.head.rotation.y = Math.sin(sec * 0.5 + ph) * 0.25;
         } else if (s.type === 'patrol') {
           // 模板 B：在機房走道來回巡視
-          const t = sec * s.sp + ph * 0.3 + (s.off || 0), u = (1 - Math.cos(t)) / 2, dx = s.p1.x - s.p0.x, dz = s.p1.z - s.p0.z;
+          if (d.react) d.pauseAcc = (d.pauseAcc || 0) + (mst.fdt || 0); // 與 Louis 互動時原地停下，結束後從同一點繼續
+          const t = (sec - (d.pauseAcc || 0)) * s.sp + ph * 0.3 + (s.off || 0), u = (1 - Math.cos(t)) / 2, dx = s.p1.x - s.p0.x, dz = s.p1.z - s.p0.z;
           a.g.position.set(s.p0.x + dx * u, s.y ?? 0, s.p0.z + dz * u);
           a.g.rotation.y = Math.sin(t) >= 0 ? Math.atan2(dx, dz) : Math.atan2(-dx, -dz);
-          const w = Math.sin(sec * 6 + ph) * Math.min(1, Math.abs(Math.sin(t)) * 3);
+          const w = d.react ? 0 : Math.sin(sec * 6 + ph) * Math.min(1, Math.abs(Math.sin(t)) * 3);
           a.legs[0].thigh.rotation.x = w * 0.45; a.legs[1].thigh.rotation.x = -w * 0.45;
           a.legs[0].knee.rotation.x = Math.max(0, -w) * 0.5; a.legs[1].knee.rotation.x = Math.max(0, w) * 0.5;
           a.arms[0].sh.rotation.x = -w * 0.4; a.arms[1].sh.rotation.x = w * 0.4;
@@ -1997,10 +2176,33 @@ async function initBuilding() {
         }
         lx = a.g.position.x; lz = a.g.position.z; ly = 2.45;
       }
+      if (a.bowl) a.bowl.visible = a.sticks.visible = false;
       if (d.react && !d.working) reactPose(d, sec);
+      else if (d.gather && !d.working) gatherPose(d, sec);
       d.label.spr.position.set(lx, ly, lz);
     }
     // 休息中的成員回應宗師：轉身面向他，揮手回禮、抱拳，約半數一起比太極手勢；忙碌者沒有 react，維持原本動作
+    // 聚會姿勢：面向聚會中心；說話者比手勢、其他人點頭；茶席輪流喝茶／吃點心（碗筷），咖啡吧拿杯子
+    function gatherPose(d, sec) {
+      const a = d.av, G = d.gather, s = d.slot, ph = d.phase;
+      const yaw = Math.atan2(G.cx - a.g.position.x, G.cz - a.g.position.z);
+      if (s.type === 'read') { let dy = yaw - a.g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); a.upper.rotation.y = Math.max(-0.9, Math.min(0.9, dy)); }
+      else if (s.type !== 'tea') a.g.rotation.y = yaw;
+      if (!a.bowl) {
+        const bowl = new THREE.Group(); const bm = M(0xf4efe6, { roughness: 0.5 });
+        const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.045, 0.06, 14, 1, true), new THREE.MeshStandardMaterial({ color: 0xf4efe6, roughness: 0.5, side: THREE.DoubleSide })); bowl.add(cup);
+        const food = new THREE.Mesh(new THREE.CircleGeometry(0.068, 14), M(0xd9a54a)); food.rotation.x = -Math.PI / 2; food.position.y = 0.02; bowl.add(food);
+        bowl.position.set(0, -0.27, 0.05); bowl.visible = false; a.arms[1].el.add(bowl); a.bowl = bowl;
+        const sticks = new THREE.Group(); for (const dx of [-0.012, 0.012]) box(0.008, 0.008, 0.22, M(0x6b4a2e), dx, 0, 0.08, sticks);
+        sticks.position.set(0, -0.25, 0.02); sticks.visible = false; a.arms[0].el.add(sticks); a.sticks = sticks; void bm;
+      }
+      const meal = G.act === 'meal';
+      a.bowl.visible = meal; a.sticks.visible = meal;
+      if (meal) { a.cup.visible = false; a.arms[1].sh.rotation.x = -0.7; a.arms[1].el.rotation.x = -1.1; a.arms[0].sh.rotation.x = -0.8 + Math.sin(sec * 2.2 + ph) * 0.25; a.arms[0].el.rotation.x = -1.25; }
+      else if (G.act === 'tea' || G.act === 'coffee') a.cup.visible = true;
+      if (G.speaking) { a.arms[0].sh.rotation.x = -0.75 + Math.sin(sec * 4) * 0.25; a.arms[0].sh.rotation.z = -0.2; a.arms[0].el.rotation.x = -0.55; a.head.rotation.x = Math.sin(sec * 3) * 0.05; }
+      else a.head.rotation.x = 0.06 + Math.sin(sec * 1.4 + ph) * 0.06;
+    }
     function reactPose(d, sec) {
       const a = d.av, r = d.react, s = d.slot;
       const yaw = Math.atan2(r.mx - a.g.position.x, r.mz - a.g.position.z);
@@ -2091,7 +2293,7 @@ async function initBuilding() {
       // 看板模式：隱藏所有名牌，避免擋住正面螢幕
       showSprites(!(mode === 'board' && (!fly || performance.now() - fly.t0 > 500)));
       if (!spritesShown) return;
-      const fixed = [rectOf(coreSpr, 0.85), rectOf(meetSpr, 0.85), ...(meetSpr2 ? [rectOf(meetSpr2, 0.85)] : []), ...signs.map((sg) => rectOf(sg, 0.9)), ...(master && master.bubble.visible ? [rectOf(master.bubble, 0.85)] : []), ...(master && master.reply.visible ? [rectOf(master.reply, 0.85)] : [])];
+      const fixed = [rectOf(coreSpr, 0.85), rectOf(meetSpr, 0.85), ...(meetSpr2 ? [rectOf(meetSpr2, 0.85)] : []), ...signs.map((sg) => rectOf(sg, 0.9)), ...(VIS && VIS.bubble.visible ? [rectOf(VIS.bubble, 0.85)] : []), ...(VIS && VIS.reply.visible ? [rectOf(VIS.reply, 0.85)] : []), ...(mst.spots || []).filter((sp) => sp.bub.spr.visible).map((sp) => rectOf(sp.bub.spr, 0.85))];
       // 拉近時名牌不無限放大：螢幕寬度上限約 300 像素
       for (const d of desks) {
         const b = d.label.base; if (!b) continue;
@@ -2140,7 +2342,7 @@ async function initBuilding() {
       for (const b of bamboos) b.g.rotation.z = Math.sin(sec * 0.8 + b.ph) * 0.012;
       mst.fdt = Math.min(0.25, Math.max(0, sec - (mst.last ?? sec))); mst.last = sec;
       for (const d of desks) { poseAvatar(d, sec); if (d.working) d.lamp.material.emissiveIntensity = 0.8 + Math.sin(sec * 2.6 + d.phase) * 0.25; }
-      if (master) mst.tick(sec, mst.fdt);
+      if (VIS) mst.tick(sec, mst.fdt);
       declutter();
       renderer.render(scene, camera);
       requestAnimationFrame(loop);
