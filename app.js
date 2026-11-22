@@ -1507,14 +1507,15 @@ async function initBuilding() {
         c.fillStyle = 'rgba(35,33,30,0.82)'; c.beginPath(); c.roundRect(4, 4, 352, 88, 44); c.fill(); c.strokeStyle = '#b8995a'; c.lineWidth = 4; c.stroke();
         c.fillStyle = '#f7f4ec'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, '太極拳宗師', 320, 52, 'bold', SERIF); c.fillText('太極拳宗師', 180, 50);
         const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(cv), transparent: true, depthTest: false })); s.scale.set(1.05, 0.28, 1); s.renderOrder = 11; scene.add(s); return s; })();
-      const bcv = document.createElement('canvas'); bcv.width = 480; bcv.height = 180; const btex = canvasTex(bcv);
-      const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: btex, transparent: true, depthTest: false })); bubble.scale.set(2.3, 0.86, 1); bubble.renderOrder = 12; bubble.visible = false; scene.add(bubble);
-      let btext = '';
-      const say = (t) => { if (t === btext) return; btext = t; const c = bcv.getContext('2d'); c.clearRect(0, 0, 480, 180);
-        c.fillStyle = '#fffdf7'; c.strokeStyle = '#b8995a'; c.lineWidth = 6; c.beginPath(); c.roundRect(8, 8, 464, 124, 40); c.moveTo(220, 132); c.lineTo(240, 172); c.lineTo(262, 132); c.fill(); c.stroke();
-        c.fillStyle = '#fffdf7'; c.fillRect(224, 124, 34, 12);
-        c.fillStyle = '#23211e'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, t, 420, 56, 'bold', SERIF); c.fillText(t, 240, 72); btex.needsUpdate = true; };
-      return { g, rig, hip, upper, head, legs, arms, tag, bubble, say };
+      const mkBubble = (W, edge) => { const cv = document.createElement('canvas'); cv.width = 480; cv.height = 180; const tex = canvasTex(cv);
+        const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })); spr.scale.set(W, W * 0.374, 1); spr.renderOrder = 12; spr.visible = false; scene.add(spr);
+        let cur = ''; const say = (t) => { if (t === cur) return; cur = t; const c = cv.getContext('2d'); c.clearRect(0, 0, 480, 180);
+          c.fillStyle = '#fffdf7'; c.strokeStyle = edge; c.lineWidth = 6; c.beginPath(); c.roundRect(8, 8, 464, 124, 40); c.moveTo(220, 132); c.lineTo(240, 172); c.lineTo(262, 132); c.fill(); c.stroke();
+          c.fillStyle = '#fffdf7'; c.fillRect(224, 124, 34, 12);
+          c.fillStyle = '#23211e'; c.textAlign = 'center'; c.textBaseline = 'middle'; fitText(c, t, 420, 56, 'bold', SERIF); c.fillText(t, 240, 72); tex.needsUpdate = true; };
+        return { spr, say }; };
+      const mb = mkBubble(2.3, '#b8995a'), rb = mkBubble(2.0, '#5f9e8a'); // 宗師：金框；成員回話：玉色框
+      return { g, rig, hip, upper, head, legs, arms, tag, bubble: mb.spr, say: mb.say, reply: rb.spr, replySay: rb.say };
     })();
     const mst = { state: 'pick', target: null, route: [], timer: 0, replan: 0, visited: new Set(), x: 0, z: CZ + 8.0, yaw: Math.PI, prev: null, log: [], greetT: 0 };
     {
@@ -1544,13 +1545,13 @@ async function initBuilding() {
         return pts;
       }
       const isFree = (d) => !meetingOf(d.f.id) && hasRecord(d.f.id) && !isWorking(person(d.f.id));
-      // 站位：在對方外側約 0.85 處；散步中的人依其角速度預估會合點
+      // 站位：在對方外側約 1.15 處；散步中的人依其角速度預估會合點
       function standOf(d, lead = 0) {
         const s = d.slot;
-        if (d.atDesk || !s) { const w = seatWorld(d), t = th(w); return { ...pt(rad(w) + 0.9, t), moving: false }; }
-        if (s.type === 'walk') { const p = d.av.g.position, t = th(p) + s.sp * lead, r = rad(p); return { ...pt(r + 0.85, t), moving: true }; }
+        if (d.atDesk || !s) { const w = seatWorld(d), t = th(w); return { ...pt(rad(w) + 1.2, t), moving: false }; }
+        if (s.type === 'walk') { const p = d.av.g.position, t = th(p) + (d.react ? 0 : s.sp * lead), r = rad(p); return { ...pt(r + 1.15, t), moving: true }; }
         const c = CORNERS[s.type]; if (!c) return null;
-        const dx = s.x - c.x, dz = s.z - c.z, L = Math.hypot(dx, dz) || 1, k = (L + 0.8) / L; return { x: c.x + dx * k, z: c.z + dz * k, moving: false };
+        const dx = s.x - c.x, dz = s.z - c.z, L = Math.hypot(dx, dz) || 1, k = (L + 1.15) / L; return { x: c.x + dx * k, z: c.z + dz * k, moving: false };
       }
       const routeLen = (pts) => { let L = 0, px = mst.x, pz = mst.z; for (const q of pts) { L += Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z; } return L; };
       function replan(d) {
@@ -1559,21 +1560,35 @@ async function initBuilding() {
         mst.route = plan(mst, st); return st;
       }
       const GREET = (n) => [`${n}，休息一下～`, `抱拳！${n} 你好`, `${n}，深呼吸～`, `${n}，喝口茶吧`];
-      const logIt = (ev, d) => { mst.log.push({ t: Math.round(performance.now()), ev, id: d ? d.f.id : null }); if (mst.log.length > 60) mst.log.shift(); };
+      const REPLY = ['宗師早！', '謝謝宗師', '一起練！', '宗師好～', '受教了！', '宗師請喝茶'];
+      const COOL = 8, GREET_T = 4.0, SAY_T = 1.9; // 同一人 8 秒內不重複打招呼；宗師先說、對方 1.9 秒後回話（兩個泡泡不同時出現）
+      mst.cool = {}; mst.caller = null; mst.greets = 0;
+      const logIt = (ev, d) => { mst.log.push({ t: Math.round(performance.now()), ev, id: d ? d.f.id : null }); if (mst.log.length > 80) mst.log.shift(); };
+      const ok = (d, sec) => isFree(d) && !(mst.cool[d.f.id] > sec - COOL);
+      const distTo = (d) => Math.hypot(d.av.g.position.x - mst.x, d.av.g.position.z - mst.z);
+      const startGo = (d) => { mst.target = d; mst.state = 'go'; mst.replan = 0; mst.stand = null; logIt('target', d); };
       mst.tick = (sec, dt) => {
         const a = master; if (!a) return;
-        // 目標轉為工作中／會議中：立即放棄
+        // 目標或呼喚者轉為工作中／會議中：立即放棄
         if (mst.target && !isFree(mst.target)) { logIt('abandon', mst.target); mst.target = null; mst.state = 'pick'; mst.route = []; }
+        if (mst.state === 'called' && (!mst.caller || !isFree(mst.caller))) { logIt('abandon', mst.caller); mst.caller = null; mst.state = 'pick'; }
         if (mst.state === 'pick' || (mst.state === 'practice' && (mst.timer -= dt) <= 0)) {
-          let c = desks.filter((d) => isFree(d) && !mst.visited.has(d.f.id));
-          if (!c.length && desks.some(isFree)) { mst.visited.clear(); c = desks.filter((d) => isFree(d) && d.f.id !== mst.prev); }
+          let c = desks.filter((d) => ok(d, sec) && !mst.visited.has(d.f.id));
+          if (!c.length) { mst.visited.clear(); c = desks.filter((d) => ok(d, sec)); }
           if (c.length) {
-            c.sort((p, q) => Math.hypot(p.av.g.position.x - mst.x, p.av.g.position.z - mst.z) - Math.hypot(q.av.g.position.x - mst.x, q.av.g.position.z - mst.z));
-            mst.target = c[0]; mst.state = 'go'; mst.replan = 0; logIt('target', c[0]);
+            const near = c.filter((d) => distTo(d) < 6);
+            // 約兩成機會由附近休息中的成員主動揮手呼喚「宗師！」，宗師就先去找他
+            if (near.length && Math.random() < 0.2) { const k = near[Math.floor(Math.random() * near.length)]; mst.caller = k; mst.state = 'called'; mst.timer = 1.6; mst.route = []; logIt('call', k); }
+            else { c.sort((p, q) => distTo(p) - distTo(q)); startGo(c[0]); }
           } else if (mst.state !== 'practice') { mst.state = 'practice'; mst.route = plan(mst, PRACTICE); mst.timer = 1; logIt('practice'); }
           else mst.timer = 1;
         }
-        const d = mst.target; let moving = false, face = null, st = null;
+        let moving = false, face = null, st = null;
+        if (mst.state === 'called' && mst.caller) {
+          const cp = mst.caller.av.g.position; face = Math.atan2(cp.x - mst.x, cp.z - mst.z);
+          if ((mst.timer -= dt) <= 0) { const k = mst.caller; mst.caller = null; startGo(k); }
+        }
+        const d = mst.target;
         if (mst.state === 'go' && d) {
           // 靜止目標只規劃一次（位置改變才重算）；散步中的目標依角速度預估會合點，走完再重估，接近時直接迎上
           const key = d.atDesk ? 'desk' : d.slot;
@@ -1581,8 +1596,10 @@ async function initBuilding() {
           if (near) mst.route = [{ x: near.x, z: near.z }]; // 已在同一走道且很近：直接迎上去
           else if (mst.replan <= 0 || mst.slotRef !== key || (mst.stand && mst.stand.moving && !mst.route.length)) { st = replan(d); mst.replan = 1; mst.stand = st; mst.slotRef = key; }
           const live = standOf(d);
-          if (live && Math.hypot(live.x - mst.x, live.z - mst.z) < (live.moving ? 0.5 : 0.25)) { mst.state = 'greet'; mst.greetT = 0; mst.route = []; a.say(GREET((TAG[d.f.id] || [shortName(d.f)])[0])[hashId(d.f.id + mst.visited.size) % 4]); logIt('greet', d); }
-          else if (!mst.route.length && live && !live.moving) mst.route = [{ x: live.x, z: live.z }];
+          if (live && Math.hypot(live.x - mst.x, live.z - mst.z) < (live.moving ? 0.5 : 0.25)) {
+            mst.state = 'greet'; mst.greetT = 0; mst.route = []; mst.mirror = Math.random() < 0.5; const n = mst.greets++;
+            a.say(GREET((TAG[d.f.id] || [shortName(d.f)])[0])[hashId(d.f.id + n) % 4]); mst.replyText = REPLY[hashId(n + d.f.id) % REPLY.length]; logIt('greet', d);
+          } else if (!mst.route.length && live && !live.moving) mst.route = [{ x: live.x, z: live.z }];
         }
         if (mst.route.length) {
           let step = SPEED * dt;
@@ -1590,13 +1607,19 @@ async function initBuilding() {
           moving = true;
         }
         if (mst.state === 'greet' && d) {
-          const live = standOf(d);
-          if (live && live.moving) { const nx = live.x, nz = live.z; moving = Math.hypot(nx - mst.x, nz - mst.z) > 0.002; mst.x = nx; mst.z = nz; }
           const tp = d.av.g.position; face = Math.atan2(tp.x - mst.x, tp.z - mst.z);
-          if ((mst.greetT += dt) > 3.6) { logIt('done', d); mst.visited.add(d.f.id); mst.prev = d.f.id; mst.target = null; mst.state = 'rest'; mst.timer = 1.4; }
+          if ((mst.greetT += dt) > GREET_T) { logIt('done', d); mst.visited.add(d.f.id); mst.cool[d.f.id] = sec; mst.prev = d.f.id; mst.target = null; mst.state = 'rest'; mst.timer = 1.4; }
         }
         if (mst.state === 'rest' && (mst.timer -= dt) <= 0) mst.state = 'pick';
         if (face != null) { mst.yaw += dAng(mst.yaw, face) * Math.min(1, dt * 8); }
+        // 對方的回應（只給休息中的人；忙碌者 react 一律為空）：下一格由 poseAvatar 套用
+        for (const q of desks) q.react = null;
+        if (mst.state === 'called' && mst.caller && isFree(mst.caller)) mst.caller.react = { mode: 'call', t: 1.6 - mst.timer, mx: mst.x, mz: mst.z };
+        const tg = mst.target;
+        if (tg && isFree(tg)) {
+          if (mst.state === 'greet') tg.react = { mode: 'greet', t: mst.greetT, mirror: mst.mirror, mx: mst.x, mz: mst.z };
+          else if (mst.state === 'go' && distTo(tg) < 2.5) tg.react = { mode: 'face', mx: mst.x, mz: mst.z };
+        }
         // 姿勢
         a.hip.position.y = 0.34; a.upper.rotation.set(0, 0, 0); a.head.rotation.set(0, 0, 0); a.rig.rotation.set(0, 0, 0);
         for (const L of a.legs) L.rotation.set(0, 0, 0);
@@ -1609,10 +1632,12 @@ async function initBuilding() {
         }
         if (mst.state === 'greet') {
           const t = mst.greetT;
-          if (t < 1.2) { a.arms[1].sh.rotation.z = 2.5; a.arms[1].el.rotation.z = Math.sin(sec * 11) * 0.45; a.head.rotation.z = Math.sin(sec * 5) * 0.08; }
-          else if (t < 2.5) { const e = Math.sin(Math.min(1, (t - 1.2) / 1.3) * Math.PI); a.upper.rotation.x = e * 0.45; a.head.rotation.x = e * 0.2;
+          if (t < 1.3) { a.arms[1].sh.rotation.z = 2.5; a.arms[1].el.rotation.z = Math.sin(sec * 11) * 0.45; a.head.rotation.z = Math.sin(sec * 5) * 0.08; }
+          else if (t < 2.7) { const e = Math.sin(Math.min(1, (t - 1.3) / 1.4) * Math.PI); a.upper.rotation.x = e * 0.45; a.head.rotation.x = e * 0.2;
             a.arms[0].sh.rotation.x = -1.35; a.arms[1].sh.rotation.x = -1.35; a.arms[0].sh.rotation.z = 0.5; a.arms[1].sh.rotation.z = -0.5; a.arms[0].el.rotation.x = -0.5; a.arms[1].el.rotation.x = -0.5; }
           else { const k = sec * 1.6; a.arms[0].sh.rotation.x = -1.0 - Math.sin(k) * 0.4; a.arms[1].sh.rotation.x = -1.0 + Math.sin(k) * 0.4; a.arms[0].sh.rotation.z = -0.3; a.arms[1].sh.rotation.z = 0.3; a.arms[0].el.rotation.x = -0.6; a.arms[1].el.rotation.x = -0.6; }
+        } else if (mst.state === 'called') {
+          a.arms[1].sh.rotation.z = 1.3; a.head.rotation.x = -0.1;
         } else if (!moving) {
           // 原地打太極（雲手）
           const t = sec * 0.7;
@@ -1624,7 +1649,14 @@ async function initBuilding() {
         a.g.position.set(mst.x, y, mst.z); a.g.rotation.y = mst.yaw;
         a.tag.position.set(mst.x, y + 1.95, mst.z);
         a.bubble.position.set(mst.x, y + 2.6, mst.z);
-        a.bubble.visible = spritesShown && mst.state === 'greet'; a.tag.visible = spritesShown && !a.bubble.visible;
+        a.bubble.visible = spritesShown && mst.state === 'greet' && mst.greetT < SAY_T;
+        a.tag.visible = spritesShown && !a.bubble.visible;
+        // 對方的回話泡泡（宗師說完才出現，避免兩個泡泡疊在一起）
+        let rp = null;
+        if (mst.state === 'greet' && tg && tg.react && mst.greetT >= SAY_T) { rp = tg; a.replySay(mst.replyText); }
+        else if (mst.state === 'called' && mst.caller && mst.caller.react) { rp = mst.caller; a.replySay('宗師！'); }
+        a.reply.visible = spritesShown && !!rp;
+        if (rp) { const p = rp.av.g.position; a.reply.position.set(p.x, p.y + 2.75, p.z); }
       };
     }
 
@@ -1869,6 +1901,7 @@ async function initBuilding() {
       for (const d of desks) {
         const id = d.f.id, p = person(id), working = isWorking(p), meet = meetingOf(id), on = id === selected;
         const waiting = p && arr(p, 'waiting_on_louis').length;
+        if (working || meet || !hasRecord(id)) d.react = null; // 轉為忙碌：立即停止回應宗師
         if (meet) { d.atDesk = false; d.slot = meetSeat[id] || null; }
         else { d.atDesk = working || !hasRecord(id); d.slot = d.atDesk ? null : (act[id] || null); }
         if (!d.atDesk && !d.slot) d.atDesk = true;
@@ -1912,10 +1945,12 @@ async function initBuilding() {
       } else {
         const s = d.slot;
         if (s.type === 'walk') {
-          const ang = s.off + sec * s.sp + ph * 0.05;
+          // 與宗師互動時原地停下（累計暫停時間），結束後從同一點沿原路線繼續
+          if (d.react) d.pauseAcc = (d.pauseAcc || 0) + (mst.fdt || 0);
+          const ang = s.off + (sec - (d.pauseAcc || 0)) * s.sp + ph * 0.05;
           a.g.position.set(Math.sin(ang) * s.r, s.y ?? (s.r < PLAT_R ? TOP : 0), CZ + Math.cos(ang) * (s.rz ?? s.r));
           a.g.rotation.y = ang + (s.sp > 0 ? Math.PI / 2 : -Math.PI / 2);
-          const w = Math.sin(sec * 6 + ph);
+          const w = d.react ? 0 : Math.sin(sec * 6 + ph);
           a.legs[0].thigh.rotation.x = w * 0.45; a.legs[1].thigh.rotation.x = -w * 0.45;
           a.legs[0].knee.rotation.x = Math.max(0, -w) * 0.5; a.legs[1].knee.rotation.x = Math.max(0, w) * 0.5;
           a.arms[0].sh.rotation.x = -w * 0.4; a.arms[1].sh.rotation.x = w * 0.4;
@@ -1962,7 +1997,28 @@ async function initBuilding() {
         }
         lx = a.g.position.x; lz = a.g.position.z; ly = 2.45;
       }
+      if (d.react && !d.working) reactPose(d, sec);
       d.label.spr.position.set(lx, ly, lz);
+    }
+    // 休息中的成員回應宗師：轉身面向他，揮手回禮、抱拳，約半數一起比太極手勢；忙碌者沒有 react，維持原本動作
+    function reactPose(d, sec) {
+      const a = d.av, r = d.react, s = d.slot;
+      const yaw = Math.atan2(r.mx - a.g.position.x, r.mz - a.g.position.z);
+      const seated = d.atDesk || !s || s.type === 'read';
+      if (seated) { let dy = yaw - a.g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); a.upper.rotation.y = Math.max(-1.1, Math.min(1.1, dy)); }
+      else a.g.rotation.y = yaw;
+      if (r.mode === 'face') { a.head.rotation.x = -0.08; return; }
+      a.cup.visible = a.book.visible = false;
+      for (const A of a.arms) { A.sh.rotation.set(0, 0, 0); A.el.rotation.set(0, 0, 0); }
+      const wave = () => { a.arms[1].sh.rotation.z = 2.5; a.arms[1].el.rotation.z = Math.sin(sec * 11 + 1) * 0.45; a.head.rotation.z = Math.sin(sec * 5) * 0.08; };
+      if (r.mode === 'call') { wave(); return; }
+      const t = r.t;
+      if (t < 0.4) { a.head.rotation.x = -0.08; }
+      else if (t < 1.3) wave();
+      else if (t < 2.7) { const e = Math.sin(Math.min(1, (t - 1.3) / 1.4) * Math.PI); a.upper.rotation.x += e * (seated ? 0.2 : 0.35); a.head.rotation.x = e * 0.2;
+        a.arms[0].sh.rotation.x = -1.35; a.arms[1].sh.rotation.x = -1.35; a.arms[0].sh.rotation.z = 0.45; a.arms[1].sh.rotation.z = -0.45; a.arms[0].el.rotation.x = -0.5; a.arms[1].el.rotation.x = -0.5; }
+      else if (r.mirror) { const k = sec * 1.6; a.arms[0].sh.rotation.x = -1.0 - Math.sin(k) * 0.4; a.arms[1].sh.rotation.x = -1.0 + Math.sin(k) * 0.4; a.arms[0].sh.rotation.z = -0.3; a.arms[1].sh.rotation.z = 0.3; a.arms[0].el.rotation.x = -0.6; a.arms[1].el.rotation.x = -0.6; }
+      else { a.arms[0].sh.rotation.x = -0.9; a.arms[1].sh.rotation.x = -0.9; a.arms[0].sh.rotation.z = 0.4; a.arms[1].sh.rotation.z = -0.4; a.arms[0].el.rotation.x = -0.4; a.arms[1].el.rotation.x = -0.4; a.head.rotation.x = 0.12 + Math.sin(sec * 4) * 0.08; }
     }
 
     // ---------- 鏡頭 ----------
@@ -2035,7 +2091,7 @@ async function initBuilding() {
       // 看板模式：隱藏所有名牌，避免擋住正面螢幕
       showSprites(!(mode === 'board' && (!fly || performance.now() - fly.t0 > 500)));
       if (!spritesShown) return;
-      const fixed = [rectOf(coreSpr, 0.85), rectOf(meetSpr, 0.85), ...(meetSpr2 ? [rectOf(meetSpr2, 0.85)] : []), ...signs.map((sg) => rectOf(sg, 0.9)), ...(master && master.bubble.visible ? [rectOf(master.bubble, 0.85)] : [])];
+      const fixed = [rectOf(coreSpr, 0.85), rectOf(meetSpr, 0.85), ...(meetSpr2 ? [rectOf(meetSpr2, 0.85)] : []), ...signs.map((sg) => rectOf(sg, 0.9)), ...(master && master.bubble.visible ? [rectOf(master.bubble, 0.85)] : []), ...(master && master.reply.visible ? [rectOf(master.reply, 0.85)] : [])];
       // 拉近時名牌不無限放大：螢幕寬度上限約 300 像素
       for (const d of desks) {
         const b = d.label.base; if (!b) continue;
@@ -2082,8 +2138,9 @@ async function initBuilding() {
       haloMat.color.setHex(st === 'active' ? ACT : IDLE);
       if (B) B.tick(sec, st, coreHolo);
       for (const b of bamboos) b.g.rotation.z = Math.sin(sec * 0.8 + b.ph) * 0.012;
+      mst.fdt = Math.min(0.25, Math.max(0, sec - (mst.last ?? sec))); mst.last = sec;
       for (const d of desks) { poseAvatar(d, sec); if (d.working) d.lamp.material.emissiveIntensity = 0.8 + Math.sin(sec * 2.6 + d.phase) * 0.25; }
-      if (master) { const dtm = Math.min(0.25, Math.max(0, sec - (mst.last ?? sec))); mst.last = sec; mst.tick(sec, dtm); }
+      if (master) mst.tick(sec, mst.fdt);
       declutter();
       renderer.render(scene, camera);
       requestAnimationFrame(loop);
