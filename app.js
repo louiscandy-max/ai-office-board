@@ -1555,7 +1555,7 @@ async function initBuilding() {
       const routeLen = (pts) => { let L = 0, px = mst.x, pz = mst.z; for (const q of pts) { L += Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z; } return L; };
       function replan(d) {
         let st = standOf(d); if (!st) return null;
-        if (st.moving) for (let i = 0; i < 2; i++) { const T = routeLen(plan(mst, st)) / SPEED; st = standOf(d, T); }
+        if (st.moving) for (let i = 0; i < 3; i++) { const T = routeLen(plan(mst, st)) / SPEED; st = standOf(d, T); }
         mst.route = plan(mst, st); return st;
       }
       const GREET = (n) => [`${n}，休息一下～`, `抱拳！${n} 你好`, `${n}，深呼吸～`, `${n}，喝口茶吧`];
@@ -1575,9 +1575,11 @@ async function initBuilding() {
         }
         const d = mst.target; let moving = false, face = null, st = null;
         if (mst.state === 'go' && d) {
-          // 靜止目標只規劃一次（位置改變才重算）；散步中的目標每 0.6 秒重估會合點
+          // 靜止目標只規劃一次（位置改變才重算）；散步中的目標依角速度預估會合點，走完再重估，接近時直接迎上
           const key = d.atDesk ? 'desk' : d.slot;
-          if (mst.replan <= 0 || mst.slotRef !== key || (mst.stand && mst.stand.moving && (mst.replan -= dt) <= 0)) { st = replan(d); mst.replan = 0.6; mst.stand = st; mst.slotRef = key; }
+          const near = mst.stand && mst.stand.moving && (() => { const lv = standOf(d); return lv && Math.hypot(lv.x - mst.x, lv.z - mst.z) < 2.2 && Math.abs(rad(lv) - rad(mst)) < 0.6 ? lv : null; })();
+          if (near) mst.route = [{ x: near.x, z: near.z }]; // 已在同一走道且很近：直接迎上去
+          else if (mst.replan <= 0 || mst.slotRef !== key || (mst.stand && mst.stand.moving && !mst.route.length)) { st = replan(d); mst.replan = 1; mst.stand = st; mst.slotRef = key; }
           const live = standOf(d);
           if (live && Math.hypot(live.x - mst.x, live.z - mst.z) < (live.moving ? 0.5 : 0.25)) { mst.state = 'greet'; mst.greetT = 0; mst.route = []; a.say(GREET((TAG[d.f.id] || [shortName(d.f)])[0])[hashId(d.f.id + mst.visited.size) % 4]); logIt('greet', d); }
           else if (!mst.route.length && live && !live.moving) mst.route = [{ x: live.x, z: live.z }];
